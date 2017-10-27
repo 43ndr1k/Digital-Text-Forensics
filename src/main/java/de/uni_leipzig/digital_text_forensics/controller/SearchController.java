@@ -24,16 +24,16 @@ public class SearchController {
 			@RequestParam(defaultValue = "1")
 					Integer currentPage) {
 
-		ModelAndView modelAndView = new ModelAndView();
+		ModelAndView modelAndView = new ModelAndView("search");
 		SearchResultPage searchResultPage = new SearchResultPage();
 
 		if (query.equals("")) {
-			modelAndView.addObject(searchResultPage);
+			modelAndView.addObject("searchResultPage", searchResultPage);
 			return modelAndView;
 		}
 
 		searchResultPage.setQuery(query);
-
+		System.out.print(query);
 		//Suchen
 		TopDocs queryTopDocs;// = searcherComponent.search(originalQuery, topNForSearchResult);
 
@@ -43,20 +43,23 @@ public class SearchController {
 		searchResultPage.setPage(lastPageNumberAndContent.getLeft());
 		injectPaginationLinks(searchResultPage);*/
 
-		SearchResult searchResult = new SearchResult();
-		searchResult.setSnippet("Snippel");
-		searchResult.setTitle("Titel");
-		searchResult.setUrl(new Link("Link"));
-
 		List<SearchResult> searchResultList = new LinkedList<>();
-		searchResultList.add(searchResult);
+		for (int i = 0; i < 15; i++) {
+			SearchResult searchResult = new SearchResult();
+			searchResult.setSnippet("Snippel" + i);
+			searchResult.setTitle("Titel" + i);
+			searchResult.setUrl(new Link("Link" + i));
 
-		searchResultPage.setTotalResults(10);
+			searchResultList.add(searchResult);
+		}
+
+		searchResultPage.setTotalResults(11);
 		searchResultPage.setResultsOnPage(searchResultList);
-		searchResultPage.setPage(1);
+		searchResultPage.setPage(2);
 		injectPaginationLinks(searchResultPage);
 
-		modelAndView.addObject(searchResultPage);
+		modelAndView.addObject("searchResultPage", searchResultPage);
+
 		return modelAndView;
 	}
 
