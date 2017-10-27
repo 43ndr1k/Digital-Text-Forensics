@@ -14,6 +14,9 @@ import org.springframework.hateoas.Link;
 import org.springframework.hateoas.LinkBuilder;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
+/**
+ * @Autor Maik Fröbe
+ */
 public class Pager {
 
 	private static final int RESULTS_PER_PAGE = 10;

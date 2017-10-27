@@ -53,9 +53,10 @@ public class SearchController {
 			searchResultList.add(searchResult);
 		}
 
-		searchResultPage.setTotalResults(11);
+		searchResultPage.setTotalResults(15);
 		searchResultPage.setResultsOnPage(searchResultList);
-		searchResultPage.setPage(2);
+		searchResultPage.setPage(currentPage);
+
 		injectPaginationLinks(searchResultPage);
 
 		modelAndView.addObject("searchResultPage", searchResultPage);
