@@ -66,7 +66,8 @@ public class TikaAndLuceneWriter {
 		} catch (SAXException e) {
 			e.printStackTrace();
 		}
-
+		
+		// hier werden wir entweder nachhelfen muessen oder auf dem kompletten text suchen muessen.
 		String title = metadata.get("title");
 		String author = metadata.get("Author");
 		String created = metadata.get("created");
