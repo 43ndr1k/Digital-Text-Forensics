@@ -40,7 +40,7 @@ public class SearchController {
 		}
 
 		searchResultPage.setQuery(query);
-		System.out.print(query);
+
 		//Suchen
 		TopDocs queryTopDocs;// = searcherComponent.search(originalQuery, topNForSearchResult);
 
@@ -55,6 +55,10 @@ public class SearchController {
 		try {
 		  searchDocList = new Searcher().search(query);
 		  searchResultList = new Pager().mapDocumentListToSearchResults(searchDocList);
+		  searchResultPage.setTotalResults(searchResultList.size());
+		  searchResultPage.setResultsOnPage(searchResultList);
+		  searchResultPage.setPage(currentPage);
+		  injectPaginationLinks(searchResultPage);
 		  System.out.println("");
         } catch (IOException | ParseException e) {
         // TODO Auto-generated catch block

@@ -46,6 +46,8 @@ public class Pager {
 	  List<SearchResult> list = new ArrayList<>();
 	  for (Document d : docs) {
 	    	    SearchResult s = new SearchResult();
+	    	    //s.setTitle("Work in progress...");  //TODO: Titel einfuegen
+	    	    s.setTitle(d.get("filename"));
 	    	    s.setUrl(new Link(d.get("path")));
 	    	    list.add(s);
 	  }

@@ -24,11 +24,12 @@ public class Searcher {
   
   public final String indexLocation = "/Users/David/Desktop/LuceneIndex";
   private StandardAnalyzer analyzer = new StandardAnalyzer();
+  private final int RESULT_COUNT = 20;
   
   public List<Document> search(String query) throws IOException, ParseException {
     IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexLocation)));//IndexReader reader = DirectoryReader.open(FSDirectory.open(new File(indexLocation)));
     IndexSearcher searcher = new IndexSearcher(reader);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(Pager.RESULTS_PER_PAGE);
+    TopScoreDocCollector collector = TopScoreDocCollector.create(RESULT_COUNT);
   
     Query q = new QueryParser("contents", analyzer).parse(query);
     searcher.search(q, collector);
