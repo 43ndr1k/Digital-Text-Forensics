@@ -1,0 +1,909 @@
+A Hybrid Approach of Classifier and Clustering
+for Solving the Missing Node Problem
+Sigal Sina
+Bar-Ilan University, Israel
+sinasi@macs.biu.ac.il
+Avi Rosenfeld
+Jerusalem College of
+Technology, Israel
+rosenfa@jct.ac.il
+Sarit Kraus
+Bar-Ilan University, Israel
+sarit@cs.biu.ac.il
+Navot Akiva
+Bar-Ilan University, Israel
+navot.akiva@gmail.com
+Abstract
+An important area of social network research is identifying
+missing information which is not explicitly represented in the
+network or is not visible to all. In this paper, we propose a
+novel Hybrid Approach of Classifier and Clustering, which
+we refer to as HACC, to solve the missing node identification
+problem in social networks. HACC utilizes a classifier as a
+preprocessing step in order to integrate all known informa-
+tion into one similarity measure and then uses a clustering
+algorithm to identify missing nodes. Specifically, we used the
+information on the network structure, attributes about known
+users (nodes) and pictorial information to evaluate HACC and
+found that it performs significantly better than other missing
+node algorithms. We also argue that HACC is a general ap-
+proach and domain independent and can be easily applied to
+other domains. We support this claim by evaluating HACC on
+a second authorship identification domain as well.
+Introduction
+Data clustering has been used for more than 50 years in or-
+der to find a natural grouping of a set of patterns, points, or
+objects based on similarity or dissimilarity measures (Jain
+2010). The main challenge is to find the measures that
+can improve clustering accuracy. To achieve this goal, in
+this paper we propose HACC, a novel Hybrid Approach of
+Classifier and Clustering, for solving the missing node iden-
+tification problem in social networks. Additionally, we ar-
+gue that our approach is general and domain independent
+and can be easily applied to other domains. The novelty of
+HACC is its use of a small collection of labeled objects to
+tune and learn a classifier as a preprocessing step in order to
+integrate all known information into one similarity measure.
+The classifier learning is done only once and in advance, us-
+ing labeled objects of different clusters than the clusters of
+the unlabeled data. Later, HACC can use this classifier to fa-
+cilitate and improve the clustering result of different, large
+collections of unlabeled objects. To the best of our knowl-
+edge, HACC is the first algorithm to combine the use of su-
+pervised classifiers as a preprocessing step before activating
+the unsupervised clustering algorithm of objects of different
+clusters than the unlabeled ones.
+Machine learning methods including clustering and clas-
+sification are well-established and have been used in a vari-
+Copyright c© 2015, Association for the Advancement of Artificial
+Intelligence (www.aaai.org). All rights reserved.
+ety of fields (Bishop 2006; Jain 2010). Several researchers
+have also suggested combining several methods of classifi-
+cation in order to yield better results (Kuncheva 2004). Ex-
+amples of hybrid methods containing both clustering and
+classification classification were presented by Nguyen and
+Armitage, (Nguyen and Armitage 2008) and Shrot et al.
+(Shrot et al. 2014). However, these works used the clustering
+algorithm as a first step of unsupervised classification before
+a second, refinement step of supervised classification. Other
+work (Basu, Bilenko, and Mooney 2004) suggested a semi-
+supervised clustering framework, where the performance of
+unsupervised clustering algorithms can be improved with
+limited amounts of supervision in the form of labels on the
+data or constraints. They proposed a principled probabilistic
+framework based on Hidden Markov Random Fields (HM-
+RFs) for semi-supervised clustering that combined the ex-
+isting constraint-based and distance-based approaches in a
+unified model. However, their model assumed that part of
+objects needs to be clustered is labeled, while in HACC the
+classifier is learned in advance. Another difference is that the
+HACC classifier is based on a different set of labeled objects
+and clusters than the objects currently being processed.
+To better understand HACC’s novelty, consider the au-
+thorship identification domain. Existing works on authorship
+identification are unsupervised or supervised, where the au-
+thor’s model is learned based on the same author’s previ-
+ous publications (Stamatatos 2009). The generalization of
+the learned model is for new publications of the same au-
+thors, as the tagging of both sets is the same. In contrast,
+HACC learns models from one set of authors and generalizes
+its model to identify another set of authors. Here, the gen-
+eralization is from one set of authors and their publications
+to identify a new set of authors and their new set of pub-
+lications. As such, the tagging sets of the learned data and
+the testing data are different – not only the data points. The
+advantage of HACC’s type of learning is that it facilitates
+a hybrid model that creates a classifier which is not used
+for categorization, but instead as input for a second learning
+model in HACC.
+The main contribution of HACC is the way it utilizes a pre-
+learned classifier as a preprocessing step. HACC creates one
+combined affinity measure between each object pair, which
+is the classifier’s confidence score, that measures the prob-
+ability that two objects needing to be clustered will be in
+the same cluster. We first demonstrate how HACC can be
+implemented in order to solve the missing node identifica-
+tion problem (Eyal, Rosenfeld, and Kraus 2011), which lo-
+cates and identifies missing nodes within the network. For
+this domain, we conducted a thorough study which includes
+an intensive evaluation and analysis of 5 different types of
+classifiers and 12 different sets of domain features. We show
+that HACC performs significantly better than other missing
+node algorithms. To support the claim that HACC is domain
+independent and can be easily applied to other web domains,
+we also implemented HACC for an authorship identification
+task and again found that HACC performs significantly better
+than the baseline algorithm (Akiva and Koppel 2013).
+HACC and Problem Definition
+HACC proposes combining supervised classifiers as a pre-
+processing step before activating a clustering algorithm in
+order to effectively cluster a group of unlabeled objects. The
+goal of the clustering task is to discover the natural grouping
+of these unlabeled objects.
+Problem Definition Suppose we have a set of data objects,
+D, which has an inherent clustering scheme and should
+be clustered into x clusters such that C(D) represents all
+x clusters. For example, the data’s clusters may represent
+nodes originating from a person within a social network or
+clusters of documents that an author wrote.D is divided into
+a set, O, of unlabeled data and a small additional collection
+of labeled objects Ô from D which is already labeled with
+its representative clusters. However, Ô << O and no over-
+lap exists between the two sets (i.e. Ô∩O=∅). Additionally,
+assuming |C(O)|=K and |C(Ô)|=K̂, then x =K+K̂, mean-
+ing that the clusters from Ô do not appear withinO such that
+C(Ô) ∩ C(O)=∅. Our goal is to utilize Ô to help create the
+best possible division of O to K clusters.
+The HACC Algorithm HACC is a two-staged algorithm,
+where its novelty is how it uses Ô to predict object pairs’
+confidence score in order to improve the clustering perfor-
+mance. The HACC algorithm is defined as follows:
+1. Builds a classifier (Offline):
+(i) Inputs vectors of similarity features for all object pairs
+in Ô together with a label whether or not they belong to
+the same cluster or not;
+(ii) Returns a probabilistic confidence score whether they
+are in the same cluster.
+2. Clusters objects in O (Online):
+(i) Calculates the similarity feature vectors, this time from
+all pairs of data objects inO, and inputs them into the clas-
+sifier created at stage one to obtain the confidence score
+for each object pair;
+(ii) Uses the confidence scores as a combined affinity mea-
+sure to create an affinity matrix for all pairs in O;
+(iii) Runs a clustering algorithm, such as K-means, that
+uses the affinity matrix as its input.
+Note that the feature vectors of the classifier are similarity
+measures and thus are associated with each pair of objects
+and not with a single object.
+The Evaluation Measure We used purity as our primary
+evaluation measure in order to gauge the effectiveness of
+clustering algorithms as it is an accepted measure of check-
+ing the quality and accuracy of clustering algorithms (Strehl
+and Ghosh 2003). The purity measure is calculated in the
+following two steps: Step one – each cluster is classified ac-
+cording to the true classification of the majority of samples
+in that cluster. Here, we classified each cluster according to
+the most frequent grouping label of the objects in that clus-
+ter; Step two – the number of correctly classified samples in
+all clusters are counted and divided by the number of sam-
+ples. In our case, the number of samples that are classified
+is |O|. Formally, in our problem setting, where ck is defined
+as the set of objects which were assigned to cluster k, and
+the objective truth for a sample o∈O is denoted t(o), purity
+is defined as: purity(C) = 1|O|
+∑
+kmaxc∈C(O)|ck ∩ {o ∈
+O | t(o) = c}|.
+To demonstrate how HACC can be applied to two web do-
+mains, we now present a thorough study of the missing node
+identification problem as well as a brief study of the author-
+ship identification problem.
+The Missing Node Identification Problem
+We begin with a background about the missing node identifi-
+cation problem. We then formally define the problem which
+we address, describe how HACC is implemented in this do-
+main, and our experimental setup.
+Overview and Background We focus on a specific varia-
+tion of the missing nodes problem where the missing nodes
+requiring identification are “friends” of known nodes, as pre-
+viously done with the MISC and SAMI based algorithms
+(Eyal, Rosenfeld, and Kraus 2011; Sina, Rosenfeld, and
+Kraus 2013). An unidentified friend is associated with a
+“placeholder” node to indicate the existence of the miss-
+ing friend. Thus, a given missing node may be associated
+with several “placeholder” nodes, one for each friend of the
+missing node. Following this approach, the missing node
+challenge is to try to determine which of the “placeholder”
+nodes are associated with the same unidentified friend and
+thus to find the correct clustering of the “placeholder” nodes.
+To better understand this problem, consider the follow-
+ing example: A hypothetical company, Social News Inc.,
+is running an online news service within LinkedIn. Many
+LinkedIn members are subscribers of this company’s ser-
+vices, yet it would like to expand its customer base. So-
+cial News maintains a network of users, which is a subset
+of the group of LinkedIn users, and the links between these
+users. The users of LinkedIn who are not members of the ser-
+vice are not visible to their system. Social News Inc. would
+like to discover the LinkedIn nodes to lure them into joining
+their service. The company is thus faced with the missing
+nodes identification problem. By solving this problem, So-
+cial News Inc. could improve its advertising techniques and
+target users who have not yet subscribed to their service.
+The missing node identification problem has recently
+generated research interest. Previously, Eyal et al. (Eyal,
+Rosenfeld, and Kraus 2011; Eyal et al. 2014) presented the
+MISC algorithm in order to solve this problem. MISC com-
+Figure 1: A full network, the known network and the visible
+network obtained (right) by adding the placeholders for the
+missing nodes 1 and 5, which need to be united into clusters.
+bines spectral clustering algorithms (Ng, Jordan, and Weiss
+2001) and metrics built for the missing link problem (Liben-
+Nowell and Kleinberg 2007). The main idea behind their
+work was to embed a set of data points, which should be
+clustered, in a graph structure representing the affinity be-
+tween each pair of points based on the structure of the net-
+work. Kim and Leskovec (Kim and Leskovec 2011) tackled
+the network completion problem, which is a similar problem
+that deals with situations where only a part of the network
+is observed and the unobserved part must be inferred. They
+proposed the KronEM algorithm, which uses an Expecta-
+tion Maximization approach and where the observed por-
+tion of the network is used to fit a Kronecker graph model of
+the full network structure. Sina et al. (Sina, Rosenfeld, and
+Kraus 2013) extended the missing node identification prob-
+lem by considering how to incorporate information about
+the known nodes in the network in order to improve per-
+formance. They presented the SAMI-A and SAMI-N al-
+gorithms, which used different ways to integrate the addi-
+tional attributes’ information about the known nodes with
+the network structure’s affinity measure. They showed that
+these algorithms, which leverage the additional information,
+achieve predictions with significantly better quality than
+both the KronEM and MISC algorithms, which only used
+information about the network’s structure. However, none of
+these previous works considered how to generally incorpo-
+rate information, including pictorial information which has
+become ubiquitous in many social networks, as we do in this
+work. The challenge in this type of data is that it requires a
+model that can handle missing features as many of the nodes
+have no pictures.
+The idea of using information from specific nodes was
+previously considered in a variety of different problems.
+Several previous works (Gong et al. 2011; Yin et al. 2010)
+proposed a model to jointly infer missing links and miss-
+ing node attributes by representing the social network as an
+augmented graph where the nodes’ attributes are represented
+as special nodes in the network. Other approaches stud-
+ied different ways of leveraging information about known
+nodes within the network in order to better solve the miss-
+ing link or missing attribute problems. For example, Freno
+et al. (Freno, Garriga, and Keller 2011) proposed a super-
+vised learning method which uses both the graph structure
+and node attributes to recommend missing links. Pictures
+in social networks are also considered in a variety of dif-
+ferent problems. These problems include cascade prediction
+in the network (Cheng et al. 2014), placing images on the
+world map (Hauff and Houben 2012) and learning influ-
+ence in the social network (Goyal, Bonchi, and Lakshmanan
+2010). However, these works use the pictures’ descriptions,
+tags and some properties, such as color histograms, but do
+not consider the relative similarity of pictures as in the PIC
+measure we propose.
+Problem Definition We assume that there is a social net-
+work represented as an undirected graphG=(V,E), in which
+n=|V | and e=〈v, u〉∈E represents an interaction between
+v∈V and u∈V . In addition to the network structure, each
+node vi∈V is associated with an attribute vector ~AVi of
+length l and a set of pictures IM i of size l2. We assume that
+each attribute in the attribute vectors is a binary value, i.e.
+each node has or does not have the attribute. Formally, we
+define a binary attribute matrix A of size nxl where Ai,j in-
+dicates whether or not a node vi∈V has an attribute j. Some
+of the nodes in the network are missing and are not known
+to the system. We denote the set of missing nodes Vm ⊂ V ,
+and assume that the number of missing nodes is given as
+K=|Vm|.
+We denote the rest of the nodes as known, i.e., Vk=V \Vm,
+and the set of known edges is Ek = {〈v, u〉 | v, u ∈
+Vk ∧ 〈v, u〉 ∈ E}. In order to identify the missing nodes,
+we focus on the visible part of the network that is available
+Ga=(Va, Ea). In this network, each of the missing nodes is
+replaced by a set of placeholders. Formally, we define a set
+Vp for placeholders and a set Ep for the associated edges.
+For each missing node v∈Vm and for each edge 〈v, u〉∈E,
+u∈Vk, a placeholder is created. That is, for each original
+edge 〈v, u〉 we assume that there is a placeholder v′ for v in
+Vp and the placeholder is connected to the node uwith a new
+edge 〈v′, u〉, which belongs to Ep. When these components
+are considered together, Va=Vk∪Vp andEa=Ek∪Ep. As for
+a given missing node v, there may be many placeholders in
+Vp. The missing node challenge is to try to determine which
+of the placeholders should be clustered together and associ-
+ated with the original v, thus allowing us to reconstruct the
+original social network G.
+To better understand this formalization, consider the fol-
+lowing example: Assume we have a gamers’ network where
+users may choose to register or remain anonymous before
+playing. An edge between two users indicates that these two
+users played a game together. We might have additional in-
+formation regarding the registered users, such as pictures,
+origin, group membership and playing time. We consider
+the registered users to be the known nodes, while the anony-
+mous users are the placeholders. We would like to identify
+which of the anonymous users are actually the same person.
+Domain Features The success of a clustering algorithm
+depends on its affinity matrix - a calculated measure be-
+tween each pair of nodes in the network, which is used to
+determine which of the placeholders are associated with the
+same source node. In HACC, we input vectors of similar-
+ity features for all node pairs to create the classifier model.
+This model returns as output a confidence score which is
+entered into a matrix and then used for the clustering al-
+gorithm. We considered as input a variety of known simi-
+larity measures as fields within the vectors. These include
+features based on network structure that were previously
+studied (Eyal, Rosenfeld, and Kraus 2011). Specifically, we
+used the two structure similarity measures that previously
+yielded the best results: the Relative Common Neighbors
+(RCN) measure (Liben-Nowell and Kleinberg 2007) and the
+Adamic/Adar (AA) measure (Adamic and Adar 2003), and
+a third structure similarity measure which is the combina-
+tion of the two measures (RCN+AA), formally defined as
+(RCN+AA)ij= 12 (RCN ij+AAij). Additionally, we used
+two other similarity measures which are not based on the
+general structure of the network, but similarities between
+the attributes of a specific pair of nodes, vi and vj . The first
+measure is based on a previously developed measure of the
+common attributes between nodes (ATT) (Sina, Rosenfeld,
+and Kraus 2013) and a second measure based on picture
+similarity (PIC) is new to this work. We defined the pic-
+ture similarity, PIC, as: PICij=MatchConf(i, j), where
+MatchConf(i, j) represents the highest matching confi-
+dence between the pictures associated with nodes i and j, and
+zero if one of the nodes does not have any pictures. To cal-
+culate the matching confidence, we used a free web service
+for face detection and recognition http://betafaceapi.com/.
+The MI-HACC Algorithm
+Algorithm 1 (MI-Alg) presents the pseudocode for solv-
+ing the missing node identification problem. The strength
+of the HACC approach is the novel way the affinity ma-
+trix is calculated in line 1. Our proposed algorithm, which
+we refer to as MIC (Missing node Identification using a
+Classifier) uses the MI-Alg algorithm as the basis of the
+implementation of the HACC approach. We implemented
+several variations of the MIC algorithm for different types
+of classifiers and different subsets of node features as in-
+put (defined above). First, and only once offline, we calcu-
+lated the feature vectors which are composed of the simi-
+larity measures of structure, attributes and pictures for the
+training dataset, and used them to learn and store 5 types
+of classifiers: decision tree (tree), neural network (nnet),
+k-nearest-neighbors (kNN), AdaBoost and Bayes. During
+runtime for each one of the learned classifiers, we calcu-
+lated the selected similarity measures for the test dataset,
+used it as the classifier’s input and set the pairwise affin-
+ity according to the classifier confidence score for each
+pair of nodes. We created 4 data type variations for each
+one of the classifiers which contained a different subset
+of the similarity measures: the first was based on struc-
+ture only (S), the second on structure and attributes (SA),
+the third on the structure and pictures (SP), and last on
+the structure, pictures and attributes (SAP). For example,
+we define the matrix of affinity measures for the decision
+tree classifier with the SAP variation MCTree−SAP−RCN
+using the RCN measure as: MCTree−SAP−RCNij =
+predict(tree,RCNij , P ICij , ATTij). Overall there are 60
+instances of the MIC algorithm: 5 classifier types (tree,
+nnet, kNN, AdaBoost and Bayes), 4 data types (S,SA,SP
+and SAP) and 3 structure similarity types (RCN,AA and
+RCN+AA).
+Note that although MI-Alg is a generalization of the
+MISC algorithm (Eyal, Rosenfeld, and Kraus 2011), it also
+introduces a major change in addition to HACC’s novel cal-
+culation of the affinity matrix. In contrast to MISC, MI-Alg
+no longer processes the affinity measures of missing nodes
+through spectral clustering but instead exclusively uses the
+K-means clustering algorithm on the placeholders’ affinity
+matrix. We chose to implement this change for two reasons:
+First, we wanted to improve the performance of the origi-
+nal MISC algorithm in large-scale networks. MISC applies
+spectral clustering to the affinity matrix of the entire network
+(of both known nodes and placeholders), while MI-Alg
+applies K-means only on the matrix of a small number of
+placeholder nodes; Second, we had to overcome a memory
+consumption challenge caused by the ATT measure calcula-
+tion, which only yielded a partial solution in previous work
+(Sina, Rosenfeld, and Kraus 2013). Our preliminary tests
+show that this change improved the runtime and memory
+consumption without performance degradation.
+Algorithm 1 MI-Alg (Missing node Identification)
+Input: Gk=〈Vk, Ek〉 – the known part of the network
+Ga=〈Va, Ea〉 – the available visible part of the network
+K – the number of missing nodes
+Vp – the placeholder nodes
+α : G(V,E)→ R|Vp|×|Vp| – a procedure for calculating
+the affinity matrix of placeholder nodes in a graph
+Output: C ∈ N|Va\Vk| - a vector indicating the cluster
+index of each placeholder node,
+Ĝ=
+(
+V̂ , Ê
+)
+– prediction of the full network graph
+1: A← α(Ga) – calculate the affinity matrix of the place-
+holder nodes in the graph
+2: C← k means(A,N) – cluster the rows which match the
+placeholder nodes to K clusters
+3: V̂ ← Vk, Ê ← Ek – initialize the output graph to con-
+tain the known network
+4: For each cluster c ∈ C create a new node vc ∈ V̂
+5: For each placeholder v in cluster c and edge (u, v) ∈
+Ea, create an edge (u, vc) ∈ Ê
+6: Return C, Ĝ=
+(
+V̂ , Ê
+)
+The Dataset and The Experimental Setup
+We used a previously developed social network dataset,
+Steam (Becker et al. 2012) (http://steamcommunity.com), to
+empirically evaluate our work. The Steam community net-
+work is a large social network of players on the Steam gam-
+ing platform. The data we applied is from 2011 and con-
+tains 9 million nodes (“anonymous” users) and 82 million
+friendship edges. Each user had the following data: country
+(the origin of the user; 50% voluntarily provided their coun-
+try), member since (the date when the user opened his Steam
+account), a list of game playing times and a list of group
+memberships. We chose three groups of attributes: coun-
+try, playing time and player group association. These three
+groups formed a total of 60 attributes – one for the country,
+20 attributes of different game playing times and 39 differ-
+ent official associations. We first crawled the social network
+and only selected nodes that had at least 2 games or groups.
+This crawling reduced the dataset size to 1.3 million nodes
+(users). We then extracted different network samples, using
+a Forest Fire (FF) walk (Leskovec and Faloutsos 2006). We
+crawled a 16K network from this reduced dataset, marked
+it as the training dataset and removed the nodes from the
+dataset. We then re-sampled the 16K node training dataset
+to extract several 2K training networks, which we used as
+Ô for learning the MIC classifiers and the parameters of
+the comparison algorithm MIWS (described below). Lastly
+we extracted several test networks O of different sizes from
+the remaining dataset. As the Steam dataset did not have
+pictures, we then added public pictures from Facebook’s
+users who elected to make their Facebook profiles public.
+We crawled 100 sets of pictures from 100 randomly selected
+users from this directory and saved them anonymously. Each
+set contained 3-8 pictures from a specific profile. We used 50
+sets for our training dataset and the other 50 sets for the test
+dataset. For each two pictures in each of the picture datasets
+(training/test), we calculated the matching confidence prob-
+ability using Betafaceapi, a free web service for face detec-
+tion and recognition package (http://betafaceapi.com/). Most
+of the pictures (80%) contained only 1 figure, while the oth-
+ers contained 2 or more figures. In this case, we used the
+highest calculated matching confidence probability.
+Experimental Setup The experimental setup began by
+sampling a network from the dataset. This sampling was re-
+peated 10 times, each starting from a different random node,
+in order to avoid randomization errors and biases, creating
+10 different networks for each size. In the following step, K
+nodes were randomly selected as missing nodes. Each one
+of these nodes was then randomly associated with one of the
+picture sets. This was repeated 10 times from each one of
+the networks, resulting in different random instances of the
+problem setting for each combination of graph sizes and K.
+The randomly selected missing nodes were removed from
+each instance. Each missing node was replaced with a place-
+holder for each of its links to remaining nodes in the net-
+work. Each such placeholder was associated with one pic-
+ture of the removed node. If the node had fewer pictures than
+numbers of links, some of the placeholders would not have
+an associated picture (on average only 54% of the place-
+holders had an attached picture). The resulting graph was
+inputted into the algorithm, which produced a clustering of
+the placeholders. By uniting the placeholders in each cluster
+into a new node and connecting the new node to the neigh-
+bors of the placeholders in the corresponding cluster, the al-
+gorithms created a predicted network. The goal of these al-
+gorithms was to predict a network that resembled the struc-
+ture of the original network from which the random nodes
+were removed. The clustering produced by the algorithms
+was evaluated using the purity measure described above, and
+the average purity value achieved for all of the instances
+and/or for the instances of a specific K was reported. This
+result was also averaged over the different instances and/or
+for the instances of a specific K and was reported as well.
+The Comparison Algorithm We compared our algorithm
+to a baseline, denoted MIWS (Missing node Identification
+using a Weighted Sum), which is a generalization of the pre-
+viously published SAMI-A algorithm (Sina, Rosenfeld, and
+Kraus 2013)1. MIWS calculates an affinity measure based on
+a weighted sum between the 3 types of similarity measures:
+structure, attributes and pictures. Formally, we define the
+matrix of affinity measures MARCN using the RCN mea-
+sure as:MARCNij = (1−wa−wp)∗RCN ij+wa∗ATT ij+
+wp ∗ PICij where wa is an input parameter that repre-
+sents the relative weight of the attributes’ similarity mea-
+sure and wp is an input parameter that represents the relative
+weight of the pictures’ similarity measure. Similarly, we de-
+fine MAAAij for the AA measure and MA
+RCN+AA
+ij with the
+average of the RCN and AA measures. Here we also con-
+sidered different subsets of similarity measures, thus over-
+all there were 12 instances of the MIWS algorithm: 4 data
+types (S,SA,SP and SAP) and 3 structure similarity types
+(RCN,AA and RCN+AA).
+Training the Algorithms
+We used the training datasets to empirically learn the do-
+main dependent classifiers for MIC and the domain optimal
+weights wa and wp for the comparison algorithm MIWS.
+The Classifiers For the MIC algorithms, we used the
+training datasets to learn the 5 types of classifiers (tree,
+nnet, kNN, AdaBoost and Bayes) with the 4 data types
+(S,SA,SP and SAP) and 3 structure affinity types (RCN,AA
+and RCN+AA). Using the 2K training sample networks
+and the 50 training sets of pictures, we calculated the 5
+affinity measures (RCN, AA, RCN+AA, ATT and PIC) for
+the 50 missing nodes configuration and saved the data as
+a list of rows as follows. For each two placeholders, i, j
+(i6=j), the row includes the affinity measures (RCN ij ,AAij ,
+RCN +AAij ,ATT ij , PICij) and an additional Iij value
+of 1 or 0, which indicates whether or not the two placehold-
+ers originated from the same node. We repeated the run 10
+times over the six training networks. As this data was unbal-
+anced (only 2% of the data have an indicator Iij of value 1),
+we undersampled the rows with an indicator Iij of value 0,
+using a uniform probability of 5%. This undersampling pro-
+duced data in which 28% of the rows had an indicator Iij of
+value 1. We used this data to train and save the 60 variations
+of classifiers (using Matlab 2013). To evaluate these classi-
+fiers, we generated test data using an additional 2 runs over
+the six training networks. This time we did not undersam-
+ple the data. We found that the average of the accuracy and
+precision (for class 0) measures were usually (all excluding
+kNN) high (over 95%), while the recall values (for class 1)
+were between 48%-65%.
+The Weight Parameters In the MIWS algorithms, the
+weights wa and wp are used for the weighted sum be-
+tween the structure affinity, the attributes affinity and the
+pictures affinity. We ran the MIWS algorithm with 3 data
+types (SA,SP and SAP) and 3 structure similarity types
+(RCN,AA and RCN+AA) using the 2K training sample
+networks, the same 5 missing node values (10, 20, 30,
+1We chose not to compare MIC to the original MISC algorithm,
+which uses spectral clustering, nor to KronEM, another recently
+developed algorithm which only uses the network graph structure,
+as our preliminary tests showed that MIWS outperformed both of
+these algorithms.
+40 and 50) and a range of weights between 0.2 and 0.8
+with steps of 0.1. We repeated the run 10 times over the
+six training networks we had. Based on the training re-
+sults, the best results for the SA and SP data types were
+achieved with wa=0.5 for MIWS-SA-RCN and wa=0.6 for
+both MIWS-SA-AA and MIWS-SA-RCN+AA, wp=0.5 for
+both MIWS-SP-RCN and MIWS-SP-AA and wp=0.4 for
+MIWS-SA-RCN+AA. For the SAP data type, the best results
+were achieved with wa=0.3, wa=0.3 for MIWS-SAP-RCN
+and wa=0.5 and wa=0.2 for both MIWS-SAP-AA and
+MIWS-SAP-RCN+AA.
+ 
+0.40 
+0.45 
+0.50 
+0.55 
+0.60 
+0.65 
+0.70 
+0.75 
+10 20 30 40 50 
+P
+u
+ri
+ty
+ 
+Number of Missing Nodes 
+Purity Results for 100,000 Node Networks 
+MIWS-S 
+MIWS-SA 
+MIWS-SAP 
+MIC-nnet-SAP 
+(a) Different missing nodes
+ 
+0.40 
+0.45 
+0.50 
+0.55 
+0.60 
+0.65 
+0.70 
+10K 25K 100K 
+P
+u
+ri
+ty
+ 
+Number of Network Nodes 
+Purity Results for Different Networks 
+MIWS-S 
+MIWS-SA 
+MIWS-SAP 
+MIC-nnet-SAP 
+(b) Different network sizes
+Figure 2: The purity results with the RCN+AA measure.
+Evaluation and Results
+We evaluated the two sets of configurations for the MIC
+and MIWS algorithms. We proceeded to compare the 10 net-
+works of sizes 10K, 25K and 100K described above where
+we randomly removed sets of 10, 20, 30, 40, and 50 miss-
+ing nodes. We repeated each configuration 10 times to ob-
+tain 100 results for each one of the missing nodes’ values.
+Table 1 shows the average results for all missing node val-
+ues for the different algorithm variations for the 10K, 25K
+and 100K node networks. MIC-nnet-SAP for all 3 vari-
+ations of structure affinity (with no significant difference
+found between their results) outperformed MIWS and also
+all other MIC variations for all network sizes. For exam-
+ple, the result for the 100K node networks of RCN+AA
+MIC-nnet-SAP was found to be significantly better com-
+pared to RCN+AA MIWS-SAP (the ANOVA results at 0.05
+is 4.75E-54). The results also confirm our claim that the ad-
+ditional pictorial information can improve the missing node
+identification compared to the previously known algorithms
+(MIWS-S and MIWS-SA) as depicted in Figure 2. This im-
+provement is also true for MIC. For example, the results with
+the AA measure of MIC-nnet-SAP and MIC-nnet-SP
+were found to be significantly better than MIC-nnet-SA
+and MIC-nnet-S (the ANOVA results at the 0.05 level are
+p=4.49E-22, 2.78E-53, 0.16E-2 and 2.48E-22, respectively).
+Moreover, the results also show that HACC outperformed the
+previous algorithm even when a single, same feature such as
+the structure feature is exclusively considered. Table 1 shows
+that the MIC-nnet-S provided better results than MIWS-S
+for the 3 variations of structure affinity.
+The Authorship Identification Problem
+To demonstrate the generality of HACC, we chose to imple-
+ment it on a second authorship identification task. Similar
+to the missing node identification problem, in this task there
+also were objects that needed to be identified as originating
+from a person. However, in this task instead of finding miss-
+ing nodes, we needed to identify which anonymous docu-
+ments originated from a given person.
+Overview and Background Authorship analysis has a
+long history and the problem of clustering a set of anony-
+mous documents according to authorship has been exten-
+sively explored (Stamatatos 2009). While the research origi-
+nally started by focusing on literary works of disputed or un-
+known authorship, it also has been extended to web applica-
+tions for purposes such as verifying the authorship of emails,
+blogs and web talkbacks (Cheng, Chandramouli, and Sub-
+balakshmi 2011). Recent work (Layton, Watters, and Daze-
+ley 2013) tried to cluster multiple documents, each of which
+written by a single author, while other work (Akiva and Kop-
+pel 2013) focused on a harder problem that aimed to seg-
+ment a single unsegmented document according to author-
+ship, with no guarantee that any unit longer than a single
+sentence was written by a single author. Other works also
+considered the problem of author identification or decom-
+posing a document according to authorship, but their meth-
+ods were supervised (Stamatatos 2007; Graham, Hirst, and
+Marthi 2005).
+Problem Definition We studied the previously proposed
+author-clustering problem variation (Layton, Watters, and
+Dazeley 2013; Akiva and Koppel 2013). Briefly, given a col-
+lection of unlabeled texts taken from the works of multiple
+authors, our objective was to divide the texts of the respec-
+tive authors into sets, given the number K of authors.
+Domain Features We considered the M words that appear
+in the greatest number of different articles in the combined
+corpus as previously done (Akiva and Koppel 2013). We
+used two variations of this vector, one with a binary repre-
+sentation of a text and the other with its frequency. Accord-
+ingly, we calculated two similarity features for each pair of
+texts: one based on the binary vectors (Ratio) and the other
+based on the vectors with the word frequency (Cosine).
+The AI-HACC Algorithm For the HACC implementation,
+we first found the M words that appeared in the greatest
+number of different articles and for each pair of texts we
+calculated the Ratio and the Cosine measures. We tuned the
+classifier in the same way we did for the Missing Node Iden-
+tification, using a different training dataset (described next),
+Table 1: The purity results for the 10K, 25K and 100K node networks.
+ 
+Data Type S SA SP SAP 
+Algorithm RCN AA RCN+AA RCN AA RCN+AA RCN AA RCN+AA RCN AA RCN+AA 
+1
+0
+K
+ 
+MIWS 0.5921 0.5666 0.5804 0.5986 0.5767 0.5879 0.5984 0.5729 0.5866 0.6029 0.5810 0.5921 
+MIC-tree 0.5933 0.5887 0.5904 0.5922 0.5895 0.5900 0.6286 0.6203 0.6259 0.6279 0.6219 0.6278 
+MIC-nnet 0.5956 0.5946 0.5950 0.6012 0.6017 0.5997 0.6397 0.6317 0.6409 0.6423 0.6412 0.6437 
+MIC-kNN 0.5687 0.5672 0.5730 0.4880 0.4851 0.4921 0.4485 0.4495 0.4532 0.5139 0.5087 0.5139 
+MIC-AdaBoost 0.5927 0.5864 0.5898 0.5933 0.5798 0.5912 0.5123 0.5087 0.5154 0.5186 0.5140 0.5193 
+MIC-Bayes 0.5853 0.5412 0.5860 0.5835 0.5297 0.5851 0.5860 0.5448 0.5880 0.5837 0.5360 0.5861 
+2
+5
+K
+ 
+MIWS 0.5675 0.5497 0.5622 0.5762 0.5652 0.5743 0.5809 0.5570 0.5715 0.5812 0.5693 0.5765 
+MIC-tree 0.5729 0.5739 0.5705 0.5723 0.5728 0.5702 0.5991 0.5967 0.5993 0.6009 0.6011 0.6008 
+MIC-nnet 0.5773 0.5778 0.5774 0.5868 0.5868 0.5864 0.6149 0.6080 0.6139 0.6185 0.6174 0.6182 
+MIC-kNN 0.5481 0.5541 0.5557 0.4617 0.4613 0.4628 0.4255 0.4274 0.4266 0.4815 0.4824 0.4817 
+MIC-AdaBoost 0.5718 0.5692 0.5693 0.5700 0.5625 0.5692 0.4788 0.4798 0.4793 0.4883 0.4856 0.4878 
+MIC-Bayes 0.5613 0.5044 0.5603 0.5588 0.5016 0.5601 0.5600 0.5074 0.5606 0.5600 0.5089 0.5610 
+1
+0
+0
+K
+ 
+MIWS 0.5475 0.5369 0.5465 0.5545 0.5545 0.5597 0.5670 0.5520 0.5625 0.5601 0.5551 0.5662 
+MIC-tree 0.5557 0.5581 0.5529 0.5543 0.5577 0.5537 0.5755 0.5760 0.5744 0.5795 0.5842 0.5791 
+MIC-nnet 0.5616 0.5633 0.5607 0.5753 0.5794 0.5751 0.5927 0.5863 0.5909 0.5989 0.6010 0.5999 
+MIC-kNN 0.5251 0.5359 0.5308 0.4340 0.4406 0.4343 0.3984 0.4040 0.4021 0.4461 0.4494 0.4472 
+MIC-AdaBoost 0.5550 0.5543 0.5453 0.5470 0.5439 0.5488 0.4530 0.4563 0.4531 0.4635 0.4653 0.4632 
+MIC-Bayes 0.5292 0.4640 0.5293 0.5287 0.4649 0.5290 0.5310 0.4677 0.5291 0.5296 0.4704 0.5299 
+and the classifier confidence score as the affinity measure for
+the K-means clustering algorithm.
+The Dataset and the Experimental Setup For our exper-
+iments, we used texts on the same topic from the Reuters
+Corpus Volume 1 (RCV1). Specifically, we used the Reuter-
+50-50 dataset2, which contains an online database with 5000
+classified articles, 100 articles of 50 authors, divided into
+training and test sets for each author. One advantage of this
+dataset was its generality. It had been previously used in web
+classification tasks such as gender identification in e-mails,
+blogs and chatrooms (Cheng, Chandramouli, and Subbalak-
+shmi 2011).
+Our algorithm used 10 authors as a training dataset, Ô,
+to learn the classifiers, and the other 40 authors as the test
+dataset, O, for comparison. The experimental setup began
+by choosing K authors randomly. It then chose 2-8 random
+texts for each of the K chosen authors. These selected texts
+were then delivered to the different algorithms. Finally we
+calculated the purity of the clustering results for each one of
+the algorithms according to their labels in the dataset.
+The Comparison Algorithm We compared HACC to the
+algorithm presented in (Akiva and Koppel 2013) for the
+author-clustering problem. Their algorithm, which we de-
+note AkivaKoppel, considers only the M words that ap-
+pear in the greatest number of different articles in the com-
+bined corpus and uses only the binary vector representation
+of a text. Their algorithm takes the binary vectors as input,
+calculates the similarity measure between each pair of texts
+and delivers it to the n-cut clustering algorithm.
+Evaluation and Results We repeated the experiment 40
+times with K=10,20,30,40, which produced 160 different
+problem instances. We tested 3 configurations using the
+most common M words (M=500,1000,1500) that appear
+across the articles. For the HACC algorithm, we used a
+neural network classifier which previously provided the
+2Dataset creator and donator: Zhi Liu, liuzhi8673@gmail.com,
+National Engineering Research Center for E-Learning, China.
+best results. Note that in the 1500 word configuration, the
+features calculation in HACC was done using all of the
+words. Table 2 shows the average purity results over all the
+runs with the different selection of the top words for the
+AvikaKoppel and HACC-nnet. Overall, HACC-nnet
+outperformed AvikaKoppel and demonstrated that the
+additional step of tuning a classifier in the training set can
+improve the authorship identification solution.
+Table 2: Author identification purity results.
+Algorithm 500 1000 1500* 
+AvikaKoppel 0.5058 0.5340 0.5418 
+HACC-nnet 0.5392 0.5617 0.5786 
+Conclusions and Future Work
+This paper represents, to the best of our knowledge, the first
+work to combine supervised classifiers on clusters different
+than the clusters of the unlabeled objects as a preprocess-
+ing step before activating the clustering algorithm in order
+to divide a group of objects into K separate sets. The general
+HACC approach is particularly suitable when additional in-
+formation is available which can be incorporated in a quick
+and efficient way. We believe that we also are the first to
+study the missing node identification problem by including
+information from pictures (which become more ubiquitous)
+together with the network structure and the attribute infor-
+mation of known nodes. Including pictorial data introduces
+a new research challenge as it requires a model that can han-
+dle missing features as many nodes have no pictures. The
+main key contributions of this paper are: (i) demonstration
+of how the novel HACC approach first utilizes a classifier as
+a preprocessing step in order to create one combined affinity
+component measure and (ii) showing that this general algo-
+rithm can be used to outperform known algorithms in web
+learning tasks such as the missing node identification prob-
+lem and the authorship identification task. In the future, we
+would like to further explore the potential of our novel ap-
+proach with other datasets, different domains and different
+similarity measures.
+Acknowledgment
+This research is based on work supported in part by MAFAT
+and ISRAEL SCIENCE FOUNDATION (grant #1488/14).
+References
+Adamic, L. A., and Adar, E. 2003. Friends and neighbors
+on the web. Social Networks 25(3):211–230.
+Akiva, N., and Koppel, M. 2013. A generic unsupervised
+method for decomposing multi-author documents. Journal
+of the American Society for Information Science and Tech-
+nology 64(11):2256–2264.
+Basu, S.; Bilenko, M.; and Mooney, R. J. 2004. A proba-
+bilistic framework for semi-supervised clustering. In Pro-
+ceedings of the tenth ACM SIGKDD international con-
+ference on Knowledge discovery and data mining, 59–68.
+ACM.
+Becker, R.; Chernihov, Y.; Shavitt, Y.; and Zilberman, N.
+2012. An analysis of the steam community network evo-
+lution. In Electrical & Electronics Engineers in Israel
+(IEEEI), 2012 IEEE 27th Convention of, 1–5. IEEE.
+Bishop, C. M. 2006. Pattern recognition and machine learn-
+ing, volume 1. Springer New York.
+Cheng, J.; Adamic, L.; Dow, P. A.; Kleinberg, J. M.; and
+Leskovec, J. 2014. Can cascades be predicted? In Proc of
+the 23rd international conference on WWW, 925–936. Inter-
+national World Wide Web Conferences Steering Committee.
+Cheng, N.; Chandramouli, R.; and Subbalakshmi, K. 2011.
+Author gender identification from text. Digital Investigation
+8(1):78 – 88.
+Eyal, R.; Rosenfeld, A.; Sina, S.; and Kraus, S. 2014. Pre-
+dicting and identifying missing node information in social
+networks. To Appear at ACM Transactions on Knowledge
+Discovery from Data (TKDD).
+Eyal, R.; Rosenfeld, A.; and Kraus, S. 2011. Identifying
+missing node information in social networks. In Twenty-
+Fifth AAAI Conference on Artificial Intelligence.
+Freno, A.; Garriga, C., G.; and Keller, M. 2011. Learning
+to Recommend Links using Graph Structure and Node Con-
+tent. In Neural Information Processing Systems Workshop
+on Choice Models and Preference Learning.
+Gong, N. Z.; Talwalkar, A.; Mackey, L. W.; Huang, L.; Shin,
+E. C. R.; Stefanov, E.; Shi, E.; and Song, D. 2011. Predicting
+links and inferring attributes using a social-attribute network
+(san). CoRR.
+Goyal, A.; Bonchi, F.; and Lakshmanan, L. V. 2010. Learn-
+ing influence probabilities in social networks. In Proceed-
+ings of the third ACM international conference on Web
+search and data mining, 241–250. ACM.
+Graham, N.; Hirst, G.; and Marthi, B. 2005. Segmenting
+documents by stylistic character. Natural Language Engi-
+neering 11(04):397–415.
+Hauff, C., and Houben, G.-J. 2012. Placing images on
+the world map: a microblog-based enrichment approach. In
+Proc of the 35th international ACM SIGIR conference on Re-
+search and development in information retrieval, 691–700.
+ACM.
+Jain, A. K. 2010. Data clustering: 50 years beyond k-means.
+Pattern Recognition Letters 31(8):651–666.
+Kim, M., and Leskovec, J. 2011. The network comple-
+tion problem: Inferring missing nodes and edges in net-
+works. SIAM International Conference on Data Mining
+(SDM), 2011.
+Kuncheva, L. I. 2004. Combining pattern classifiers: meth-
+ods and algorithms. John Wiley & Sons.
+Layton, R.; Watters, P.; and Dazeley, R. 2013. Automated
+unsupervised authorship analysis using evidence accumula-
+tion clustering. Natural Language Engineering 19(01):95–
+120.
+Leskovec, J., and Faloutsos, C. 2006. Sampling from large
+graphs. In Proceedings of the 12th ACM SIGKDD interna-
+tional conference on Knowledge discovery and data mining,
+631–636. ACM.
+Liben-Nowell, D., and Kleinberg, J. 2007. The link-
+prediction problem for social networks. Journal of the
+American Society for Information Science and Technology
+58(7):1019–1031.
+Ng, A. Y.; Jordan, M. I.; and Weiss, Y. 2001. On spec-
+tral clustering: Analysis and an algorithm. In Advances in
+Neural Information Processing Systems 14, 849–856. MIT
+Press.
+Nguyen, T. T., and Armitage, G. 2008. A survey of tech-
+niques for internet traffic classification using machine learn-
+ing. Communications Surveys & Tutorials, IEEE 10(4):56–
+76.
+Shrot, T.; Rosenfeld, A.; Golbeck, J.; and Kraus, S. 2014.
+Crisp: an interruption management algorithm based on col-
+laborative filtering. In CHI, 3035–3044.
+Sina, S.; Rosenfeld, A.; and Kraus, S. 2013. Solving the
+missing node problem using structure and attribute informa-
+tion. In Proceedings of the 2013 IEEE/ACM International
+Conference on Advances in Social Networks Analysis and
+Mining, 744–751. ACM.
+Stamatatos, E. 2007. Author identification using imbalanced
+and limited training texts. In Database and Expert Systems
+Applications, 2007. DEXA’07. 18th International Workshop
+on, 237–241. IEEE.
+Stamatatos, E. 2009. A survey of modern authorship attri-
+bution methods. Journal of the American Society for infor-
+mation Science and Technology 60(3):538–556.
+Strehl, A., and Ghosh, J. 2003. Cluster ensembles — a
+knowledge reuse framework for combining multiple parti-
+tions. J. Mach. Learn. Res. 3:583–617.
+Yin, Z.; Gupta, M.; Weninger, T.; and Han, J. 2010. Linkrec:
+a unified framework for link recommendation with user at-
+tributes and graph structure. In Proceedings of the 19th
+international conference on World wide web, 1211–1212.
+ACM.

@@ -1,0 +1,1017 @@
+564 IEEE TRANSACTIONS ON MULTIMEDIA, VOL. 8, NO. 3, JUNE 2006
+Toward Intelligent Music Information Retrieval
+Tao Li and Mitsunori Ogihara
+Abstract—Efficient and intelligent music information retrieval
+is a very important topic of the 21st century. With the ultimate
+goal of building personal music information retrieval systems, this
+paper studies the problem of intelligent music information re-
+trieval. Huron [10] points out that since the preeminent functions
+of music are social and psychological, the most useful characteri-
+zation would be based on four types of information: genre, emotion,
+style, and similarity.
+This paper introduces Daubechies Wavelet Coefficient His-
+tograms (DWCH) for music feature extraction for music informa-
+tion retrieval. The histograms are computed from the coefficients
+of the db8 Daubechies wavelet filter applied to 3 s of music. A
+comparative study of sound features and classification algorithms
+on a dataset compiled by Tzanetakis shows that combining DWCH
+with timbral features (MFCC and FFT), with the use of multiclass
+extensions of support vector machine, achieves approximately
+80% of accuracy, which is a significant improvement over the
+previously known result on this dataset. On another dataset the
+combination achieves 75% of accuracy.
+The paper also studies the issue of detecting emotion in music.
+Rating of two subjects in the three bipolar adjective pairs are used.
+The accuracy of around 70% was achieved in predicting emotional
+labeling in these adjective pairs.
+The paper also studies the problem of identifying groups of
+artists based on their lyrics and sound using a semi-supervised
+classification algorithm. Identification of artist groups based on
+the Similar Artist lists at All Music Guide is attempted. The
+semi-supervised learning algorithm resulted in nontrivial in-
+creases in the accuracy to more than 70%.
+Finally, the paper conducts a proof-of-concept experiment on
+similarity search using the feature set.
+Index Terms—Clustering, FFT, machine learning, music infor-
+mation retrieval, wavelet.
+I. INTRODUCTION
+THE RAPID growth of the Internet and the advancements ofInternet technologies have made it possible for music lis-
+teners to have access to a large amount of online music data, in-
+cluding music sound signals, lyrics, biographies, and discogra-
+phies. Music artists in the 21st century are promoted through
+various kinds of websites that are managed by themselves, by
+their fans, or by their record companies. Also, they are subjects
+of discussions in Internet newsgroups and bulletin boards.
+Manuscript received December 17, 2004; revised June 30, 2005. This work
+was supported by NSF Grants IIS-0546280, EIA-0080124, DUE-9980943, and
+EIA-0205061, and in part by NIH Grants RO1-AG18231 (5-25589) and P30-
+AG18254. The associate editor coordinating the review of this manuscript and
+approving it for publication was Dr. Jie Yang.
+T. Li is with School of Computer Science, Florida International University,
+Miami, FL 33199 USA (e-mail: taoli@cs.fiu.edu).
+M. Ogihara is with the Department of Computer Science, University of
+Rochester, Rochester, NY 14627 USA (e-mail: ogihara@cs.rochester.edu).
+Digital Object Identifier 10.1109/TMM.2006.870730
+This raises the question of whether computer programs can
+enrich the experience of music listeners by enabling the lis-
+teners to have access to such a large volume of online music
+data. Multimedia conferences, e.g., the International Confer-
+ence on Music Information Retrieval (ISMIR ) and Web De-
+livery of Music (WEDELMUSIC), have a focus on the develop-
+ment of computational techniques for analyzing, summarizing,
+indexing, and classifying music data.
+We believe that music information retrieval should be tailored
+to fit the tastes and needs of individual listeners at the very mo-
+ment. There are a number of ways for specifying the needs of
+a listener. In [10] Huron points out that since the preeminent
+functions of music are social and psychological, the most useful
+characterization would be based on four types of information:
+genre, emotion, style, and similarity.
+This paper studies the question of computationally recog-
+nizing these characteristics of music, where parts of the work
+presented in this paper have appeared in [14]–[16], [18], [19].
+The four types of characteristics are strongly related to each
+other. Certain emotional labels prominently apply to music in
+particular genres, e.g., “angry” for punk music, “depressed” for
+slow blues, and “happy” for children music. A style is often de-
+fined within a genre, e.g., “hard-bop jazz” and “American rock.”
+Similar music pieces are likely to be those in the same genre, of
+the same style, and with the same emotional labeling. However,
+there are traits that distinguish them from the rest. Emotional la-
+beling is transient, in the sense that the labels can be dependent
+on the state of mind of the listener, and popular music styles are
+perhaps defined not just in terms of sound signals but in terms of
+the way the lyrics are written, which is likely beyond the reach
+of sound feature extraction algorithms.
+An important step in studying the problem of recognizing the
+above four features is specifying the input-output relation. Of
+particular importance is the determination of the features ex-
+tracted from audio signals. The features have to be comprehen-
+sive in the sense that they represent the music very well, compact
+in the sense that they require much smaller storage space than
+the raw acoustic data, and efficient in the sense that computation
+can be carried out efficiently. We propose here a new feature
+extraction method, Daubechies Wavelet Coefficient Histograms
+(DWCH), which are based on wavelet coefficients histogram.
+By computing histograms of Daubechies wavelet coefficients
+at different frequency subbands, DWCH is expected to extract
+both local and global information of input audio signals. This
+representation is readily very compact and efficient. Its compre-
+hensiveness is tested here on the subject of music genre classifi-
+cation. We find that the DWCH features become the most com-
+prehensive combined with timbral features and that the accuracy
+of the combined features significantly improve previous known
+best results.
+1520-9210/$20.00 © 2006 IEEE
+LI AND OGIHARA: TOWARD INTELLIGENT MUSIC INFORMATION RETRIEVAL 565
+This discovery encourages us to study the usefulness of the
+combined feature set in recognizing the emotion aroused in the
+listeners and in identifying similarities between music pieces.
+Our experiments show that the feature set does a very reasonable
+job in both tasks.
+We then tackle the problems of style recognition. Here
+we choose to study the problem of recognizing the style of
+singer-song-writers, i.e., those write and perform song, because
+the music style, however subtly it is defined, would be more
+richly represented in the music singer-song-writers than would
+in the music of singers that sing someone else’s tunes. We study
+the problem of distinguishing a group of artists deemed “sim-
+ilar” by a reliable music database (All Music Guide) by other
+artists based on the combined acoustic fea-
+tures and features extracted from lyrics, and obtain reasonably
+good results. We also conduct a proof-of-concept experiment
+on music similarity search.
+The rest of the paper is organized as follows. Sections II and
+III describe the acoustic feature extraction algorithms we use.
+Sections IV–VII present the study of the four problems. Sec-
+tion VIII our conclusions and discussions of feature problems.
+II. ACOUSTIC FEATURES OF MUSIC
+Much work on extraction of features from music has been
+devoted to timbral texture features, rhythmic content features,
+and pitch (melody) content features. The MARSYAS system of
+Tzanetakis and Cook [35]1, is a software package that allows
+one to use all of these features.
+a) Rhythmic Content Features (Beat): Rhythmic content fea-
+tures are those characterize the regularity of the rhythm,
+the beat, the tempo, and the time signature. The feature
+is calculated by extracting periodic changes from the
+beat histogram. Computation of the beat histogram goes
+through an elaborate process of identifying peaks in au-
+tocorrelation. We select two highest peaks and compute:
+their relative amplitudes to the overall average, the ratio
+between the relative amplitudes, and the period length of
+each. By adding the overall average of the amplitude, a
+total of six features are calculated.
+b) Pitch Content Features (Pitch): The pitch content features
+describe the distribution of pitches Here the features are
+calculated from the pitch histograms, laid out in the circle
+of fifth. As in rhythmic content features, we select the
+two highest peaks and then compute the distance between
+the two, the ID of the highest peak, the amplitude of the
+highest peak, and the period of the highest peak in the un-
+folded histogram. Thus, there are a total of four features.
+c) Timbral Textural Feature: Timbral textual features are
+those used to differentiate mixture of sounds based on
+their instrumental compositions when the melody and
+the pitch components are similar. The use of timbral
+textural features originates from speech recognition [29].
+Extracting timbral features requires preprocessing of the
+sound signals. The signals are divided into statistically
+stationary frames, usually by applying a window function
+1Available at http://marsyas.sourceforge.net/.
+at fixed intervals. The application of a window function
+removes the so-called “edge effects.” Popular window
+functions including the Hamming window function and
+the Blackman window function.
+• Mel-Frequency Cepstral Coefficients (MFCC)
+MFCC is a feature set popular in speech processing
+and music modeling [20]. This feature is obtained as
+follows: We first compute, for each frame, the loga-
+rithm of the amplitude spectrum based on short-term
+Fourier transform, where the frequencies are divided
+into thirteen bins using the Mel-frequency scaling.
+(The “cepstrum” is the FFT of this logarithm.) Then
+we apply discrete cosine transform to decorrelate the
+Mel-spectral vectors. In this study, we use the first five
+bins, and compute the mean and variance of each over
+the frames.
+• Short-Term Fourier Transform Features (FFT) This
+is a set of features related to timbral textures and is not
+captured using MFCC. It consists of the following five
+types. More detailed descriptions can be found in [35].
+Spectral Centroid is the centroid of the amplitude
+spectrum of short-term Fourier transform and it is a
+measure of spectral brightness. Formally, the spec-
+tral centroid is defined as
+where is the magnitude of the Fourier trans-
+form at frame and frequency bin .
+Spectral Rolloff is the frequency below which 85%
+of the amplitude distribution is concentrated. It
+measures the spectral shape. Formally, for spectral
+rolloff , we have
+Spectral Flux is the squared difference between the
+normalized amplitudes of successive spectral dis-
+tributions. It measures the amount of local spectral
+change. Formally, the spectral flux is defined as
+where and are the normalized mag-
+nitude of the Fourier transform at the current frame
+, and the previous frame , respectively.
+Low Energy is the percentage of frames that have
+energy less than the average energy over the whole
+signal. It measures the amplitude distribution of the
+signal.
+Zero Crossings is the number of time domain zero
+crossings of the signal. It measures the noisiness of
+566 IEEE TRANSACTIONS ON MULTIMEDIA, VOL. 8, NO. 3, JUNE 2006
+the signal. Formally, the time domain zero cross-
+ings is defined as
+where is the time domain signal for frame
+and is the sign function (e.g., it takes the value
+of 1 for positive arguments and 0 otherwise.)
+We compute the mean for all five and the variance
+for all but zero crossings. So, there are a total of
+nine features.
+III. DAUBECHIES WAVELET COEFFICIENT HISTOGRAMS
+A. Wavelet Transform
+The wavelet transform is a synthesis of ideas that have
+emerged over many years in such different fields as mathe-
+matics and image/signal processing. It has been widely used in
+information retrieval and data mining [13], [21], [22] (see also
+[13] for a survey). In general, the wavelet transform provides
+good time and frequency resolution. Like Fourier transforms,
+a wavelet transform is viewed as a tool for dividing data,
+functions, or operators into different frequency components
+and then analyzing each component with a resolution matched
+to its scale [4]. The contribution of each component is rep-
+resented as a coefficient. While each component of a Fourier
+transform is the wave of a fixed frequency, each component of
+a wavelet transform is the wave of a time-dependent frequency
+function. A wavelet coefficients histogram is the histogram of
+the (rounded) wavelet coefficients obtained by convolving a
+wavelet filter with an input music signal (details on wavelet
+histograms and on wavelet filters and analysis can be found in
+[33] and in [4], respectively).
+Generally speaking, wavelets are designed to give good time
+resolution at high frequencies and good frequency resolution
+at low frequencies. They have several favorable properties, in-
+cluding compact support, vanishing moments and decorrelated
+coefficients and have been successfully applied in signal rep-
+resentation and transformation [7]. Compact support guaran-
+tees the localization of wavelet, vanishing moment property al-
+lows wavelet focusing on most important information and dis-
+carding noisy signal, and decorrelated coefficients property en-
+ables wavelet to reduce temporal correlation so that the corre-
+lation of wavelet coefficients are much smaller than that of the
+corresponding temporal process [7]. Hence, after wavelet trans-
+form, the complex signal in the time domain can be reduced into
+a much simpler process in the wavelet domain. By computing
+the histograms of wavelet coefficients, we could obtain a good
+estimation of the probability distribution over time. The good
+probability estimation thus leads to a good feature representa-
+tion.
+B. DWCH Feature Extraction Method
+A sound file is a kind of oscillation waveform in the time
+domain. It can be considered as a two-dimensional entity of the
+amplitude over time, in the form of , where
+is the amplitude, generally ranging from [ 1, 1]. This variation
+in amplitudes makes wavelets useful in distinguishing a sound
+signal from others. Since identifying amplitude variations is a
+key in signal-based music analysis, one can expect wavelets to
+be useful for music classification.
+The histogram technique is an efficient means for estimating
+a distribution. However, the raw signal in the time domain is
+not a good representation, particularly for the purpose of con-
+tent-based categorization because the most distinguished char-
+acteristics are hidden in the frequency domain. For sound sig-
+nals, the frequency domain is generally (and naturally) divided
+into octaves where each octave has a unique quality. An octave
+is an interval of frequencies in which the ratio of the highest
+and the lowest is 2, so it is a unit interval in the frequency
+domain in the logarithmic scale. The wavelet decomposition
+scheme matches the models of sound octave division for per-
+ceptual scales, and thus, provides good time and frequency res-
+olutions [12]. In other words, the decomposition of audio signal
+using wavelets produces a set of subband signals at different fre-
+quencies corresponding different characteristics.
+Formally, a mother wavelet is a function such that
+is an orthogonal basis of . The
+basis functions are usually referred to as wavelets. There are
+many kinds of wavelet filters, including Daubechies wavelet
+filters and Gabor filter. Daubechies wavelet filters are the ones
+commonly used in image retrieval. In general, represents
+the family of Daubechies Wavelets and is the order. The
+family includes Haar wavelet since Haar wavelet represents
+the same wavelet as . To find wavelets, start with a scaling
+function that is made up of a smaller version of itself
+(1)
+Here ’s are called filter coefficients or masks. Under certain
+conditions [4],
+(2)
+gives a wavelet, where is the conjugate of .
+Generally, it can be shown that [13]
+• the support for is on the interval ;
+• the wavelet has vanishing moments [4]’
+• the regularity increases with the order. has contin-
+uous derivatives ( is approximately 0.2).
+The Daubechies wavelet filter with seven levels of de-
+composition, which is shown in Fig. 1, is used in our experi-
+ments. After the decomposition, we construct the histogram of
+the wavelet coefficients at each subband. We use the subband en-
+ergy, defined as the mean of the absolute value of coefficients,
+and the first three moments, i.e., the average, the variance, and
+the skewness. We calculate these four quantities for each sub-
+band. Therefore, there are 28 features.
+LI AND OGIHARA: TOWARD INTELLIGENT MUSIC INFORMATION RETRIEVAL 567
+Fig. 1. Daubechies-8(db ) wavelet.
+We choose to obtain these features from the sound signals
+over three consecutive seconds in a given music file. Based on
+an intuition that music is somewhat similar to itself, such a short
+duration is picked. In summary, the DWCH algorithm works as
+follows.
+1) Obtain the wavelet decomposition of the input sound
+file.
+2) Construct the histogram of each of the seven subbands.
+3) Compute the first three moments of each subband.
+4) Compute the subband energy of each subband.
+The algorithm is very easy to implement in Matlab, which con-
+tains a complete wavelet package.
+IV. GENRE CLASSIFICATION: A COMPARATIVE STUDY
+We study the automatic music genre classification problem.
+We define this as the problem of classifying a given piece of
+music into a unique class solely based on its audio contents.
+There are two major issues in dealing with this problem: the
+features extracted from a given piece of music and the classifi-
+cation algorithm to be used. Here we conduct comparison of the
+five acoustic feature sets, Beat, FFT, MFCC, Pitch and DWCH,
+and of various multiclass classification algorithms.
+A. Datasets
+We use two datasets for our experiments. The first dataset,
+Dataset A of Tzanetakis and Cook [35], consists of 1000 30-s-
+long sound files covering ten genres with 100 files per genre.
+The ten genres are Blues, Classical, Country, Disco, Hip-hop,
+Jazz, Metal, Pop, Reggae, and Rock. The files are collected from
+radio and CDs. The second dataset, Dataset B, consists of 756
+sound files covering five genres: Ambient, Classical, Fusion,
+Jazz, and Rock. The dataset was constructed by the authors from
+the CD collection of the second author. The files are collected
+from 189 music albums as follows: From each album the first
+four music tracks were chosen (three tracks from albums with
+only three music tracks); then from each music track the sound
+signals over a period of 30 s after the initial 30 s were extracted
+in the MP3 format. The distribution of the files in the five genres
+is Ambient (109 files), Classical (164 files), Fusion (136 files),
+Jazz (251 files), and Rock (96 files). For both datasets, each
+sound file is converted to a 22 050Hz, 16-bit, mono audio file.
+B. Experiment Setup
+To extract the Beat, FFT, MFCC, and Pitch feature sets, we
+use the MARSYAS system. To extract the DWCH feature set,
+we use our implementation with Matlab. The DWCH set con-
+sists of four quantities for each of the seven frequency sub-
+bands. A few trials reveal that of the seven subbands of
+(1: 11 025–22 050 Hz, 2: 5513–11 025Hz, 3: 2756–5513Hz, 4:
+1378–2756Hz, 5: 689–1378Hz, 6: 334–689Hz, 7: 0–334Hz),
+subbands 1, 2, and 4 show little variation. We thus choose to
+use only the remaining four subbands, 3, 5, 6, and 7, for our
+experiments. In fact, The subbands match the models of sound
+octave-division for perceptual scales [12].
+We test various classification algorithms for the actual clas-
+sification: Gaussian Mixture Models (GMM) with three Gaus-
+sians, k-Nearest Neighbors (KNN) with , Linear Dis-
+criminant Analysis (LDA), and multiclass extensions of sup-
+port vector machines (SVM). SVM [36] is a method that has
+shown superb performance in binary classification problems. In-
+tuitively, it aims at searching for a hyperplane that separates the
+positive data points and the negative data points with maximum
+margin. The method was originally designed as a binary classi-
+fication algorithm. Several binary decomposition techniques are
+known. We use one-against-the-rest (denoted by S1) and pair-
+wise (denoted by S2), which assemble judgments respectively
+of the classifiers for distinguishing one class from the rest and of
+the classifiers for distinguishing one class from another. We also
+use a multiclass objective function version of SVM, MPSVM
+[8] (we use short-hand MPS to refer to this algorithm), which
+can directly deal with multiclass problems. For S1 and S2, our
+SVM implementation is based on the LIBSVM [3], a library for
+support vector classification and regression. For experiments in-
+volving SVM, we test linear, polynomial, and radius-based ker-
+nels. The results we show are the best of the three kernel func-
+tions.
+KNN is a nonparametric classifier. Theoretical results show
+that its error is asymptotically at most twice as large as the
+Bayesian error rate. KNN has been applied to various music
+sound analysis problems. Given as a parameter, it finds the
+nearest neighbors among training data and uses the categories
+of the neighbors to determine the class of a given input. We
+use the parameter to 5.
+GMM is a method that has been widely used in music in-
+formation retrieval. The probability density function (pdf) for
+each class is assumed to consist of a mixture of a number of
+multidimensional Gaussian distributions. The iterative expec-
+tation-minimization (EM) algorithm is then used to estimate
+the parameters of each Gaussian component and the mixture
+weights.
+LDA works by finding a linear transformation that best dis-
+criminates among classes. The classification is then performed
+in the transformed space using some metric such as Euclidean
+distances.
+C. Results and Analysis
+Table I shows the accuracy of the various classification al-
+gorithms on Dataset A. This table is based on the data for all
+568 IEEE TRANSACTIONS ON MULTIMEDIA, VOL. 8, NO. 3, JUNE 2006
+TABLE I
+CLASSIFICATION ACCURACY (IN %) OF THE LEARNING METHODS TESTED
+ON DATASET A USING VARIOUS COMBINATIONS OF FEATURES. B, D, F, M,
+AND P, RESPECTIVELY, STAND FOR BEAT, DWCH, FFT, MFCC, AND PITCH.
+THE ACCURACY IS CALCULATED VIA TEN-FOLD CROSS VALIDATION. WITHIN
+PARENTHESES ARE STANDARD DEVIATIONS.
+combinations of the standard four feature sets. The results con-
+firm that each of the four standard feature sets contains useful in-
+formation characterizing music signals. The classification accu-
+racy on any single feature set is significantly better than random
+guessing, which is 10% for this dataset. However, the informa-
+tion extracted in the four sets is insufficient for accomplishing
+highly accurate genre classification because even with all the
+four combined (the row B/F/M/P) the accuracy is never more
+than 72% and mostly in the 60% range. Note that in each of the
+classification algorithms tested, the performance on features set
+combinations including at least one of FFT and MFCC is signif-
+icantly higher than the performance on combinations with the
+FFT and MFCC replaced by Beat and/or Pitch. We can con-
+clude thus that FFT and MFCC are each better than Beat and
+Pitch combined. Also, note that if both FFT and MFCC are in-
+cluded then adding Beat or Pitch does not significantly increase
+the accuracy. Thus, in the presence of FFT and MFCC, we can
+dispense with Beat and Pitch.
+We then test the accuracy of adding DWCH to the combina-
+tion of FFT and MFCC. The addition increases accuracy with
+respect to each classification method. The increase is significant
+for S1 and S2. The accuracy for the latter is 78.5% on the av-
+erage in the tenfold cross validation, where the accuracy higher
+Fig. 2. Classification accuracy of the learning methods tested on Dataset A
+using various combinations of features. The accuracy values are calculated via
+ten-fold cross validation.
+than 80% is achieved for some trials. This is a remarkable im-
+provement from 61% which was achieved by Tzanetakis and
+Cook [35]. The superiority of can be
+seen from the graph shown in Fig. 2.
+The average accuracy of the one-versus-the-rest classifiers
+over a tenfold cross-validation test is very high for all ten
+classes (ranging from 91 to 99%). The most accurate of the ten
+classes is Classical. The Classical sound files of this dataset
+seem to have significant timbral difference from other sound
+files: bowed string instruments are prominent and percussions
+are rarely heard. We suspect that this timbral difference has
+made it very easy to distinguish the Classical pieces from
+the others. Similarly, in the Jazz pieces brass instruments are
+frequently heard and there is strong presence of rhythm. That
+could have made it easy to distinguish this class. On the other
+hand, Rock, Reggae, and Disco have accuracy lower than the
+others (but it is still above 90%). This can be attributed to the
+fact that the three classes seem to be close to each other in terms
+of timbral features (the use of drums, electric bass, electronic
+guitar, and electric keyboard).
+Perrot and Gjerdingen [26] report a human subject study in
+which college students were trained to learn a music company’s
+genre classification on a ten-genre data collection, where the
+trained students achieved about 70% accuracy. Our results
+cannot be directly compared against their results because the
+datasets are different, but one can clearly say that the precision
+of the classification achieved here is satisfyingly high.
+Some reports better accuracy than ours in automatic music
+genre recognition of smaller datasets. Pye [28] reports 90%
+of accuracy on a dataset of 175 music tracks covering six
+genres (Blues, Easy Listening, Classical, Opera, Dance, and
+Indie Rock). Soltau et al. [31] report 80% of accuracy on a
+dataset of four classes (Rock, Pop, Techno, and Classical). Just
+for the sake of comparison, Fig. 3 shows the accuracy of the
+best classifier (DWCH, FFT and MFCC with S1) on each of
+the ten music genres of Dataset A. The accuracy is extremely
+high. Table II and Fig. 4 show the accuracy of the multiclass
+classification for distinguishing among smaller numbers of
+classes. The classes one through ten respectively correspond to
+Blues, Classical, Country, Disco, Hip-hop, Jazz, Metal, Pop,
+LI AND OGIHARA: TOWARD INTELLIGENT MUSIC INFORMATION RETRIEVAL 569
+Fig. 3. Genre specific accuracy of the S1 method with DBCH, FFT and MFCC.
+The results are calculated via ten-fold cross validation.
+TABLE II
+ACCURACY (IN %) OF THE S1 METHOD WITH DWCH, FFT AND
+MFCC ON VARIOUS SUBSETS OF DATASET A. THE ACCURACY IS
+CALCULATED VIA TENFOLD CROSS VALIDATION. WITHIN
+PARENTHESES ARE STANDARD DEVIATIONS
+Fig. 4. Accuracy of the S1 method with DWCH, FFT, and MFCC on various
+subsets of Dataset A. The accuracy values are calculated via ten-fold cross val-
+idation. The X-axis represents the number of genres.
+Reggae, and Rock. The accuracy gradually decreases as the
+number of classes increases.
+Fig. 5. Classification accuracy of the learning methods tested on Dataset B
+using various combinations of features. The accuracy values are calculated via
+ten-fold cross validation.
+In Dataset A, multiple segments are extracted from a single
+piece of recording. This may raise a question of whether the high
+accuracy achieved by the classifier is very narrowly trained to
+recognize only the artists and/or albums presented in the dataset.
+That motivates us to create our own dataset (Dataset B) in which
+a large number of artists and albums are represented so as to
+avoid artist/album specific training of the classifier (Dataset B
+consists of 189 albums over five genres, covering many different
+styles and artists).
+Fig. 5 shows the results on Dataset B. Recall that this dataset
+was generated with little control (from each piece the 30 s after
+the initial 30 s are used) and it covers a large number of albums.
+So, the accuracy can be expected to be lower than that on Dataset
+A. Also, the inclusion of intermediate genres, Ambient and Fu-
+sion, which respectively sit between Jazz and Classical and be-
+tween Jazz and Rock, may reduce the accuracy. The difficulty
+in classifying such borderline cases is somewhat compensated
+for by the reduction in the number of classes. In reality, the dif-
+ference is 4.0–5.0%.
+V. EMOTION DETECTION
+Relations between musical sounds and their impact on the
+emotion of the listeners have been studied for decades. The cel-
+ebrated paper of Hevner [9] studied this relation through exper-
+iments in which the listeners are asked to write adjectives that
+came to their minds as the most descriptive of the music played.
+The experiments confirmed a hypothesis that music inherently
+carries emotional meaning. Hevner discovered the existence of
+clusters of descriptive adjectives and laid them out (there were
+eight of them) in a circle. She also discovered that the labeling is
+consistent within a group having a similar cultural background.
+The Hevner adjectives were refined and regrouped into ten ad-
+jective groups by Farnsworth [6].
+The hypothesis that musical sounds arouse emotion is also
+substantiated by a recent paper by Peretz et al. [25], which
+shows that distinction between sad and happy music sounds is
+unaffected in listeners with brain damage, implying that emo-
+tional reaction to music is firmly grounded in our brain. These
+discoveries make us to hypothesize that emotion detection in
+music can be made by analyzing music signals. Our goal is to
+570 IEEE TRANSACTIONS ON MULTIMEDIA, VOL. 8, NO. 3, JUNE 2006
+treat the emotion detection problem as a multilabel classifica-
+tion problem.
+We cast the emotion detection problem as a multilabel
+classification problem, where the music sounds are classified
+into multiple classes simultaneously. That is a single music
+sound may be characterized by more than one label, e.g., both
+“dreamy” and “cheerful.”
+We resort to the scarcity of literature in multilabel classifi-
+cation by decomposing the problem into a set of binary classi-
+fication problems. In this approach, for each binary problem a
+classifier is developed using the projection of the training data
+to the binary problem. To determine labels of a test data, the bi-
+nary classifiers thus developed are run individually on the data
+and every label for which the output of the classifier exceeds a
+predetermined threshold is selected as a label of the data. See
+[30] for similar treatments in the text classification domain. To
+build classifiers we used SVMs [36].
+A. Dataset and Emotional Labeling
+A subset consisting of 235 instrumental jazz tracks from
+Dataset B is used for the experiment. The files are labeled
+independently by two subjects: a 39 year old male (subject
+1) and a 25 year old male (subject 2). Each track is labeled
+using a scale ranging from 4 to 4 on each of three bipolar
+adjective pairs: (Cheerful versus Depressing), (Relaxing versus
+Exciting), and (Comforting versus Disturbing), where 0 is
+thought of as neutral. Our early work on emotion labeling [14]
+uses binary labels (existence versus nonexistence) based on the
+adjective groups of Farnsworth. The classification accuracy is
+not very high (around 60%). The low accuracy can be attributed
+to the presence of many labels to choose from. The recent
+experiments conducted by Leman et al. [24] using scales on
+ten bipolar adjective pairs suggest that variations in emotional
+labeling can be approximated using only spanned three major
+principal components, which are hard to name. With these
+results in mind we decided to generate three bipolar adjective
+pairs based on the eight adjective groups of Hevner.
+B. Experiments
+The accuracy of the performance is presented in Table III.
+Here the accuracy measure is the Hamming accuracy, that is, the
+ratio of the number of True Positives and True Negative against
+the total number of inputs. In each measure, the tracks labeled
+0 are altogether put on either the positive side or the negative
+side. It is clear that the accuracy of detection was always at least
+70% and sometimes more than 80%. Also, there is a large gap
+in the performance between the two subjects on the first two
+measures. We observe that this difference is coming from the
+difference in the cultural background of the subjects. To deal
+with labeling of a much larger group of listeners one should
+cluster them into groups depending on their labeling and train
+the emotion detection system for each group.
+VI. STYLE IDENTIFICATION
+This section addresses the issue of identifying the artist style.
+Ellis et al. [27] point out that similarity between artists reflects
+personal tastes and suggest that different measures have to be
+combined together so as to achieve reasonable results in similar
+TABLE III
+ACCURACY (IN %) OF EMOTION DETECTION. WITHIN PARENTHESES
+ARE STANDARD DEVIATIONS
+artist discovery. We focus our attention to singer-song-writers,
+i.e., those who sing their own compositions. We take the stand-
+point that the artistic style of a singer-song-writer is reflected
+both in the acoustic sounds and in the lyrics. We therefore hy-
+pothesize that the artistic styles of an artist can be captured better
+by combining acoustic features and linguistic features of songs
+than by using only one type of features. We study this ques-
+tion by examining the accuracy of search for similar artists. Al-
+though we believe that the degree at which a listener finds a
+piece of music similar to another is influenced by the listener’s
+cultural and music backgrounds and by the listener’s state of
+mind, to make our investigation more plausible we choose to
+use the Similar Artist lists available at All Music Guide (http://
+www.allmusic.com). In our experiments two artists are thought
+of as similar if this guide asserts one to be an artist similar to the
+other on the Similar Artist lists. We take the standpoint that the
+artist similarity information in this guide summarizes the opin-
+ions of one or more listeners.
+A. Lyrics-Based Feature Sets
+Previous study on stylometric analysis has shown that sta-
+tistical analysis on text properties could be used for text genre
+identification and authorship attribution [1], [11], [32] and over
+one thousand stylometric features (style makers) have been pro-
+posed in variety research disciplines [34]. To choose features
+for analyzing lyrics, one should be aware of some characteris-
+tics of popular song lyrics. For example, song lyrics are usu-
+ally brief and are often built from a very small vocabulary. In
+song lyrics, words are pronounced with melody, so the construc-
+tion of melody lines and that of words are closely tied to each
+other. Also, the stemming technique, though useful in reducing
+the number of words to be examined, may have a negative ef-
+fect. Furthermore, in song lyrics, word orders are often different
+from those in conversational sentences, and song lyrics are often
+presented without punctuation.
+To accommodate the characteristics of the lyrics, our text-
+based feature extraction consists of four components: bag-of-
+words features, Part-of-Speech statistics, lexical features and or-
+thographic features. The features are listed in Table IV.
+• Bag-of-words: We compute the TF-IDF measure for each
+word and select top 200 words as our features. Stemming
+operations are not applied.
+• Part-of-Speech statistics: We use the output of the part-of-
+speech (POS) tagger by Brill [2] as the basis for feature
+extraction. The POS statistics usually reflect the character-
+istics of writing. There are 36 POS features extracted from
+each document, one for each POS tag expressed as a per-
+centage of the total number of words for the document.
+• Lexical Features: By “lexical features” we mean the fea-
+tures of individual word-tokens in the text. The most basic
+LI AND OGIHARA: TOWARD INTELLIGENT MUSIC INFORMATION RETRIEVAL 571
+TABLE IV
+SUMMARY OF THE FEATURE SETS FOR ANALYZING LYRICS
+lexical features are lists of 303 generic function words
+taken from [23]2, which generally serve as proxies for
+choice in syntactic (e.g., preposition phrase modifiers vs.
+adjectives or adverbs), semantic (e.g., usage of passive
+voice indicated by auxiliary verbs), and pragmatic (e.g.,
+first-person pronouns indicating personalization of a text)
+planes. Function words have been shown to be effective
+style markers.
+• Orthographic features: We also use orthographic features
+of lexical items, such as capitalization, word placement,
+word length distribution as our features. Word orders and
+lengths are very useful since the writing of lyrics usually
+follows certain melody.
+B. Semi-Supervised Learning
+In the presence of sound-based and lyrics-based features,
+the identification problem of artistic styles based on sound and
+lyrics falls into the realm of learning from heterogeneous data.
+Here we take a semi-supervised learning approach, in which
+a classification algorithm is trained for each feature set but
+the target label is adjusted for input data so as to minimized
+disagreement between the classifiers.
+1) Minimizing Disagreement: Suppose we have an instance
+space where and are from different
+observations. Let be the distribution over . If is the
+target function over , then for any example
+we would have where and
+are the target functions over and , respectively. It
+has been shown that minimizing the disagreement between
+two individual models could lead to the improvement of the
+classification accuracy of individual models [17].
+Theorem 1: [17] Under a conditional independence assump-
+tion, the disagreement upper bounds the misclassification error
+for the nontrivial classifier.
+2) Co-Updating: Based on Theorem 1, we developed a
+co-updating approach to learn from both labeled and unlabeled
+data which aims to minimizing the disagreement on unlabeled
+data. The approach is an iterative Expectation-Maximization
+(EM)-type procedure. Its basic idea is as follows. The labeled
+samples are first used to obtain weak classifiers, on
+and on . Then we repeat a two-step process: in the
+expectation step, we use the current classifiers to predict the
+labels of unlabeled data, and then in the maximization step, we
+rebuild the classifiers using the labeled samples and a random
+collection of unlabeled samples on which the classifiers agree
+(i.e., they have the same predictions). We repeat the two-step
+2See http://www.cse.unsw.edu.au/~min/ILLDATA/Function.word.htm.
+process until some termination condition holds. The intuition
+behind the co-updating algorithm is that we stochastically select
+the unlabeled samples on which the two component classifiers
+agree and confident, and then use them along with the labeled
+samples to train/update the classifiers. The approach iteratively
+updates classifier models by using current models to infer (a
+probability distribution on) labels for unlabeled data and then
+adjusting the models to fit the (distribution on) filled-in labels.
+For more detail of the algorithm, see [17].
+C. The Dataset
+Fifty-six albums of a total of 43 artists are selected. The sound
+recordings and the lyrics from them are obtained. Similarity be-
+tween artists is identified by examining their All Music Guide
+pages. If the name of an artist X appears on the “Similar Artist”
+of the web page of another artist Y, then X and Y are thought of
+as similar. Based on this relation, artists having a large number
+of neighbors are selected. There are three of them, Fleetwood
+Mac, Yes, and Utopia. These three artists form a triangle, so
+the neighbors of these three are chosen as a group . Of the re-
+maining nodes two groups are identified in a similar manner.
+The clusters are shown in Fig. 6. Our subjective evaluation does
+not completely agree with the artist groups or the similarity it-
+self. Nonetheless we use it as the ground truth.
+D. Experiments
+Generally, building models when one class is rare is quite dif-
+ficult because there are often many unstated assumptions [38].
+A conventional wisdom is that classifiers built using all the data
+tend to perform worse on the minority class than on the ma-
+jority class since the class priors in the natural distribution are
+biased strongly in favor of the majority class and the minority
+class has much fewer training and test samples [37]. Although
+the balanced distribution will not necessarily yield optimal dis-
+tribution; it will generally lead to results which are no worse
+than, and often superior to, those that use the natural class dis-
+tribution [37]. We sample roughly balanced datasets from the
+original dataset and the distributions of samples are shown in
+Table V.
+We train a classifier that distinguishes each group from the
+rest of the artists. To build the classifiers we use support vector
+machines with linear kernels. The performance of the classifiers
+is measured using accuracy, precision, and recall. For each clas-
+sifier, we compute a confusion matrix of four quantities, TP, FP,
+FN, and TN, which are the counts of, respectively, the true pos-
+itives (the positives asserted to be positives), the false positives
+(the negatives asserted to be positives), the false negatives (the
+positives asserted to be negatives), and the true negatives (the
+negatives asserted to be negatives). The accuracy, the precision,
+and the recall are respectively given by
+, , and .
+The unlabeled data are used for testing. The results of the
+three experiments are shown in Table VI. Without co-updating
+(labeled data only) we have three choices for the data source:
+only lyrics, only acoustics, and both. Co-updating approaches
+use both types of data. Accuracy measures can be applied to
+the lyrics-based classifier in its final form (after co-updating),
+572 IEEE TRANSACTIONS ON MULTIMEDIA, VOL. 8, NO. 3, JUNE 2006
+Fig. 6. Artist similarity graph. Three groups of artists are identified in the graph.
+TABLE V
+DISTRIBUTION OF THE SAMPLES USED IN THE EXPERIMENTS
+acoustic-based classifier in its final form, and the combination
+of the two.3 So, the tables below have six row each.
+We observe that the accuracy of the classifier built using la-
+beled lyrics data are almost equal to the accuracy of a classi-
+fier built using labeled acoustic data. We also observe that com-
+bining the two sources improves the accuracy of classifier in the
+case of labeled data. The use of co-updating significantly im-
+proves the accuracy for each of the three cases of data sources,
+but there is a slight gap between the two classifiers at the end.
+We can conclude from these experiments that artist similarity
+can be efficiently learned using a small number of labeled sam-
+ples by combining multiple data sources. We looked at the per-
+3The combined classifier after co-updating is constructed by multiplying the
+probability outputs of the lyrics-based and content-based classifiers with the
+conditional Independence assumption.
+TABLE VI
+ACCURACY (IN %) OF ARTIST GROUP CLASSIFICATION.
+COUP STANDS FOR CO-UPDATING
+formance of the classifiers for Group 1 in more detail. The core
+of the group consists of Fleetwood Mac, Yes, and Utopia. We
+examined for which music tracks the combined classifier made
+LI AND OGIHARA: TOWARD INTELLIGENT MUSIC INFORMATION RETRIEVAL 573
+an error after co-updating. Of the 71 errors it made, 38 were
+from albums of Peter Gabriel, Genesis, Elton John, and Steely
+Dan, none of which are not in the core of the group. Using ana-
+lytical similarity measures to obtain the ground truth about artist
+similarity, thereby improving upon the data provided by web in-
+formation resources, will be our future goal.
+VII. SIMILARITY SEARCH
+The objective of similarity search is to find music sound files
+similar to a music sound file given as input. Music classification
+based on genre and style naturally forms a hierarchy. Similarity
+can be used to group sounds together at any node in the hierar-
+chies. The use of sound signals for similarity is justified by an
+observation that audio signals (digital or analog) of music be-
+longing to the same genre share certain characteristics, because
+they are composed of similar types of instruments, having sim-
+ilar rhythmic patterns, and similar pitch distributions [5]. The
+similarity search processes can be divided into feature extrac-
+tion and query processing.
+A. Method
+Again we use the feature set. The
+35-dimensional (35-D) vector represents each music file. After
+feature extraction, we represent each music track by a 35-D
+vector . We normalize each dimension of
+the vector by subtracting the mean of that dimension across all
+the tracks and then dividing the standard deviation. The normal-
+ized 35-D representation vector is
+where , . After
+normalization, we compute the Euclidean distance between the
+normalized representation and the distance serve as similarity
+(in fact, dissimilarity) measure for our purpose. We then return
+the tracks with shortest distances to the given query as our sim-
+ilarity search result.
+B. Experiments
+1) Jazz Vocal Music: A collection of 250 Jazz vocal sounds
+files is created, which covers 18 vocalists and 35 albums. The
+vocalists are Chet Baker, Tony Bennett, Rosemary Clooney,
+Blossom Dearie, Ella Fitzgerald, Johnny Hartman, Billie
+Holiday, Sheila Jordan, Ricky Lee Jones, Karin Krog, Abbie
+Lincoln, Helen Merrill, Joni Mitchell, Dianne Reeves, Carly
+Simon, Mel Tormé, Sarah Vaughan, and Nancy Wilson. For
+each music file, its first 30 s of the music are profiled.
+Of these 250 tracks 60 tracks are selected as queries. For each
+query the nine closest matches are found using the similarity
+measure, which are presented in in the increasing order of the
+Euclidean distance to the input sounds. Of the 60 queries, 28
+queries (46.7%) had a track from the same album as the closest
+match, 38 (28 plus additional ten) queries (63.3%) had at least
+one track from the same album in the top three matches, and 54
+(38 plus additional 16) queries (90.0%) had at least one track
+from the same album in the top nine.
+We think that the 63.3% accuracy in terms of selecting one
+track from the same album in the top three is encouraging,
+because tracks by different artists may sound similar. In fact,
+for each of the 22 queries for which no tracks from the same
+album appears in the top three closest, we observe that at least
+one of the top three choices sounds very close to the query.
+For example, the system selected a segment from a ballad with
+a low-range female voice (Sarah Vaughan) accompanied by
+a piano trio as the most similar to a ballad with a low-range
+male voice (Johnny Hartman) accompanied by a piano trio; the
+system found the husky voice of Blossom Dearie to be similar
+to the husky voice of Karin Krog.
+2) Classical Music: The same type of experiment is con-
+ducted for classical music, using a collection of 288 sound files,
+covering 72 albums (fifteen orchestral albums, ten chamber
+music albums, six art song and aria collections, ten keyboard
+solo albums, ten string solo and ensemble albums, seven choral
+albums, six opera albums, and eight concerto albums). We
+select a track from each album to obtain a list of nine closest
+sound files in the entire collection. For 33 queries (45.3%) the
+top two selections contain a track from the same album, for 29
+of the remaining 39 (41.3% of the total), at least three out of
+top five were of the same format and from the same period (one
+of baroque, classical-romantic, and contemporary). Thus, for a
+total of 62 out of 72 (86%), the tracks identified were highly
+satisfactory. In comparison, accuracy of the similar search
+seems lower in classical music than in jazz vocal music.
+VIII. CONCLUSIONS AND FUTURE WORK
+This paper introduces Daubechies Wavelet Coefficient
+Histograms (DWCH) for music feature extraction for music
+information retrieval. DWCH represents both local and global
+information by computing histograms on Daubechies
+wavelet coefficients at different frequency subbands with
+different resolutions. A comparative study on a dataset of
+Tzanetakis shows that Beat and Pitch features have little effect
+in automatic music genre classification when short segments
+of sound signals are used and that combining DWCH with the
+timbral features (MFCC and FFT) achieves the highest accu-
+racy of 80%. The highest accuracy achieved by the combination
+improves by a margin of approximately 20% the previously
+known best results. A test on another dataset, compiled by the
+authors, resulted in 75% of accuracy. It raises a question of
+what techniques are effective in recognizing music genres in
+much larger taxonomy.
+The paper also studies the issue of detecting emotion in music.
+Ratingof twosubjects in the threebipolaradjectivepairsareused.
+The accuracy of around 70% was achieved in predicting emo-
+tional labeling in these adjective pairs. Effective emotional la-
+beling for music has been much studied. An interesting research
+issue will be whether the feature set used here is effective in iden-
+tifying emotions with respect to other taxonomy.
+Another problem studied here is that of identifying groups
+of artists based on their lyrics and sound. Identification of artist
+groups based on the Similar Artist lists at All Music Guide
+is attempted. A semi-supervised learning algorithm called
+co-updating, which incorporates unlabeled data, is used on
+the combination of a sound feature set and a POS statistics
+feature set. The semi-supervised learning algorithm resulted in
+nontrivial increases in the accuracy to more than 70%. How this
+574 IEEE TRANSACTIONS ON MULTIMEDIA, VOL. 8, NO. 3, JUNE 2006
+algorithm will perform on much larger collections of artists is
+an interesting problem.
+Finally, a proof-of-concept experiment on similarity search
+using the sound feature set was done
+in this paper. A more detailed experiment will clarify the efficacy
+of the approach.
+ACKNOWLEDGMENT
+The authors are grateful to Q. Li for his assistance in con-
+ducting the experiments described in Section IV. The authors
+thank G. Tzanetakis for useful discussions and for generosity in
+sharing his data with us, D. Moelants for sharing with us results
+obtained by his group, and S. S. Stein for providing us the tools
+for extracting lexical and orthographic features. The authors are
+grateful to anonymous referees for their invaluable comments.
+REFERENCES
+[1] S. Argamon, M. Saric, and S. S. Stein, “Style mining of electronic
+messages for multiple authorship discrimination: first results,” in
+Proc. Ninth ACM SIGKDD Int. Conf. Knowledge Discovery and Data
+Mining, 2003, pp. 475–480.
+[2] E. Bill, “Some advances in transformation-based parts of speech tag-
+ging,” in Proc. Twelfth Nat. Conf. Artificial Intelligence, 1994, vol. 1,
+pp. 722–727.
+[3] C.-C. Chang and C.-J. Lin, LIBSVM: A Library for Support Vector
+Machines 2001 [Online]. Available: http://www.csie.ntu.edu.tw/~cjlin/
+libsvm
+[4] I. Daubechies, Ten Lectures on Wavelets. Philadelphia, PA: SIAM,
+1992.
+[5] W. J. Dowling and D. L. Harwood, Music Cognition. New York: Aca-
+demic, 1986.
+[6] P. R. Farnsworth, The Social Psychology of Music. New York:
+Dryden, 1958.
+[7] P. Flandrin, “Wavelet analysis and synthesis of fractional Brownian
+motion,” IEEE Trans. Inform. Theory, vol. 38, no. 2, pp. 910–917,
+1992.
+[8] G. Fung and O. L. Mangasarian, Multicategory Proximal Sup-
+port Vector Machine Classifiers Univ. Wisconsin-Madison, Tech.
+Rep.01-06, 2001.
+[9] K. Hevner, “Experimental studies of the elements of expression in
+music,” Amer. J. Psychol., vol. 48, pp. 246–268, 1936.
+[10] D. Huron, “Perceptual and cognitive applications in music information
+retrieval,” in Proc. Int. Symp. Music Information Retrieval, 2000, p.
+PAGES??.
+[11] B. Kessler, G. Nunberg, and H. SchützeSchutze, “Automatic detection
+of text genre,” in Proceedings of the Thirty-Fifth Annual Meeting of
+the Association for Computational Linguistics and Eighth Conference
+of the European Chapter of the Association for Computational Lin-
+guistics, P. R. Cohen and W. Wahlster, Eds. Somerset, NJ: Assoc.
+Comput. Linguist., 1997, pp. 32–38.
+[12] G. Li and A. A. Khokhar, “Content-based indexing and retrieval of
+audio data using wavelets,” Proc. IEEE Int. Conf. Multimedia and Expo
+(II), pp. 885–888, 2000.
+[13] T. Li, Q. Li, S. Zhu, and M. Ogihara, “A survey on wavelet applications
+in data mining,” SIGKDD Explorations, vol. 4, no. 2, pp. 49–68, 2003.
+[14] T. Li and M. Ogihara, “Detecting emotion in music,” in Proc. Fifth Int.
+Symp. Music Information Retrieval (ISMIR2003), 2003, pp. 239–240.
+[15] ——, “Content-based music similarity search and emotion detec-
+tion,” in Proc. 2004 IEEE Int. Conf. Acoustics, Speech, and Signal
+Processing, 2004, pp. V705–V708.
+[16] ——, “Music artist style identification by semisupervised learning
+from both lyrics and content,” in Proc. ACM Conf. Multimedia, 2004,
+pp. 364–367.
+[17] ——, “Semi-supervised learning from different information sources,”
+Knowl. Inform. Syst. J., vol. 7, no. 3, pp. 289–309, 2005.
+[18] T. Li, M. Ogihara, and Q. Li, “A comparative study on content-based
+music genre classification,” in Proc. 26th Annu. ACM Conf. Research
+and Development in Information Retrieval (SIGIR 2003), 2003, pp.
+282–289.
+[19] T. Li and G. Tzanetakis, “Factors in automatic musical genre classifi-
+cation of audio signals,” in Proc. 2003 IEEE Workshop on Applications
+of Signal Processing to Audio and Acoustics (WASPAA’03), 2003, pp.
+143–146.
+[20] B. Logan, “Mel frequency cepstral coefficients for music modeling,” in
+Proc. Int. Symp. Music Information Retrieval (ISMIR), 2000.
+[21] M. K. Mandal, T. Aboulnasr, and S. Panchanathan, “Fast wavelet his-
+togram techniques for image indexing,” Comput. Vis. Image Under-
+stand., vol. 75, no. 1–2, pp. 99–110, 1999.
+[22] Y. Matias, J. S. Vitter, and M. Wang, “Wavelet-based histograms
+for selectivity estimation,” in Proc. ACM SIGMOD Conf., 1998, pp.
+448–459.
+[23] R. Mitton, “Spelling checkers, spelling correctors and the misspellings
+of poor spellers,” Inform. Process. Manag., vol. 23, no. 5, pp. 103–209,
+1987.
+[24] M. Leman, V. Vermeulen, L. De Voogdt, J. Taelman, and D. Moelants,
+“Acoustical and Computational Modeling of Musical Affect Percep-
+tion,” , submitted for publication Nov. 2003.
+[25] I. Peretz, L. Gagnon, and B. Bouchard, “Music and emotion: perceptual
+determinant, immediacy, and isolation after brain damage,” Cognition,
+vol. 68, pp. 111–141, 1998.
+[26] D. Perrot and R. O. Gjerdingen, “Scanning the dial: an exploration of
+factors in the identification of musical style,” in Proc. 1999 Society for
+Music Perception and Cognition, 1999, p. 88.
+[27] D. P. W. Ellis, B. Whitman, A. Berenzweig, and S. Lawrence, “The
+quest for ground truth in musical artist similarity,” in Proc. 3rd Int.
+Confe. Music Information Retrieval, 2002, pp. 170–177.
+[28] D. Pye, “Content-based methods for managing electronic music,” in
+Proc. 2000 IEEE Int. Conf. Acoustic Speech and Signal Processing,
+2000.
+[29] L. Rabiner and B. H. Juang, Fundamentals of Speech Recognition.
+Englewood Cliffs, NJ: Prentice-Hall, 1993.
+[30] R. E. Schapire and Y. Singer, “Boostexter: a boosting-based system for
+text categorization,” Mach. Learn., vol. 39, no. 2/3, pp. 135–168, 2000.
+[31] H. Soltau, T. Schultz, M. Westphal, and A. Waibel, “Recognition of
+music types,” in Proc. 1998 IEEE Int. Conf. Acoustics, Speech and
+Signal Processing, 1998.
+[32] E. Stamatatos, N. Fakotakis, and G. Kokkinakis, “Automatic text cat-
+egorization in terms of genre and author,” Comput. Linguist., vol. 26,
+no. 4, pp. 471–496, 2000.
+[33] M. Swain and D. H. Ballard, “Color indexing,” Int. J. Comput. Vis., vol.
+7, pp. 11–32, 1991.
+[34] F. J. Tweedie and R. H. Baayen, “How variable may a constant be?
+Measure of lexical richness in perspective,” Comput. Humanities, vol.
+32, pp. 323–352, 1998.
+[35] G. Tzanetakis and P. Cook, “Musical genre classification of audio sig-
+nals,” IEEE Trans. Speech Audio Process., vol. 10, no. 5, pp. 293–302,
+Jul. 2002.
+[36] V. N. Vapnik, Statistical Learning Theory. New York: Wiley, 1998.
+[37] G. Weiss and F. Provost, The Effect of Class Distribution on Classifier
+Learning: An Empirical Study Rutgers Univ., Piscataway, NJ, Tech.
+Rep. ML-TR 44, 2001.
+[38] B. Zadrozny and C. Elkan, “Learning and making decisions when costs
+and probabilities are both unknown,” in Proc. Seventh ACM SIGKDD
+Int. Conf. Knowledge Discovery and Data Mining (SIGKDD 2001),
+2001, pp. 204–213.
+Tao Li received the Ph.D. degree in computer science
+from the University of Rochester, Rochester, NY, in
+2004.
+He is currently an Assistant Professor in the School
+of Computer Science at Florida International Univer-
+sity, Miami. His primary research interests are: data
+mining, machine learning, bioinformatics, and music
+information retrieval.
+Dr. Li is a recipient of NSF Career Award, IBM
+Faculty Award, and IBM SUR (Shared University
+Research) Award.
+Mitsunori Ogihara received the Ph.D. degree in in-
+formation sciences from the Tokyo Institute of Tech-
+nology, Tokyo, Japan, in 1993.
+He is currently Professor and Chair of the Depart-
+ment of Computer Science, University of Rochester,
+Rochester, NY. His primary research interests are
+data mining, computational complexity, and molec-
+ular computation.
