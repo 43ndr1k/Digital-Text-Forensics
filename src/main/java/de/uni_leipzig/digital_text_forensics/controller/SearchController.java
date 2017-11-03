@@ -2,10 +2,17 @@ package de.uni_leipzig.digital_text_forensics.controller;
 
 import static de.uni_leipzig.digital_text_forensics.domain.Pager.injectPaginationLinks;
 
+import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResultPage;
+import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
+
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+
+import org.apache.lucene.document.Document;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.TopDocs;
 import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Controller;
@@ -43,21 +50,22 @@ public class SearchController {
 		searchResultPage.setPage(lastPageNumberAndContent.getLeft());
 		injectPaginationLinks(searchResultPage);*/
 
-		List<SearchResult> searchResultList = new LinkedList<>();
-		for (int i = 0; i < 15; i++) {
-			SearchResult searchResult = new SearchResult();
-			searchResult.setSnippet("Snippel" + i);
-			searchResult.setTitle("Titel" + i);
-			searchResult.setUrl(new Link("Link" + i));
-
-			searchResultList.add(searchResult);
-		}
-
-		searchResultPage.setTotalResults(15);
+		List<Document> searchDocList;
+		List<SearchResult> searchResultList;
+		try {
+		  searchDocList = new Searcher().search(query);
+		  searchResultList = new Pager().mapDocumentListToSearchResults(searchDocList);
+		  System.out.println("");
+        } catch (IOException | ParseException e) {
+        // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
+							
+/*		searchResultPage.setTotalResults(15);
 		searchResultPage.setResultsOnPage(searchResultList);
 		searchResultPage.setPage(currentPage);
 
-		injectPaginationLinks(searchResultPage);
+		injectPaginationLinks(searchResultPage);*/
 
 		modelAndView.addObject("searchResultPage", searchResultPage);
 

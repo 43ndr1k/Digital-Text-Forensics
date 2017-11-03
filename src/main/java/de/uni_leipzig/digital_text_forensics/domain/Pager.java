@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.springframework.hateoas.Link;
@@ -19,7 +20,7 @@ import org.springframework.hateoas.mvc.ControllerLinkBuilder;
  */
 public class Pager {
 
-	private static final int RESULTS_PER_PAGE = 10;
+	public static final int RESULTS_PER_PAGE = 10;
 
 	public static Pair<Integer, List<ScoreDoc>> determineLastPageNumberAndContent(TopDocs topDocs) {
 		if (topDocs == null || topDocs.scoreDocs == null || topDocs.scoreDocs.length == 0) {
@@ -41,11 +42,18 @@ public class Pager {
 				.linkTo(ControllerLinkBuilder.methodOn(SearchController.class).searchPage(query, page));
 	}
 
-	public List<SearchResult> mapScoreDocsToSearchResults(List<ScoreDoc> scoreDocs) {
-		return scoreDocs.stream()
+	public List<SearchResult> mapDocumentListToSearchResults(List<Document> docs) {
+	  List<SearchResult> list = new ArrayList<>();
+	  for (Document d : docs) {
+	    	    SearchResult s = new SearchResult();
+	    	    s.setUrl(new Link(d.get("path")));
+	    	    list.add(s);
+	  }
+		/*return docs.stream()
 				//.map(topDoc -> Pair.of(searcherComponent.doc(topDoc.doc), topDoc.doc))
 				.map(SearchResult::new)
-				.collect(Collectors.toList());
+				.collect(Collectors.toList());*/
+	  return list;
 	}
 
 	public static void injectPaginationLinks(SearchResultPage searchResultPage) {
