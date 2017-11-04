@@ -20,7 +20,7 @@ public class Searcher {
 
 	public final String indexLocation = "LuceneIndex";
 	private StandardAnalyzer analyzer = new StandardAnalyzer();
-	private final int RESULT_COUNT = 20;
+	private final int RESULT_COUNT = 30;
 
 	public List<Document> search(String query) throws IOException, ParseException {
 		IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths

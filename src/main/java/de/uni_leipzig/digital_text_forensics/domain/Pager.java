@@ -7,34 +7,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.LinkBuilder;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
-/**
- * @Autor Maik Fröbe
- */
 public class Pager {
 
 	public static final int RESULTS_PER_PAGE = 10;
 
-	public static Pair<Integer, List<ScoreDoc>> determineLastPageNumberAndContent(TopDocs topDocs) {
-		if (topDocs == null || topDocs.scoreDocs == null || topDocs.scoreDocs.length == 0) {
-			return Pair.of(1, new ArrayList<>());
+	public List<Document> split(List<Document> searchDocList, int currentPage) {
+		if (searchDocList == null || searchDocList.size() == 0) {
+			return new ArrayList<>();
 		}
 
-		final int page = ((topDocs.scoreDocs.length - 1) / RESULTS_PER_PAGE);
-		List<ScoreDoc> ret = new ArrayList<>();
+		int from = (currentPage * RESULTS_PER_PAGE) - RESULTS_PER_PAGE;
+		int to = currentPage * RESULTS_PER_PAGE;
+		List<Document> ret = searchDocList.subList(from, to);
 
-		for (int i = page * RESULTS_PER_PAGE; i < topDocs.scoreDocs.length; i++) {
-			ret.add(topDocs.scoreDocs[i]);
-		}
-
-		return Pair.of(page + 1, ret);
+		return ret;
 	}
 
 	private static LinkBuilder searchLink(String query, Integer page) {
@@ -43,21 +34,24 @@ public class Pager {
 	}
 
 	public List<SearchResult> mapDocumentListToSearchResults(List<Document> docs) {
-	  List<SearchResult> list = new ArrayList<>();
-	  for (Document d : docs) {
-	    	    SearchResult s = new SearchResult();
-	    	    //s.setTitle("Work in progress...");  //TODO: Titel einfuegen
-	    	    s.setTitle(d.get("filename"));
-	    	    s.setUrl(new Link(d.get("path")));
-	    	    list.add(s);
-	  }
+		List<SearchResult> list = new ArrayList<>();
+		for (Document d : docs) {
+			SearchResult s = new SearchResult();
+			//s.setTitle("Work in progress...");  //TODO: Titel einfuegen
+			s.setTitle(d.get("filename"));
+			s.setUrl(new Link(d.get("path")));
+			list.add(s);
+		}
 		/*return docs.stream()
 				//.map(topDoc -> Pair.of(searcherComponent.doc(topDoc.doc), topDoc.doc))
 				.map(SearchResult::new)
 				.collect(Collectors.toList());*/
-	  return list;
+		return list;
 	}
 
+	/**
+	 * @Autor Maik Fröbe
+	 */
 	public static void injectPaginationLinks(SearchResultPage searchResultPage) {
 		if (searchResultPage == null) {
 			return;

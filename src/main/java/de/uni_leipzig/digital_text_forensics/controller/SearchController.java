@@ -56,8 +56,9 @@ public class SearchController {
 		List<SearchResult> searchResultList;
 		try {
 			searchDocList = searcher.search(query);
-			searchResultList = pager.mapDocumentListToSearchResults(searchDocList);
-			searchResultPage.setTotalResults(searchResultList.size());
+			List<Document> split = pager.split(searchDocList, currentPage);
+			searchResultPage.setTotalResults(searchDocList.size());
+			searchResultList = pager.mapDocumentListToSearchResults(split);
 			searchResultPage.setResultsOnPage(searchResultList);
 			searchResultPage.setPage(currentPage);
 			injectPaginationLinks(searchResultPage);
