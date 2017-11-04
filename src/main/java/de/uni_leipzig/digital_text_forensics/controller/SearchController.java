@@ -6,15 +6,11 @@ import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResultPage;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
-
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.search.TopDocs;
-import org.springframework.hateoas.Link;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -23,6 +19,12 @@ import org.springframework.web.servlet.ModelAndView;
 
 @Controller
 public class SearchController {
+
+	@Autowired
+	Searcher searcher;
+
+	@Autowired
+	Pager pager;
 
 	@RequestMapping(method = RequestMethod.GET, path = "/")
 	public ModelAndView searchPage(
@@ -42,7 +44,7 @@ public class SearchController {
 		searchResultPage.setQuery(query);
 
 		//Suchen
-		TopDocs queryTopDocs;// = searcherComponent.search(originalQuery, topNForSearchResult);
+		//TopDocs queryTopDocs;// = searcherComponent.search(originalQuery, topNForSearchResult);
 
 /*		Pair<Integer, List<ScoreDoc>> lastPageNumberAndContent = determineLastPageNumberAndContent(queryTopDocs);
 		searchResultPage.setTotalResults(queryTopDocs.totalHits);
@@ -53,17 +55,17 @@ public class SearchController {
 		List<Document> searchDocList;
 		List<SearchResult> searchResultList;
 		try {
-		  searchDocList = new Searcher().search(query);
-		  searchResultList = new Pager().mapDocumentListToSearchResults(searchDocList);
-		  searchResultPage.setTotalResults(searchResultList.size());
-		  searchResultPage.setResultsOnPage(searchResultList);
-		  searchResultPage.setPage(currentPage);
-		  injectPaginationLinks(searchResultPage);
-		  System.out.println("");
-        } catch (IOException | ParseException e) {
-        // TODO Auto-generated catch block
-          e.printStackTrace();
-        }
+			searchDocList = searcher.search(query);
+			searchResultList = pager.mapDocumentListToSearchResults(searchDocList);
+			searchResultPage.setTotalResults(searchResultList.size());
+			searchResultPage.setResultsOnPage(searchResultList);
+			searchResultPage.setPage(currentPage);
+			injectPaginationLinks(searchResultPage);
+		}
+		catch (IOException | ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 							
 /*		searchResultPage.setTotalResults(15);
 		searchResultPage.setResultsOnPage(searchResultList);
