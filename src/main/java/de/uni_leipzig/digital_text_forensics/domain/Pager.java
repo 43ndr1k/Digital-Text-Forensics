@@ -34,19 +34,11 @@ public class Pager {
 	}
 
 	public List<SearchResult> mapDocumentListToSearchResults(List<Document> docs) {
-		List<SearchResult> list = new ArrayList<>();
-		for (Document d : docs) {
-			SearchResult s = new SearchResult();
-			//s.setTitle("Work in progress...");  //TODO: Titel einfuegen
-			s.setTitle(d.get("filename"));
-			s.setUrl(new Link(d.get("path")));
-			list.add(s);
-		}
-		/*return docs.stream()
-				//.map(topDoc -> Pair.of(searcherComponent.doc(topDoc.doc), topDoc.doc))
-				.map(SearchResult::new)
-				.collect(Collectors.toList());*/
-		return list;
+
+		return docs.stream()
+				.map(document -> new SearchResult(document.get("filename"), "sinppel", new Link(document.get("path"))))
+				.collect(Collectors.toList());
+
 	}
 
 	/**

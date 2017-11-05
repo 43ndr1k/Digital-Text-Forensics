@@ -25,10 +25,13 @@ public class SearchResult {
 		setUrl(createTargetLink(result.getRight()));
 	}
 
-	public SearchResult() {
+	public SearchResult(String title, String snippet, Link url) {
+		this.title = title;
+		this.snippet = snippet;
+		this.url = url;
 	}
 
-	public <R> SearchResult(R r) {
+	public SearchResult() {
 	}
 
 	public String getTitle() {
