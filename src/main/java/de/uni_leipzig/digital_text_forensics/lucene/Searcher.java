@@ -72,9 +72,10 @@ public class Searcher {
 
 	}
 
-	public String getDocument(int docId) {
+	public SearchResult getDocument(int docId) {
 		try {
-			return searcher.doc(docId).get("path");
+			return new SearchResult(docId, searcher.doc(docId).get("filename"),
+					"snippel", new Link(searcher.doc(docId).get("path")));
 		}
 		catch (IOException e) {
 			e.printStackTrace();

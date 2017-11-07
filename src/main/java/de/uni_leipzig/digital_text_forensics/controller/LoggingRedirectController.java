@@ -1,5 +1,6 @@
 package de.uni_leipzig.digital_text_forensics.controller;
 
+import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -18,7 +19,8 @@ public class LoggingRedirectController {
 	public RedirectView redirect(
 			@RequestParam
 					Integer docId) {
+		SearchResult searchResult = searcher.getDocument(docId);
 
-		return new RedirectView(searcher.getDocument(docId));
+		return new RedirectView(searchResult.getDocUrl().getHref());
 	}
 }
