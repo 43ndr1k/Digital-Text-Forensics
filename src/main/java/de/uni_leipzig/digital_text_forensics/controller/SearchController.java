@@ -8,7 +8,6 @@ import de.uni_leipzig.digital_text_forensics.dto.SearchResultPage;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
 import java.io.IOException;
 import java.util.List;
-import org.apache.lucene.document.Document;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -52,14 +51,12 @@ public class SearchController {
 		searchResultPage.setPage(lastPageNumberAndContent.getLeft());
 		injectPaginationLinks(searchResultPage);*/
 
-		List<Document> searchDocList;
 		List<SearchResult> searchResultList;
 		try {
-			searchDocList = searcher.search(query);
-			List<Document> split = pager.split(searchDocList, currentPage);
-			searchResultPage.setTotalResults(searchDocList.size());
-			searchResultList = pager.mapDocumentListToSearchResults(split);
-			searchResultPage.setResultsOnPage(searchResultList);
+			searchResultList = searcher.search(query);
+			List<SearchResult> split = pager.split(searchResultList, currentPage);
+			searchResultPage.setTotalResults(searchResultList.size());
+			searchResultPage.setResultsOnPage(split);
 			searchResultPage.setPage(currentPage);
 			injectPaginationLinks(searchResultPage);
 		}

@@ -1,37 +1,39 @@
 package de.uni_leipzig.digital_text_forensics.dto;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.lucene.document.Document;
+import de.uni_leipzig.digital_text_forensics.controller.LoggingRedirectController;
 import org.springframework.hateoas.Link;
+import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
 public class SearchResult {
-	public static final String INDEX_FIELD_TITLE = "title";
 
-	public static final String INDEX_FIELD_CONTENT = "content";
-
-	public static final String INDEX_FIELD_LINK = "link";
+	private Integer docId;
 
 	private String title;
 
 	private String snippet;
 
-	private Link url;
+	private Link webUrl;
 
-	// TODO: 26.10.17
-	// url anpassen
-	public SearchResult(Pair<Document, Integer> result) {
-		setTitle(result.getLeft().get(INDEX_FIELD_TITLE));
-		setSnippet(result.getLeft().get(INDEX_FIELD_CONTENT));
-		setUrl(createTargetLink(result.getRight()));
-	}
+	private Link docUrl;
 
-	public SearchResult(String title, String snippet, Link url) {
+	public SearchResult(Integer docId, String title, String snippet, Link docUrl) {
+		this.docId = docId;
 		this.title = title;
 		this.snippet = snippet;
-		this.url = url;
+		this.webUrl = createLink(docId);
+		this.docUrl = docUrl;
+
 	}
 
 	public SearchResult() {
+	}
+
+	public int getDocId() {
+		return docId;
+	}
+
+	public void setDocId(Integer docId) {
+		this.docId = docId;
 	}
 
 	public String getTitle() {
@@ -50,17 +52,26 @@ public class SearchResult {
 		this.snippet = snippet;
 	}
 
-	public Link getUrl() {
-		return url;
+	public Link getWebUrl() {
+		return webUrl;
 	}
 
-	public void setUrl(Link url) {
-		this.url = url;
+	public void setWebUrl(Link webUrl) {
+		this.webUrl = webUrl;
 	}
 
-	private static Link createTargetLink(Integer docID) {
-		return null;//ControllerLinkBuilder.linkTo(
-		//ControllerLinkBuilder.methodOn(RedirectController.class).redirect(docID))
-		//.withRel("targetUrl");
+	public Link getDocUrl() {
+		return docUrl;
+	}
+
+	public void setDocUrl(Link docUrl) {
+		this.docUrl = docUrl;
+	}
+
+	private static Link createLink(Integer docID) {
+		return
+				ControllerLinkBuilder.linkTo(
+						ControllerLinkBuilder.methodOn(LoggingRedirectController.class).redirect(docID))
+						.withRel("targetUrl");
 	}
 }
