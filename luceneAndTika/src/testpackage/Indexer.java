@@ -48,39 +48,30 @@ public class Indexer {
    private Document getDocument(File file, int id) throws IOException {
       Document document = new Document();
 
-
       
 		BodyContentHandler handler = new BodyContentHandler();
 		Metadata metadata = new Metadata();
-		FileInputStream inputstream = new FileInputStream(new File(file.toString()));
+		FileInputStream inputstream = new FileInputStream(new File(
+				file.toString()));
 		ParseContext pcontext = new ParseContext();
 
-		PDFParser pdfparser = new PDFParser(); 
+		PDFParser pdfparser = new PDFParser();
 		try {
-			pdfparser.parse(inputstream, handler, metadata,pcontext);
+			pdfparser.parse(inputstream, handler, metadata, pcontext);
 		} catch (SAXException e) {
 			e.printStackTrace();
 		} catch (TikaException e) {
 			e.printStackTrace();
 		}
 
-		String title = metadata.get("title");
-		String author = metadata.get("Author");
-		String created = metadata.get("created");
-      
-	      
-	      document.add(new StringField("id", String.valueOf(id) , Field.Store.YES));
-	      document.add(new TextField("title", title , Field.Store.YES));
-	      document.add(new TextField("author", author , Field.Store.YES));
-	      document.add(new TextField("date", created , Field.Store.YES));
-	      document.add(new TextField("text", handler.toString() , Field.Store.NO));
-	      
-	      document.add(new TextField(LuceneConstants.FILE_NAME,
-	    	         file.getName(), Field.Store.YES));
-	      document.add(new TextField(LuceneConstants.FILE_PATH,
-	         file.getCanonicalPath(),Field.Store.YES));
-	      
-	      // Not analyzed option?
+
+		document.add(new TextField("text", handler.toString(), Field.Store.YES));
+
+		document.add(new TextField(LuceneConstants.FILE_NAME, file.getName(),
+				Field.Store.YES));
+		document.add(new TextField(LuceneConstants.FILE_PATH, file
+				.getCanonicalPath(), Field.Store.YES));
+
 	      
       return document;
       

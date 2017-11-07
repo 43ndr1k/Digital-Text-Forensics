@@ -4,9 +4,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Writer;
-
 import java.io.FileWriter;
 
+import org.apache.tika.parser.microsoft.OfficeParser;
 import org.apache.tika.parser.pdf.PDFParser;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.parser.ParseContext;
@@ -22,11 +22,15 @@ public class TestTikaClass {
 	
 	
 	public static void main(String[] args) {
-		String filename = "/home/tobias/Downloads/authorship-material-stathis/kuo-2010.pdf";
+		//String filename = "/home/tobias/Downloads/authorship-material-stathis/kuo-2010.pdf";
+		String filename = "/home/tobias/Downloads/authorship-material-stathis/mikros-2015.doc";
+
 		try {
-			//testTikaMetaContent(filename);
-			checkOurFiles("/home/tobias/Downloads/authorship-material-stathis");
+			testTikaMetaContent(filename);
+			//checkOurFiles("/home/tobias/Downloads/authorship-material-stathis");
 		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (TikaException e) {
 			e.printStackTrace();
 		}
 	}
@@ -81,22 +85,27 @@ public class TestTikaClass {
 	      
 	}
 	
+	@SuppressWarnings("deprecation")
 	private static void testTikaMetaContent(String filename) throws IOException,TikaException{
 	      BodyContentHandler handler = new BodyContentHandler();
 	      Metadata metadata = new Metadata();
 	      FileInputStream inputstream = new FileInputStream(new File(filename));
 	      ParseContext pcontext = new ParseContext();
 	      
-	      PDFParser pdfparser = new PDFParser(); 
+	      //PDFParser pdfparser = new PDFParser(); 
+	      
+	      OfficeParser officeParser = new OfficeParser();
+	      
 	      try {
-			pdfparser.parse(inputstream, handler, metadata,pcontext);
+			// pdfparser.parse(inputstream, handler, metadata,pcontext);
+			officeParser.parse(inputstream, handler, metadata);
 	      } catch (SAXException e) {
 			e.printStackTrace();
 	      }
 	      
 	      //getting the content of the document
 
-	      //System.out.println("Contents of the PDF :" + handler.toString());
+	      System.out.println("Contents of the PDF :" + handler.toString());
 	      
 	      // eher nicht.
 	      //String pdftext = handler.toString();
@@ -114,7 +123,7 @@ public class TestTikaClass {
 	      System.out.println("created"+ " : " + metadata.get("created"));
 	      System.out.println("title"+ " : " + metadata.get("title"));
 
-//	      
+	      
 //	      for(String name : metadataNames) {
 //	         System.out.println(name+ " : " + metadata.get(name));
 //	      }

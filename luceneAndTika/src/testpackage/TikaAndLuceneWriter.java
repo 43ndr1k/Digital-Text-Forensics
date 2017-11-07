@@ -91,11 +91,11 @@ public class TikaAndLuceneWriter {
     private static Document createDocument(Integer id, String title, String author, String date, String text)
     {
         Document document = new Document();
-        document.add(new StringField("id", id.toString() , Field.Store.YES));
-        document.add(new TextField("title", title , Field.Store.YES));
-        document.add(new TextField("author", author , Field.Store.YES));
-        document.add(new TextField("date", date , Field.Store.YES));
-        document.add(new TextField("text", date , Field.Store.NO));
+//        document.add(new StringField("id", id.toString() , Field.Store.YES));
+//        document.add(new TextField("title", title , Field.Store.YES));
+//        document.add(new TextField("author", author , Field.Store.YES));
+//        document.add(new TextField("date", date , Field.Store.YES));
+        document.add(new TextField("text", date , Field.Store.YES));
 
         return document;
     }
