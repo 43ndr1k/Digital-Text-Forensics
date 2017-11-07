@@ -46,16 +46,17 @@ public class Searcher {
 			d.add(searcher.doc(docId));
 		}*/
 
-		return mapDocumentListToSearchResults(Arrays.asList(hits));
+		return mapDocumentListToSearchResults(Arrays.asList(hits), query);
 	}
 
-	private List<SearchResult> mapDocumentListToSearchResults(List<ScoreDoc> docs) {
+	private List<SearchResult> mapDocumentListToSearchResults(List<ScoreDoc> docs, String query) {
 
 		return docs.stream().map(topDoc -> {
 					SearchResult searchResult = null;
 
 					try {
-						searchResult = new SearchResult(topDoc.doc, searcher.doc(topDoc.doc).get("filename"),
+						searchResult = new SearchResult(query, new Long(topDoc.doc),
+								searcher.doc(topDoc.doc).get("filename"),
 								"snippel", new Link(searcher.doc(topDoc.doc).get("path")));
 					}
 					catch (IOException e) {
@@ -72,10 +73,10 @@ public class Searcher {
 
 	}
 
-	public SearchResult getDocument(int docId) {
+	public SearchResult getDocument(Long docId, String query) {
 		try {
-			return new SearchResult(docId, searcher.doc(docId).get("filename"),
-					"snippel", new Link(searcher.doc(docId).get("path")));
+			return new SearchResult(query, docId, searcher.doc(docId.intValue()).get("filename"),
+					"snippel", new Link(searcher.doc(docId.intValue()).get("path")));
 		}
 		catch (IOException e) {
 			e.printStackTrace();

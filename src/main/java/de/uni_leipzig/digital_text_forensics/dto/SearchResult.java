@@ -6,7 +6,7 @@ import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
 public class SearchResult {
 
-	private Integer docId;
+	private Long docId;
 
 	private String title;
 
@@ -16,11 +16,14 @@ public class SearchResult {
 
 	private Link docUrl;
 
-	public SearchResult(Integer docId, String title, String snippet, Link docUrl) {
+	private String query;
+
+	public SearchResult(String query, Long docId, String title, String snippet, Link docUrl) {
+		this.query = query;
 		this.docId = docId;
 		this.title = title;
 		this.snippet = snippet;
-		this.webUrl = createLink(docId);
+		this.webUrl = createLink(docId, query);
 		this.docUrl = docUrl;
 
 	}
@@ -28,11 +31,11 @@ public class SearchResult {
 	public SearchResult() {
 	}
 
-	public int getDocId() {
+	public Long getDocId() {
 		return docId;
 	}
 
-	public void setDocId(Integer docId) {
+	public void setDocId(Long docId) {
 		this.docId = docId;
 	}
 
@@ -68,10 +71,18 @@ public class SearchResult {
 		this.docUrl = docUrl;
 	}
 
-	private static Link createLink(Integer docID) {
+	public String getQuery() {
+		return query;
+	}
+
+	public void setQuery(String query) {
+		this.query = query;
+	}
+
+	private static Link createLink(Long docID, String query) {
 		return
 				ControllerLinkBuilder.linkTo(
-						ControllerLinkBuilder.methodOn(LoggingRedirectController.class).redirect(docID))
+						ControllerLinkBuilder.methodOn(LoggingRedirectController.class).redirect(docID, query))
 						.withRel("targetUrl");
 	}
 }
