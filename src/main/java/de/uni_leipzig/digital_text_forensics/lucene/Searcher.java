@@ -1,14 +1,12 @@
 package de.uni_leipzig.digital_text_forensics.lucene;
 
 import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -87,48 +85,51 @@ public class Searcher {
 	public SearchResult getDocument(Long docId, String query) {
 		try {
 			return new SearchResult(query, docId, searcher.doc(docId.intValue()).get("filename"),
-					"snippel", new Link(searcher.doc(docId.intValue()).get("path")));
+					getSnippet(docId.intValue(), query), new Link(searcher.doc(docId.intValue()).get("path")));
 		}
 		catch (IOException e) {
 			e.printStackTrace();
 		}
 		return null;
 	}
-	
+
 	private String getSnippet(int docId, String queryString) {
-	    
-	    Query query = null;
-        try {
-          query = new QueryParser("contents", analyzer).parse(queryString);
-        } catch (ParseException e1) {
-          // TODO Auto-generated catch block
-          e1.printStackTrace();
-        }
-	    SimpleHTMLFormatter htmlFormatter = new SimpleHTMLFormatter();
-	    QueryScorer queryScorer = new QueryScorer(query, "contents");
-	    Highlighter highlighter = new Highlighter(htmlFormatter, queryScorer);
-	    
-	    File indexFile = new File(indexLocation);
-	    Directory directory;
-	    IndexReader indexReader;
-	    String snippet = null;
-	    try {
-	      directory = FSDirectory.open(indexFile.toPath());
-	      indexReader = DirectoryReader.open(directory);
-	      Document document = searcher.doc(docId);// getDocument(scoreDoc.doc);
-	      String content = document.get("contents");
-	      TokenStream tokenStream = TokenSources.getAnyTokenStream(indexReader,
-	              docId, "contents", document, new StandardAnalyzer());
-	      snippet = highlighter.getBestFragment(tokenStream, content);
-	      //System.out.println(fragment);
-	    } catch (IOException e) {
-	      // TODO Auto-generated catch block
-	      e.printStackTrace();
-	    } catch (InvalidTokenOffsetsException e) {
-	      // TODO Auto-generated catch block
-	      e.printStackTrace();
-	    }
-	    return snippet;
+
+		Query query = null;
+		try {
+			query = new QueryParser("contents", analyzer).parse(queryString);
+		}
+		catch (ParseException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		SimpleHTMLFormatter htmlFormatter = new SimpleHTMLFormatter();
+		QueryScorer queryScorer = new QueryScorer(query, "contents");
+		Highlighter highlighter = new Highlighter(htmlFormatter, queryScorer);
+
+		File indexFile = new File(indexLocation);
+		Directory directory;
+		IndexReader indexReader;
+		String snippet = null;
+		try {
+			directory = FSDirectory.open(indexFile.toPath());
+			indexReader = DirectoryReader.open(directory);
+			Document document = searcher.doc(docId);// getDocument(scoreDoc.doc);
+			String content = document.get("contents");
+			TokenStream tokenStream = TokenSources.getAnyTokenStream(indexReader,
+					docId, "contents", document, new StandardAnalyzer());
+			snippet = highlighter.getBestFragment(tokenStream, content);
+			//System.out.println(fragment);
+		}
+		catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch (InvalidTokenOffsetsException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return snippet;
 	}
 
 }
