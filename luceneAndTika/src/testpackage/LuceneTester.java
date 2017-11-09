@@ -10,7 +10,7 @@ import org.apache.lucene.queryparser.classic.ParseException;
 public class LuceneTester {
 	
    String indexDir = "/home/tobias/Dokumente/test_index_dir";
-   String dataDir = "/home/tobias/Downloads/authorship-material-stathis";
+   String dataDir = "/home/tobias/Dokumente/authorship-material-stathis/";
    Indexer indexer;
    Searcher searcher;
 
@@ -19,12 +19,14 @@ public class LuceneTester {
       try {
          tester = new LuceneTester();
          //tester.createIndex();
-         tester.search("Tobias");
-      } catch (IOException e) {
+         tester.search("Computational");
+      } 
+      catch (IOException e) {
          e.printStackTrace();
-      } catch (ParseException e) {
+      } 
+      catch (ParseException e) {
 		e.printStackTrace();
-	} 
+      } 
    }
 
    private void createIndex() throws IOException {
@@ -46,8 +48,9 @@ public class LuceneTester {
 	         " documents found.");
 	      for(ScoreDoc scoreDoc : hits.scoreDocs) {
 	         Document doc = searcher.getDocument(scoreDoc);
-	            System.out.println("File: "
-	            + doc.get(LuceneConstants.FILE_PATH));
+//	            System.out.println("File: "
+//	            + doc.get(LuceneConstants.FILE_PATH));
+	            System.out.println(doc.get(LuceneConstants.TITLE));
 	      }
 	      searcher.close();
 	   }

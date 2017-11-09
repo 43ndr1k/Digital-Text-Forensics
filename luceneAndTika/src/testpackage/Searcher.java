@@ -32,7 +32,7 @@ public class Searcher {
       IndexReader reader = DirectoryReader.open(indexDirectory);
       indexSearcher = new IndexSearcher(reader);
       queryParser = new QueryParser(
-         "text",
+         "title",
          new StandardAnalyzer());
 
       indexSearcher = new IndexSearcher(reader);

@@ -9,7 +9,10 @@ import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.text.PDFTextStripper;
 
+
 // https://pdfbox.apache.org/1.8/cookbook/workingwithmetadata.html  
+
+
 
 
 public class TestPdfboxClass 
@@ -27,6 +30,9 @@ public class TestPdfboxClass
 		getMetaData(doc);     
 		//getText(doc);
 	}
+	
+	
+	
 
 	/* Print Pdf-content (no encoding etc.)
 	 * 
