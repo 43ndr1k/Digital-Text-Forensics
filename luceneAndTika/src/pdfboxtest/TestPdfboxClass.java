@@ -54,7 +54,7 @@ public class TestPdfboxClass
 
 			int characterNumber = pdftext.length()/8;
 			String pdfbeginning = pdftext.substring(0, characterNumber);
-
+			// besser als attribut.
 			MyNameGetter nameFinder = new MyNameGetter();
 			nameFinder.findName(pdfbeginning);
 		} catch (IOException e) {
