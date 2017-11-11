@@ -1,4 +1,4 @@
-package testpackage;
+package lucenetest;
 // please add docear to dependencies!
 // https://github.com/Docear/PDF-Inspector.git
 

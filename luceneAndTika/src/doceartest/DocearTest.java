@@ -1,10 +1,12 @@
-package testpackage;
+package doceartest;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+
+import lucenetest.PdfFileFilter;
 
 import org.apache.commons.lang.WordUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -31,6 +33,7 @@ public class DocearTest {
 	 */
 	private static String clean_field(String title){
 		String new_title = null;
+		// must consist of reasonable characters & length
 		if(!title.matches("[A-Za-z0-9]+") && title.trim().length() > MIN_TITLE_LENGTH) {
 		    new_title = title;
 		} else {
@@ -39,11 +42,13 @@ public class DocearTest {
 		if (title.length()==0){
 			return NO_TITLE;
 		}
+		// you are welcome to change this
 		for (String word : BLOCK_WORDS) {
 			if (title.contains(word)) {
 				return NO_TITLE;
 			}
 		}
+		// remove special characters like brakets
 		String trimmed_new_title = new_title.replaceAll("[^\\p{L}\\p{Z}]","").trim();
 		if (trimmed_new_title.length()==0){
 			return NO_TITLE;

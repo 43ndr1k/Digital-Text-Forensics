@@ -1,4 +1,4 @@
-package testpackage;
+package lucenetest;
 
 import java.io.IOException;
 

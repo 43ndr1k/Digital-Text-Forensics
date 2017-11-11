@@ -1,6 +1,6 @@
 
 
-package testpackage; // !!! anpassen !!!
+package pdfboxtest; // !!! anpassen !!!
 import java.io.File;
 import java.io.IOException;
 
@@ -19,7 +19,7 @@ public class TestPdfboxClass
 {
 	public static void main( String[] args )
 	{
-		String filename = "/home/tobias/Downloads/authorship-material-stathis/abdaoui-2014.pdf";
+		String filename = "/home/tobias/Dokumente/authorship-material-stathis/obernowacl06.pdf";
 		PDDocument doc = null;
 		File file = new File(filename);
 		try {
@@ -28,7 +28,7 @@ public class TestPdfboxClass
 			e.printStackTrace();
 		}  
 		getMetaData(doc);     
-		//getText(doc);
+		getText(doc);
 	}
 	
 	
@@ -46,7 +46,17 @@ public class TestPdfboxClass
 			e.printStackTrace();
 		}
 		try {
-			System.out.println(stripper.getText(doc));
+
+			stripper.setStartPage(0);
+			stripper.setEndPage(1);
+			String pdftext = stripper.getText(doc);
+
+
+			int characterNumber = pdftext.length()/8;
+			String pdfbeginning = pdftext.substring(0, characterNumber);
+
+			MyNameGetter nameFinder = new MyNameGetter();
+			nameFinder.findName(pdfbeginning);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
