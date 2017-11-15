@@ -4,6 +4,14 @@ import de.uni_leipzig.digital_text_forensics.model.LoggingDocument;
 import de.uni_leipzig.digital_text_forensics.model.Query;
 import de.uni_leipzig.digital_text_forensics.model.UserLog;
 import de.uni_leipzig.digital_text_forensics.service.LoggingDoc.LoggingDocService;
+import de.uni_leipzig.digital_text_forensics.service.UserLogging.UserLoggingService;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -25,6 +33,12 @@ public class Logging {
 
 	@Autowired
 	LoggingDocService loggingDocService;
+
+	@Autowired
+	UserLoggingService userLoggingService;
+
+	DateTimeFormatter formatter =
+			DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SS", Locale.GERMANY);
 
 	@Around("@annotation(org.springframework.web.bind.annotation.RequestMapping) && execution(* *(..))")
 	public Object logExecutionTimeOfRequests(ProceedingJoinPoint thisJointPoint) throws Throwable {
@@ -54,22 +68,42 @@ public class Logging {
 					"This aspect is expected to be woven around redirect methods which return instances of RedirectView.");
 		}
 
+		String clientId = RequestContextHolder.currentRequestAttributes().getSessionId();
+		String comesFrom = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest()
+				.getHeader("referer").trim().toString();
+		String goTo = ((RedirectView) ret).getUrl();
+
 		LOGGER.info(
 				"A user identified by '{}' is redirected due to a call to '{}' with arguments {} to the url '{}'. The user comes from '{}'.",
-				RequestContextHolder.currentRequestAttributes().getSessionId(),
+				clientId,
 				thisJointPoint.getSignature().toString(), thisJointPoint.getArgs(),
-				((RedirectView) ret).getUrl(),
-				((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest()
-						.getHeader("referer"));
+				goTo,
+				comesFrom
+		);
 
-		loggingDocService.updateDocCount(mapArgsToLoggingDoc(thisJointPoint.getArgs()));
+		List<UserLog> userLogList = userLoggingService.findByClientIdOrderByDateDesc(clientId);
+		if (userLogList.size() != 0) {
+			UserLog userLog = null;
+
+			userLog = userLogList.get(0);
+			LocalDateTime startDate = userLog.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+			LocalDateTime endDate = LocalDateTime.now();
+
+			Long time = Duration.between(startDate, endDate).getSeconds();
+			userLog.setTime(time);
+			userLoggingService.updateUserLog(userLog);
+		}
+
+		UserLog userLog = new UserLog(clientId, new Date(), null, comesFrom,
+				goTo);
+		loggingDocService.updateDocCount(mapArgsToLoggingDoc(thisJointPoint.getArgs(), userLog));
 
 		return ret;
 	}
 
-	private LoggingDocument mapArgsToLoggingDoc(Object[] args) {
+	private LoggingDocument mapArgsToLoggingDoc(Object[] args, UserLog userLog) {
 		return new LoggingDocument(new Long(args[0].toString()), args[2].toString(), new Query(args[1].toString()),
-				new UserLog());
+				userLog);
 	}
 
 }

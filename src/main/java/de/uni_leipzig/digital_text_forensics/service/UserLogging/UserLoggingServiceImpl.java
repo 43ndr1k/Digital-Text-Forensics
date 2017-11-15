@@ -1,5 +1,6 @@
 package de.uni_leipzig.digital_text_forensics.service.UserLogging;
 
+import de.uni_leipzig.digital_text_forensics.dao.UserLoggingDao;
 import de.uni_leipzig.digital_text_forensics.model.UserLog;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service;
 public class UserLoggingServiceImpl implements UserLoggingService {
 
 	@Autowired
-	UserLoggingService userLoggingService;
+	UserLoggingDao userLoggingDao;
 
 	private void emptyClientId(String clientId) {
 		if (clientId == null || clientId.equals("")) {
@@ -24,14 +25,14 @@ public class UserLoggingServiceImpl implements UserLoggingService {
 	}
 
 	@Override
-	public List<UserLog> findByClientId(String clientId) {
+	public List<UserLog> findByClientIdOrderByDateDesc(String clientId) {
 		emptyClientId(clientId);
-		return userLoggingService.findByClientId(clientId);
+		return userLoggingDao.findByClientIdOrderByDateDesc(clientId);
 	}
 
 	@Override
-	public UserLog update(UserLog userLog) {
+	public UserLog updateUserLog(UserLog userLog) {
 		emptyUserLog(userLog);
-		return userLoggingService.update(userLog);
+		return userLoggingDao.save(userLog);
 	}
 }

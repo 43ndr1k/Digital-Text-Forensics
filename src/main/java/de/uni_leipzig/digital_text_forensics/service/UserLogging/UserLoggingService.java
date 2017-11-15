@@ -5,7 +5,7 @@ import java.util.List;
 
 public interface UserLoggingService {
 
-	List<UserLog> findByClientId(String clientId);
+	List<UserLog> findByClientIdOrderByDateDesc(String clientId);
 
-	UserLog update(UserLog userLog);
+	UserLog updateUserLog(UserLog userLog);
 }

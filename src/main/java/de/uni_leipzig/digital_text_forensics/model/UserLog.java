@@ -1,12 +1,11 @@
 package de.uni_leipzig.digital_text_forensics.model;
 
-import java.sql.Date;
+import java.util.Date;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import org.springframework.hateoas.Link;
 
 @Entity
 @Table(name = "user_logging")
@@ -18,14 +17,14 @@ public class UserLog {
 	private String clientId;
 	private Date date;
 	private Long time;
-	private Link comesFrom;
-	private Link goTo;
+	private String comesFrom;
+	private String goTo;
 
 	public UserLog() {
 
 	}
 
-	public UserLog(String clientId, Date date, Long time, Link comesFrom, Link goTo) {
+	public UserLog(String clientId, Date date, Long time, String comesFrom, String goTo) {
 		this.clientId = clientId;
 		this.date = date;
 		this.time = time;
@@ -50,7 +49,7 @@ public class UserLog {
 	}
 
 	public Date getDate() {
-		return date;
+		return this.date;
 	}
 
 	public void setDate(Date date) {
@@ -65,19 +64,19 @@ public class UserLog {
 		this.time = time;
 	}
 
-	public Link getComesFrom() {
+	public String getComesFrom() {
 		return comesFrom;
 	}
 
-	public void setComesFrom(Link comesFrom) {
+	public void setComesFrom(String comesFrom) {
 		this.comesFrom = comesFrom;
 	}
 
-	public Link getGoTo() {
+	public String getGoTo() {
 		return goTo;
 	}
 
-	public void setGoTo(Link goTo) {
+	public void setGoTo(String goTo) {
 		this.goTo = goTo;
 	}
 }

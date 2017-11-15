@@ -6,6 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserLoggingDao extends JpaRepository<UserLog, Long> {
 
-	List<UserLog> findByClientId(String clientId);
-
+	List<UserLog> findByClientIdOrderByDateDesc(String clientId);
 }
