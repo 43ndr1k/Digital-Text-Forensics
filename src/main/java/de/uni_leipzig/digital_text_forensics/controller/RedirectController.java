@@ -2,7 +2,7 @@ package de.uni_leipzig.digital_text_forensics.controller;
 
 import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
-import de.uni_leipzig.digital_text_forensics.service.LoggingDocService;
+import de.uni_leipzig.digital_text_forensics.service.LoggingDoc.LoggingDocService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;

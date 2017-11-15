@@ -2,9 +2,8 @@ package de.uni_leipzig.digital_text_forensics.logging;
 
 import de.uni_leipzig.digital_text_forensics.model.LoggingDocument;
 import de.uni_leipzig.digital_text_forensics.model.Query;
-import de.uni_leipzig.digital_text_forensics.service.LoggingDocService;
-import java.util.LinkedList;
-import java.util.List;
+import de.uni_leipzig.digital_text_forensics.model.UserLog;
+import de.uni_leipzig.digital_text_forensics.service.LoggingDoc.LoggingDocService;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -69,11 +68,8 @@ public class Logging {
 	}
 
 	private LoggingDocument mapArgsToLoggingDoc(Object[] args) {
-
-		List<Query> queryList = new LinkedList<>();
-		queryList.add(new Query(args[1].toString()));
-		return new LoggingDocument(new Long(args[0].toString()), args[2].toString(), queryList);
-
+		return new LoggingDocument(new Long(args[0].toString()), args[2].toString(), new Query(args[1].toString()),
+				new UserLog());
 	}
 
 }
