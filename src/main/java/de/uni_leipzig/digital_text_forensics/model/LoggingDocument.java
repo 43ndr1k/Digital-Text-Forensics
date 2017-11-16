@@ -8,6 +8,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
@@ -26,9 +27,11 @@ public class LoggingDocument {
 	private String docTitle;
 
 	@OneToMany(cascade = CascadeType.ALL)
+	@JoinColumn(name = "logging_doc_id")
 	private List<Query> query = new ArrayList<>();
 
 	@OneToMany(cascade = CascadeType.ALL)
+	@JoinColumn(name = "logging_doc_id")
 	private List<UserLog> userLogList = new ArrayList<>();
 
 	private Long clickCount = 0L;
