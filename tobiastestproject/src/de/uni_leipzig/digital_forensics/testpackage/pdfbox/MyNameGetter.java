@@ -9,10 +9,12 @@ import opennlp.tools.util.Span;
 import java.io.FileInputStream;
 import java.io.IOException; 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MyNameGetter {
-	String ner_file = "/home/tobias/Downloads/en-ner-person.bin";
-	String token_file = "/home/tobias/Downloads/en-token.bin";
+	String ner_file = "res/en-ner-person.bin";
+	String token_file = "res/en-token.bin";
 
 	
 	/**
@@ -20,7 +22,8 @@ public class MyNameGetter {
 	 * @param paragraph
 	 * @throws IOException
 	 */
-	public void findName(String paragraph) throws IOException {
+	@SuppressWarnings("null")
+	public List<String> findName(String paragraph) throws IOException {
 		InputStream inputStream = new FileInputStream(ner_file);
 		
 		TokenNameFinderModel model = new TokenNameFinderModel(inputStream);
@@ -28,9 +31,19 @@ public class MyNameGetter {
 		String[] tokens = tokenize(paragraph);
 
 		Span nameSpans[] = nameFinder.find(tokens);
-	      for(Span s: nameSpans) 
-	    	  System.out.println(s.toString()+"  "+tokens[s.getStart()]+ " "+ tokens[s.getStart()+1]);
-
+		 List<String> myNames = new ArrayList<String>();
+		 for(Span s: nameSpans){
+			 try{
+	    	  String temp = tokens[s.getStart()]+ " "+ tokens[s.getStart()+1];
+	    	  myNames.add(temp);
+			 } catch (java.lang.ArrayIndexOutOfBoundsException e) {
+		    	  myNames.add(tokens[s.getStart()]);
+			 }
+	    	  
+	      }
+	      return myNames;
+	      
+	      
 		}
 	/**
 	 * 

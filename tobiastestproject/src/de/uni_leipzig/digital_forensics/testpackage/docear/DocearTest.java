@@ -6,7 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 
-import de.uni_leipzig.digital_forensics.testpackage.lucene.PdfFileFilter;
+import de.uni_leipzig.digital_forensics.testpackage.preprocessing.PdfFileFilter;
 
 import org.apache.commons.lang.WordUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;

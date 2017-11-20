@@ -7,6 +7,8 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.queryparser.classic.ParseException;
 
+import de.uni_leipzig.digital_forensics.testpackage.preprocessing.PdfFileFilter;
+
 public class LuceneTester {
 	
    String indexDir = "/home/tobias/Dokumente/test_index_dir";
@@ -14,21 +16,29 @@ public class LuceneTester {
    Indexer indexer;
    Searcher searcher;
 
+   	/**
+   	 * 
+   	 * @param args
+   	 */
    public static void main(String[] args) {
       LuceneTester tester;
       try {
          tester = new LuceneTester();
-         //tester.createIndex();
-         tester.search("Computational");
+         tester.createIndex();
+         //tester.search("Computational");
       } 
       catch (IOException e) {
          e.printStackTrace();
       } 
-      catch (ParseException e) {
-		e.printStackTrace();
-      } 
+//      catch (ParseException e) {
+//		e.printStackTrace();
+//      } 
    }
 
+   /**
+    * 
+    * @throws IOException
+    */
    private void createIndex() throws IOException {
       indexer = new Indexer(indexDir);
       int numIndexed;
@@ -39,7 +49,12 @@ public class LuceneTester {
       System.out.println(numIndexed+" File indexed, time taken: "
          +(endTime-startTime)+" ms");		
    }
-
+   /**
+    * 
+    * @param searchQuery
+    * @throws IOException
+    * @throws ParseException
+    */
    private void search(String searchQuery) throws IOException, ParseException {
 	      searcher = new Searcher(indexDir);
 	      TopDocs hits = searcher.search(searchQuery);

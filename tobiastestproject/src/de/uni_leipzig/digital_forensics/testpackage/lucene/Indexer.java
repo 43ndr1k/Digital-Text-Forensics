@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.commons.lang.WordUtils;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -33,6 +34,8 @@ import org.xml.sax.SAXException;
 
 import com.google.common.base.Objects;
 
+import de.uni_leipzig.digital_forensics.testpackage.pdfbox.MyNameGetter;
+
 public class Indexer {
 
    private IndexWriter writer;
@@ -45,7 +48,6 @@ public class Indexer {
    public Indexer(String indexDirectoryPath) throws IOException {
 
       FSDirectory dir = FSDirectory.open(Paths.get(indexDirectoryPath));
-
       IndexWriterConfig config = new IndexWriterConfig(new StandardAnalyzer());
       writer = new IndexWriter(dir, config);
    }
@@ -85,8 +87,10 @@ public class Indexer {
 	}
    
 
-	/*
-	 * @argument file
+	/**
+	 * 
+	 * @param file
+	 * @return
 	 */
 	private static String getFieldDocearStyle(File file) {
 		boolean empty = true;
@@ -120,9 +124,40 @@ public class Indexer {
 		return sb.toString();
 	}
 	
-	/*
-	 * @argument file
-	 * @argument id
+	/** @todo currently just one author is returned!
+	 * 
+	 * @param pdftext
+	 */
+	private static String extractAuthors(String pdftext){
+
+
+			int characterNumber = 500;//pdftext.length()/8;
+			String pdfbeginning = pdftext.substring(0, 500);
+			MyNameGetter nameFinder = new MyNameGetter();
+			try {
+				List<String> myNames = nameFinder.findName(pdfbeginning);
+				if (myNames.isEmpty())
+					return "Unknown";
+				else
+					return myNames.get(0);
+//				for (String name :myNames){
+//					System.out.println(name);
+//				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (java.lang.NullPointerException e){
+				return "Unknown";
+			}
+			return "Unknown";
+
+	}
+	
+	/**
+	 * 
+	 * @param file
+	 * @param id
+	 * @return
+	 * @throws IOException
 	 */
    private Document getDocumentTikaDocear(File file, int id) throws IOException {
       Document document = new Document();
@@ -167,12 +202,14 @@ public class Indexer {
       return document;
    }   
 
-   
-	/* could also be one function, see above- but we anyway don't want to have too many packages,
-	 * right?
-	 * @argument file
-	 * @argument id
-	 */
+   /**
+    * could also be one function, see above- but we anyway don't want to have too many packages,
+	* right?
+    * @param file
+    * @param id
+    * @return
+    * @throws IOException
+    */
   private Document getDocumentPdfBoxDocear(File file, int id) throws IOException {
      Document document = new Document();
 
@@ -202,8 +239,16 @@ public class Indexer {
 				.getCanonicalPath(), Field.Store.YES));
 		
 		String author = clean_field(doc.getDocumentInformation().getAuthor());
-		
-		document.add(new TextField(LuceneConstants.AUTHOR, author, Field.Store.YES));
+		if (Objects.equal(author, NO_TITLE) || (author.length()==0)) {
+			// try to extract name with NE
+			String right_author= clean_field(extractAuthors(stripper.getText(doc)));
+			System.out.println(right_author);
+
+			document.add(new TextField(LuceneConstants.AUTHOR, right_author, Field.Store.YES));
+		} else {
+			System.out.println(author);
+			document.add(new TextField(LuceneConstants.AUTHOR, author, Field.Store.YES));
+		}
 		
 		String pdfbox_title = clean_field(doc.getDocumentInformation().getTitle());
 		String title = null;

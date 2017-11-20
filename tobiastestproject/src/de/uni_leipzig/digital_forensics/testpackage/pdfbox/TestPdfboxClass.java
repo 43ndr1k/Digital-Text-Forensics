@@ -29,16 +29,15 @@ public class TestPdfboxClass
 		} catch(Exception e){
 			e.printStackTrace();
 		}  
-		getMetaData(doc);     
+		//getMetaData(doc);     
 		getText(doc);
 	}
 	
 	
-	
 
-	/* Print Pdf-content (no encoding etc.)
-	 * 
-	 * @param  doc
+	/**
+	 * Print Pdf-content (no encoding etc.)
+	 * @param doc
 	 */
 	private static void getText(PDDocument doc) {
 		PDFTextStripper stripper = null;
@@ -53,7 +52,6 @@ public class TestPdfboxClass
 			stripper.setEndPage(1);
 			String pdftext = stripper.getText(doc);
 
-
 			int characterNumber = pdftext.length()/8;
 			String pdfbeginning = pdftext.substring(0, characterNumber);
 			// besser als attribut.
@@ -64,8 +62,10 @@ public class TestPdfboxClass
 		}
 	}
 
-	/* Load MetaData
-	 * @param  doc
+
+	/**
+	 * Load MetaData
+	 * @param doc
 	 */
 	private static void getMetaData(PDDocument doc) {
 		// metanames?

@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.io.FileWriter;
 
-import de.uni_leipzig.digital_forensics.testpackage.lucene.PdfFileFilter;
+import de.uni_leipzig.digital_forensics.testpackage.preprocessing.PdfFileFilter;
 
 import org.apache.tika.parser.microsoft.OfficeParser;
 import org.apache.tika.parser.pdf.PDFParser;
@@ -44,49 +44,49 @@ public class TestTikaClass {
 		/*
 		 * walks through dir and checks if files have some meta-data
 		 */
-		
-		
-	      File[] files = new File(dataDirPath).listFiles();
-	      PdfFileFilter filter = new PdfFileFilter();
-	      int index = 0;
-	      
-	      for (File file : files) {
-	         if(!file.isDirectory()
-	            && !file.isHidden()
-	            && file.exists()
-	            && file.canRead()
-	            && filter.accept(file)
-	         ){
-	   	      BodyContentHandler handler = new BodyContentHandler();
-		      Metadata metadata = new Metadata();
-		      FileInputStream inputstream = new FileInputStream(new File(file.toString()));
-		      ParseContext pcontext = new ParseContext();
-		      PDFParser pdfparser = new PDFParser(); 
-		      // besser außerhalb.
-		      Writer output = new BufferedWriter(new FileWriter("my_pdf_log.txt", true));
-		      
-		      try {
-				pdfparser.parse(inputstream, handler, metadata,pcontext);
-		      } catch (SAXException e) {
-				//e.printStackTrace();
-				output.append("saxexc\t"+file.toString()+"\n");
-				index++;
-		      } catch (TikaException e) {
-		    	  output.append("tikaexc\t"+file.toString()+"\n");
-				index++;
-				//e.printStackTrace();
-			}
-		      output.close();
-		      
-		      System.out.println("Author"+ " : " + metadata.get("Author"));
-		      System.out.println("created"+ " : " + metadata.get("created"));
-		      System.out.println("title"+ " : " + metadata.get("title"));
 
-	         }
-	         
-	      }
-	      System.out.println(String.valueOf(index)+"files had errors");
-	      
+
+		File[] files = new File(dataDirPath).listFiles();
+		PdfFileFilter filter = new PdfFileFilter();
+		int index = 0;
+
+		for (File file : files) {
+			if(!file.isDirectory()
+					&& !file.isHidden()
+					&& file.exists()
+					&& file.canRead()
+					&& filter.accept(file)
+					){
+				BodyContentHandler handler = new BodyContentHandler();
+				Metadata metadata = new Metadata();
+				FileInputStream inputstream = new FileInputStream(new File(file.toString()));
+				ParseContext pcontext = new ParseContext();
+				PDFParser pdfparser = new PDFParser(); 
+				// besser außerhalb.
+				Writer output = new BufferedWriter(new FileWriter("my_pdf_log.txt", true));
+
+				try {
+					pdfparser.parse(inputstream, handler, metadata,pcontext);
+				} catch (SAXException e) {
+					//e.printStackTrace();
+					output.append("saxexc\t"+file.toString()+"\n");
+					index++;
+				} catch (TikaException e) {
+					output.append("tikaexc\t"+file.toString()+"\n");
+					index++;
+					//e.printStackTrace();
+				}
+				output.close();
+
+				System.out.println("Author"+ " : " + metadata.get("Author"));
+				System.out.println("created"+ " : " + metadata.get("created"));
+				System.out.println("title"+ " : " + metadata.get("title"));
+
+			}
+
+		}
+		System.out.println(String.valueOf(index)+"files had errors");
+
 	}
 	
 	
@@ -148,16 +148,16 @@ public class TestTikaClass {
 //	      LanguageIdentifier object = new LanguageIdentifier(handler.toString());
 //	      System.out.println("Language name :" + object.getLanguage());
 //	      
-//	      String[] metadataNames = metadata.names();
+	      String[] metadataNames = metadata.names();
 //	      
 //	      System.out.println("Author"+ " : " + metadata.get("Author"));
 //	      System.out.println("created"+ " : " + metadata.get("created"));
 //	      System.out.println("title"+ " : " + metadata.get("title"));
 
 	      
-//	      for(String name : metadataNames) {
-//	         System.out.println(name+ " : " + metadata.get(name));
-//	      }
+	      for(String name : metadataNames) {
+	         System.out.println(name+ " : " + metadata.get(name));
+	      }
 	   }
 	      
 	}
