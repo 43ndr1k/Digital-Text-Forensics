@@ -23,6 +23,12 @@ import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
 import org.apache.lucene.search.highlight.QueryScorer;
 import org.apache.lucene.search.highlight.SimpleHTMLFormatter;
 import org.apache.lucene.search.highlight.TokenSources;
+import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
+import org.apache.lucene.search.vectorhighlight.FieldQuery;
+import org.apache.lucene.search.vectorhighlight.FragListBuilder;
+import org.apache.lucene.search.vectorhighlight.FragmentsBuilder;
+import org.apache.lucene.search.vectorhighlight.SimpleFragListBuilder;
+import org.apache.lucene.search.vectorhighlight.SimpleFragmentsBuilder;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.hateoas.Link;
@@ -36,6 +42,8 @@ public class Searcher {
 	private final int RESULT_COUNT = 30;
 
 	private IndexSearcher searcher = null;
+    public static final String[] PRE_TAGS = new String[]{""};
+    public static final String[] POST_TAGS = new String[]{""};
 
 	public List<SearchResult> search(String query) throws IOException, ParseException {
 		IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths
@@ -66,7 +74,7 @@ public class Searcher {
 					try {
 						searchResult = new SearchResult(query, new Long(topDoc.doc),
 								searcher.doc(topDoc.doc).get("filename"),
-								getSnippet(topDoc.doc, query), new Link(searcher.doc(topDoc.doc).get("path")));
+								getSnippet2(topDoc.doc, query), new Link(searcher.doc(topDoc.doc).get("path")));
 					}
 					catch (IOException e) {
 						e.printStackTrace();
@@ -95,6 +103,8 @@ public class Searcher {
 
 	private String getSnippet(int docId, String queryString) {
 
+	    long startTime, stopTime;//TEST
+	    startTime = System.currentTimeMillis();//TEST
 		Query query = null;
 		try {
 			query = new QueryParser("contents", analyzer).parse(queryString);
@@ -129,7 +139,42 @@ public class Searcher {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		stopTime = System.currentTimeMillis(); //TEST
+		System.out.println(stopTime-startTime);//TEST
 		return snippet;
 	}
+	
+	private String getSnippet2(int docId, String queryString) { 
+	  
+	  long startTime, stopTime;//TEST
+	  startTime = System.currentTimeMillis();//TEST
+	  Query query = null;
+      try {
+          query = new QueryParser("contents", analyzer).parse(queryString);
+      }
+      catch (ParseException e1) {
+          // TODO Auto-generated catch block
+          e1.printStackTrace();
+      }
+	  FastVectorHighlighter highlighter = makeHighlighter();//new FastVectorHighlighter();
+      FieldQuery fieldQuery = highlighter.getFieldQuery(query);
+      
+      String snippet = null;
+      try {
+        snippet = highlighter.getBestFragment(fieldQuery, searcher.getIndexReader(), docId, "contents", 10000);
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+      stopTime = System.currentTimeMillis(); //TEST
+      System.out.println(stopTime-startTime);//TEST      
+	  return snippet;
+	  }
+	
+    private FastVectorHighlighter makeHighlighter() {
+      FragListBuilder fragListBuilder = new SimpleFragListBuilder(200);
+      FragmentsBuilder fragmentBuilder = new SimpleFragmentsBuilder(PRE_TAGS, POST_TAGS);
+      return new FastVectorHighlighter(true, true, fragListBuilder, fragmentBuilder);
+  }
 
 }
