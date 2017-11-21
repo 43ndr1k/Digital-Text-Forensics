@@ -1,6 +1,6 @@
 package de.uni_leipzig.digital_text_forensics.dto;
 
-import de.uni_leipzig.digital_text_forensics.controller.LoggingRedirectController;
+import de.uni_leipzig.digital_text_forensics.controller.RedirectController;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
@@ -23,7 +23,7 @@ public class SearchResult {
 		this.docId = docId;
 		this.title = title;
 		this.snippet = snippet;
-		this.webUrl = createLink(docId, query);
+		this.webUrl = createLink(docId, query, title);
 		this.docUrl = docUrl;
 
 	}
@@ -79,10 +79,10 @@ public class SearchResult {
 		this.query = query;
 	}
 
-	private static Link createLink(Long docID, String query) {
+	private static Link createLink(Long docID, String query, String title) {
 		return
 				ControllerLinkBuilder.linkTo(
-						ControllerLinkBuilder.methodOn(LoggingRedirectController.class).redirect(docID, query))
+						ControllerLinkBuilder.methodOn(RedirectController.class).redirect(docID, query, title))
 						.withRel("targetUrl");
 	}
 }
