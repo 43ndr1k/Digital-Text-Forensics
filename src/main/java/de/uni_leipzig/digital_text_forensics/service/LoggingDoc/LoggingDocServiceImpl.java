@@ -1,4 +1,4 @@
-package de.uni_leipzig.digital_text_forensics.service;
+package de.uni_leipzig.digital_text_forensics.service.LoggingDoc;
 
 import de.uni_leipzig.digital_text_forensics.dao.LoggingDocDao;
 import de.uni_leipzig.digital_text_forensics.model.LoggingDocument;
@@ -78,8 +78,9 @@ public class LoggingDocServiceImpl implements LoggingDocService {
 			Query query = loggingDocument.getQuery().get(0);
 			if (loggingDocument1.getQuery().stream()
 					.noneMatch(query1 -> query1.getQuery().trim().equals((query.getQuery().trim())))) {
-				loggingDocument1.getQuery().add(loggingDocument.getQuery().get(0));
+				loggingDocument1.getQuery().addAll(loggingDocument.getQuery());
 			}
+			loggingDocument1.getUserLogList().addAll(loggingDocument.getUserLogList());
 
 			return loggingDocDao.save(loggingDocument1);
 		}

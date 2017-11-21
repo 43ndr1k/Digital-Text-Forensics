@@ -57,11 +57,6 @@ public class Searcher {
 
 		// display results
 		System.out.println("Found " + hits.length + " hits.");
-/*		List<Document> d = new ArrayList<>();
-		for (int i = 0; i < hits.length; ++i) {
-			int docId = hits[i].doc;
-			d.add(searcher.doc(docId));
-		}*/
 
 		return mapDocumentListToSearchResults(Arrays.asList(hits), query);
 	}
