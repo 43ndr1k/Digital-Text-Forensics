@@ -1,6 +1,7 @@
 #!/bin/bash
-OLD="\/home\/tobias\/Dokumente"
-NEW="\~\/Digital-Text-Forensics\/pdfDocs"
+#OLD="\/home\/tobias\/Dokumente\/authorship-material-stathis"
+OLD="pdfDocs\/\/"
+NEW="pdfDocs\/"
 DPATH="/home/tobias/Dokumente/xmlOutput/*.xml"
 BPATH="/home/tobias/Dokumente/xmlOutput_backup/*.xml"
 TFILE="/tmp/out.tmp.$$"
