@@ -28,10 +28,73 @@ public class Article {
   private String year;
   private String key;
   private String score;
-  private List<String> authors;
+  private String fullText;
+  private String myAbstract;
+  private String fileName;
+  private String filePath;
+  private String publicationDate;
+  private String parseDate;
+
+  
+  
+  public String getFullText() {
+	return fullText;
+}
+
+public void setFullText(String fullText) {
+	this.fullText = fullText;
+}
+
+public String getMyAbstract() {
+	return myAbstract;
+}
+
+public void setMyAbstract(String myAbstract) {
+	this.myAbstract = myAbstract;
+}
+
+public String getFileName() {
+	return fileName;
+}
+
+public void setFileName(String fileName) {
+	this.fileName = fileName;
+}
+
+public String getFilePath() {
+	return filePath;
+}
+
+public void setFilePath(String filePath) {
+	this.filePath = filePath;
+}
+
+public String getPublificationDate() {
+	return publicationDate;
+}
+
+public void setPublificationDate(String publificationDate) {
+	this.publicationDate = publificationDate;
+}
+
+public String getParseDate() {
+	return parseDate;
+}
+
+public void setParseDate(String parseDate) {
+	this.parseDate = parseDate;
+}
+
+public void setAuthors(List<String> authors) {
+	this.authors = authors;
+}
+
+
+private List<String> authors;
 
   public Article() {
 	  this.authors = new ArrayList<String>();
+	  this.score = "0";
   }
 
 public String getScore() {
@@ -58,13 +121,13 @@ public void setTitle(String title) {
 	this.title = title;
 }
 
-public String getYear() {
-	return year;
-}
-
-public void setYear(String year) {
-	this.year = year;
-}
+//public String getYear() {
+//	return year;
+//}
+//
+//public void setYear(String year) {
+//	this.year = year;
+//}
 
 public String getKey() {
 	return key;
@@ -93,7 +156,7 @@ public void setAuthors(String author) {
   @Override
   public String toString() {
 	 StringBuilder stringBuilder = new StringBuilder();
-	 stringBuilder.append(this.year+", ");
+	 stringBuilder.append(this.publicationDate+", ");
 	 stringBuilder.append(this.title+"\n");
 	 stringBuilder.append("authors:\t");
 	 

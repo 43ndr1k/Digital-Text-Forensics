@@ -10,20 +10,62 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.docear.pdf.ocr.XMLReader;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.XMLReaderFactory;
+
+import de.uni_leipzig.digital_forensics.testpackage.preprocessing.Article;
+import de.uni_leipzig.digital_forensics.testpackage.preprocessing.ArticleHandler;
+
 
 public class Main {
 
 	
 	public static void main(String[] args) {
-		DBLPDataAccessor da = new DBLPDataAccessor();
-		Article article = da.getArticleObj("Comparing frequency and Style");
-		System.out.println(article);
+
+
+
+			
+		    SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
+		    try {
+		        SAXParser saxParser = saxParserFactory.newSAXParser();
+		        ArticleHandler handler = new ArticleHandler();
+		        saxParser.parse(new File("/home/tobias/Dokumente/xmlOutput/aldebei-diarization-2015.xml"), handler);
+		        Article article = handler.getArticle();
+		        System.out.println(article+ article.getDoi());
+		        /*
+		         * @TODO i don't get fullText! (just first line)
+		         */
+		        System.out.print(article.getFullText());
+
+		    } catch (ParserConfigurationException pce){
+		    	pce.printStackTrace();
+		    } catch(SAXException sae) {
+		    	sae.printStackTrace();
+
+		    }catch ( IOException ioe) {
+		    	ioe.printStackTrace();
+
+		    }
+//		    
 
 		
-	
-}
+		
+//		DBLPDataAccessor da = new DBLPDataAccessor();
+//		Article article = da.getArticleObj("Comparing frequency and Style");
+//		System.out.println(article);
+	}
 
 	
 

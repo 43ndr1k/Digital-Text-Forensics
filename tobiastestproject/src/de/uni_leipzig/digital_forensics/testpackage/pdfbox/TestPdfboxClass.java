@@ -9,7 +9,7 @@ import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.text.PDFTextStripper;
 
-import de.uni_leipzig.digital_forensics.testpackage.pdfbox.MyNameGetter;
+import de.uni_leipzig.digital_forensics.testpackage.MyNameGetter.MyNameGetter;
 
 
 // https://pdfbox.apache.org/1.8/cookbook/workingwithmetadata.html  
