@@ -1,0 +1,418 @@
+Version History Based Source Code Plagiarism Detection in Proprietary Systems
+Girish Maskeri, Deepthi Karnam, Sree Aurovindh Viswanathan and Srinivas Padmanabhuni
+Infosys Labs, Infosys Limited
+Bangalore, India
+{ girish rama, deepthi karnam, sreeaurovindh v, and srinivas p}@infosys.com
+Abstract—While the advent of open source code search
+tools have made the source code of thousands of open source
+software (OSS) readily accessible, thereby increasing legitimate
+reuse, it has also opened up the possibility of unconscientious
+employees plagiarizing code from OSS repositories. Plagiarism
+in proprietary software would not only lead to costly lawsuits,
+but also undermine the credibility of the organization. Hence
+detecting plagiarism in proprietary software is an urgent need.
+Though there exist a number of techniques for detecting
+plagiarism in student project assignments, they do not scale
+well in the case of large proprietary software. Especially
+when code snippets are plagiarized from the large number
+of available open source software. In this paper we propose
+a novel approach that applies Mining Software Repositories
+(MSR) based techniques to the problem of plagiarism detection.
+We create a programming style profile for each maintenance
+engineer by mining the version history and use that to
+detect source code commits that are likely to be plagiarized.
+Such suspected code fragments can be analyzed using any
+of the existing plagiarism detection techniques to confirm the
+plagiarism and ascertain the original code.
+Keywords-Plagiarism,Author Information,Version History.
+I. INTRODUCTION
+Hard work has a future payoff. Laziness pays off now –
+This attitude of human race is also prevalent in industrial
+software development which leads to a serious problem -
+Code Plagiarism. While we have been aware of unscrupu-
+lous students plagiarizing open source code for their term
+projects [1], a relatively newer phenomenon is plagiarism
+in industrial software development induced by a paradigm
+shift in the way software is developed. Industrial software
+development has been generally associated with a collocated
+group of programmers working on closed systems in a
+tightly controlled environment. But this has changed be-
+cause of the mobile workforce, work from home initiatives,
+ubiquitous internet and social networking revolution. A
+consequence of this is that it might be difficult to carry out
+software development in a tightly controlled environment
+going forward.
+While the above contemporary and future trends in soft-
+ware development are desirable (and in a way inevitable), an
+unfortunate side-effect is the increased ease of committing
+code plagiarism. More so in view of the popularity of open
+source code search tools which allow a programmer to
+instantly search millions of lines of open source code in var-
+ious repositories such as SourceForge, GitHub and Google
+Codebook. Copying fragments of code which are readily
+available and then reusing them by pasting with or without
+changes is becoming frequent in software development [2].
+Plagiarism in the enterprise can have serious economic
+consequences. Plagiarism, if exposed, might not only lead
+to costly lawsuits, but also undermine the credibility of the
+organization. At the least it would cause serious embarrass-
+ment as in the case of Facebook, which in August 2010, was
+accused of plagiarizing code from an open source library [3].
+There exist a number of such similar examples [4] which
+underlines the necessity of tackling plagiarism in industrial
+and open source code. Unfortunately, enterprise plagiarism
+detection does not scale well – A person can potentially
+plagiarize code from any of the thousands of open source
+software systems. Therefore, even though there do exist a
+number of plagiarism detection tools in academia they are
+of limited use in this context. In fact, detection of enterprise
+code plagiarism is largely due of serendipity rather than
+through the use of any plagiarism detection tool.
+In this paper we propose a novel approach based on min-
+ing software repositories for detecting plagiarism suspects
+in proprietary code based just on the version history of the
+proprietary system, without analyzing any of the open source
+code. Having detected these suspects, we can confirm the
+plagiarism using any of the existing plagiarism detection
+techniques. The main contributions of this paper are:
+• A novel approach for detecting plagiarism in enterprise
+(or proprietary) code.
+• A novel approach for ensuring new code commits are
+plagiarism-free as software evolves.
+The rest of the paper is organized as follows: Section
+II discusses the problem of scaling plagiarism detection to
+large code repositories. Our approach is discussed in more
+detail in Section III. Our initial case studies on validating
+the proposed approach is presented in Section IV. Section
+V discusses the related work. Finally we present future
+directions and conclude in Section VI.
+II. BACKGROUND
+In this section we discuss the problem of scaling plagia-
+rism detection to large code repositories with an example
+and motivate our idea.
+978-1-4673-2312-3/12/$31.00 c© 2012 IEEE
+2012 28th IEEE International Conference on Software Maintenance (ICSM)
+609
+public class IntegerCache {
+..................
+while ((keyTable[index] != 0)
+|| ((keyTable[index] == 0)
+&& (valueTable[index] != 0)))
+{
+if (keyTable[index] == key)
+return valueTable[index] = value;
+index = (index + 1) % keyTable.length; }
+keyTable[index] = key;
+valueTable[index] = value;
+// assumes the threshold is never equal
+//to the size of the table
+if (++elementSize > threshold) {
+rehash();}
+........................
+}
+Figure 1. Example to illustrate plagiarism detection
+Consider a proprietary project P with Fp number of files.
+Let Fr be the number of files in the large code repository
+of open source projects. If one needs to determine if the
+proprietary project has plagiarized any code from the large
+code repository, the general approach is as follows. The
+first step is to split the files into a set of code snippets.
+Similarly all the files in the code repository are split into
+code snippets. Now, to check if any file has any plagiarized
+code, each of the code snippets of that file need to be
+compared against each of the code snippets of all the files
+in the code repository. If the average number of snippets
+per file is Sp and Sr respectively for proprietary and the
+code repository, the approximate number of comparisons are
+Fp ∗Sp ∗Sr ∗Fr. Regardless of the technique of performing
+the comparisons, which we will discuss later in Section V,
+the number of comparisons can be prohibitively large given
+that there exist billions of lines of open source code. This
+is exacerbated by the fact that the size of large proprietary
+systems run into millions of lines of code. Therefore, the
+current brute force approach is not viable for detecting
+plagiarism in large proprietary systems.
+So the question is: Is there an intelligent way to identify
+blocks of code that are plagiarism suspects rather than
+resorting to brute force?
+Before we present our approach as an answer to this ques-
+tion, we discuss two important observations underpinning
+our idea.
+Programmers have a characteristic style of program-
+ming: There exists ample literature on author identification
+[5], [6] largely in the context of identifying authors of
+viruses [7], [8], which indicates that programmers have
+a characteristic style. For instance, it could be language
+independent typographical and stylistic characteristics such
+as use of upper case and lower case characters, whitespace,
+indentation and line break style, commenting style and so on.
+It could also be language dependent such as the preference
+of certain language features and so on.
+Proprietary systems have a rich source code version
+history: A major difference between school projects and
+proprietary systems, that has a bearing on detecting plagia-
+rism, is the longevity of the projects. Proprietary projects
+generally have source code version history running over
+number of years. This is a very good source of information
+which can be mined to determine the programming style of
+each developer.
+The basic idea of this paper is to mine the source code
+version history to characterize the programming style of
+each author and use that to identify plagiarism suspects. We
+elaborate our idea in more detail in the next section.
+III. OUR APPROACH
+Our approach is split into two phases. The first phase
+mines the version history to characterize the programming
+style of each developer and the second phases iterates over
+each commit and determines if it is a plagiarism suspect or
+not.
+Figure 2. Flowcharts to detect plagiarism suspects
+A. Characterizing Programming Style
+Figure 2 (A) shows the flowchart for the first phase. All
+the commits made by a given developer is first extracted
+from the version history. For each of the commits, the
+change hunks are extracted. The hunks represent the changes
+made by the developer and consists of a group of lines of
+code. Each line is prepended by one of 2 symbols :+ or
+− indicating whether the line has been added or deleted
+respectively. Since we are interested in characterizing the
+programming style of the programmer, line deletions can be
+ignored and we only consider lines added. All the added
+lines are accumulated together. This forms the input to
+the algorithm that generates the author profile. It must be
+noted that this scheme works even in the presence of mixed
+authorship of files as it considers only on the commits made
+by a given developer for characterizing his/her programming
+style. While there exists a number of algorithms and ap-
+proaches for author identification, we propose to use the
+2012 28th IEEE International Conference on Software Maintenance (ICSM)
+610
+technique by Lange and Mancoridis [5] where they propose
+a set of 13 metrics for capturing the programmers coding
+style. The result of the first phase is a characterization of
+the programming style of each developer.
+B. Detecting Plagiarism Suspects
+Figure 2 (B) shows the flow chart for the second phase
+of detecting plagiarism suspects. For each commit the set
+of code hunks are extracted from the version control. If the
+size of the hunk is too small, it is unlikely to be plagiarized
+code. For instance a number of regression bug fixes involve
+changing or adding one or two lines of code. So if the
+size of the hunk is below a certain threshold (which in our
+case is 6 lines of code as suggested in [9]) it is ignored.
+Subsequently, the style of the code hunk is compared with
+the style of the author who has committed the code. If there
+is a mismatch then it is flagged as a plagiarism suspect.
+However, at this stage it is still a suspect. To confirm this
+and to identify the original code snippet and file, existing
+code clone detection techniques can be used. For instance,
+one can use techniques such as SeClone [10] proposed for
+internet scale fast code/clone search.
+IV. CASE STUDY
+Our experimental validation of the idea is made chal-
+lenging by the fact that there does not exist a suitable
+benchmark for proprietary (or open source) code plagiarism
+1. Therefore, to evaluate our idea we use a code clone
+benchmark [9] and consider a code snippet from Eclipse
+JDT-Core project that had been copied from some other file.
+Even though, this is not an example of code plagiarism as
+the copied code snippet was from a file in the same project,
+we believe it adequately demonstrates the feasibility of the
+idea.
+The file /org/eclipse/jdt/internal/compiler/codegen/Inte-
+gerCache.java and the code snippet is shown in Figure 1.
+The first step in our process is to determine the programming
+style of the author of the snippet – pmulet, from the version
+history. We manually examined the code committed (using
+git -p –author=pmulet) to identify his programming style
+which is as follows:
+• In most of the cases, comments are in the same line as
+code and not in a new line
+• Comments have proper punctuation. For E.g ‘,’ is used
+a lot, round braces are used and numbers used as
+references.
+• Comments start with a small case letter.
+• if statement always has braces even if there is a single
+statement in the if clause.
+• Use of Switch case is more frequent.
+1The benchmarks of plagiarism in school projects is not of much use to
+us because of the unavailability of the source code version history. Ideally
+we need a set of examples of open source systems that have plagiarized
+code from some other open source system.
+• Generally, statements are lengthy and not broken into
+multiple lines.
+Consider now the style of the code snippet shown in
+Figure 1 that was committed by pmulet. One can observe
+that the if statement in the second line is not followed
+by any braces. Also the comments are in a separate line
+rather than in the same line as the code. Because of these
+stylistic differences we can suspect that this code might
+have been copied. Indeed, as per the benchmark [9] this
+is an instance of code clone with the other file being
+org/eclipse/jdt/internal/compiler/util/HashtableOfInt.java.
+To boost our confidence on the efficacy of our approach
+we also conducted another experiment where one of the co-
+authors of this paper examined 6 files coded by a developer.
+She could identify certain characteristics of the developer
+such as adding a new line after each if statement, limited
+use of access modifiers, poor exception handling and lack
+of comments. Based on this she could correctly identify the
+two files with code that was copied from elsewhere.
+Based on these case studies, even though we have not
+evaluated this approach rigorously and measured the preci-
+sion and recall, which is part of our future work, we do
+believe that this idea is plausible.
+V. RELATED WORK
+Although enterprise plagiarism detection is an important
+issue, if we consider the papers published in last three
+years on this topic almost all papers address the plagiarism
+detection among school project submissions and not for
+proprietary systems [11], [12]. So even though there exist a
+number of plagiarism detection approaches proposed in liter-
+ature such as text based, token based, tree based and graph
+based [2] none of them focus on scalability. Researchers
+have recognized this issue and have been trying to make
+plagiarism detection feasible for large code repositories
+[13], [14]. These approaches attempt to circumvent the
+problem by using a grid of computers to run the plagiarism
+detection algorithm in parallel. Also, common plagiarism
+detection tools such as MOSS [15] and CCFINDER [16]
+though popular, ignore stylistic information. But as noted
+by Bob Zeidman [17] in Cadence v. Avant! lawsuit the code
+plagiarized by Avant! included words in comments that were
+consistently misspelled in the same way as the comments in
+the Cadence’s code.
+Another research area from which we borrow heavily is
+Author Identification. This is an emerging field that has
+various applications such as Intelligence (to detect terrorists),
+Criminal Law (to detect criminals), Civil Law (to detect
+copyright disputes) and Computer Security (to detect virus)
+[18]. Another application more closely related to our work
+is software forensics [5] which focuses on identifying the
+coding style of an author. This approach by Lange and
+Mancoridis discusses 13 metrics to identify an author of
+2012 28th IEEE International Conference on Software Maintenance (ICSM)
+611
+an Java program such as Access, Word Length, Inline space
+and Inline tab with a precision of 75%.
+Since we mine the source code version history we rely on
+the rich literature and tools in the area of Mining Software
+Repositories (MSR). While MSR has been applied in diverse
+areas such as Bug Prediction [19], social interactions [20],
+inter-team co-ordination [21], modeling evolution of soft-
+ware [22], finding provenance of entities [23] and detecting
+license violations [24], to the best of our knowledge this
+is the first paper which mines the version history to detect
+enterprise source code plagiarism.
+VI. CONCLUSIONS AND FUTURE WORK
+In this paper we highlighted the importance of plagiarism
+detection in proprietary code and argued that the brute force
+technique of plagiarism detection does not scale well in
+this context. We proposed a novel approach, using min-
+ing software repositories based techniques, for detecting
+plagiarism suspects in proprietary code. This enables the
+existing code plagiarism detection techniques to be tractable
+for detecting plagiarism in proprietary code. The feasibility
+of the proposed approach was demonstrated using a case
+study of Eclipse JDT Core.
+Though, we have discussed our approach in the context
+of plagiarism detection, it is equally applicable for detecting
+code clones as well. While scalability is not a issue for clone
+detection, obtaining good precision and recall especially in
+the presence of type 2 and type 3 clones [2] is still a
+challenge. Since our approach depends on programmer style,
+as long as the programmer has not adapted the copied code
+completely to his style, our approach is likely to perform
+better.
+Another interesting application enabled by our approach
+is incremental plagiarism detection in evolving proprietary
+systems. Once the programming style of each developer has
+been identified, new code can be checked for plagiarism as
+and when they are committed to the version repository. Since
+only newly added code is checked, this is an incremental
+approach. This ensures that the proprietary system remains
+plagiarism free as it evolves.
+While the initial case studies seem promising there is
+need for further validation. For instance, how to determine
+the programming style of new developers for whom we
+might not have sufficient code examples? Which stylistic
+features are sufficient for characterizing the programming
+style uniquely for each developer? Does the programming
+style evolve as the programmer gains more experience? How
+should the approach be extended to handle such cases? We
+intend to address these questions as part of our future work.
+Finally, we believe plagiarism in proprietary code is an
+important problem that ought to be addressed and this is the
+first work that mines software version history for plagiarism
+detection. It is our hope that the ideas presented in this paper
+will fuel many such studies in the future.
+REFERENCES
+[1] Z. Ercegovac and J. Richardson Jr, “Academic dishonesty, plagiarism
+included, in the digital age: A literature review”, College & Research
+Libraries, vol. 65, no. 4, pp. 301–318, 2004.
+[2] C. Roy, J. Cordy, and R. Koschke, “Comparison and evaluation of code
+clone detection techniques and tools: A qualitative approach”, Science
+of Computer Programming, vol. 74, no. 7, pp. 470–495, 2009.
+[3] P. De, “Facebook caught plagiarizing open source code in the
+official iphone app”, http://techie-buzz.com/foss/facebook-iphone-
+plagiarizing.html, August 2010.
+[4] B. Zeidman, “Software plagiarism”, http://www.safe-
+corp.biz/blog/tag/software-plagiarism/.
+[5] R. Lange and S. Mancoridis, “Using code metric histograms and
+genetic algorithms to perform author identification for software foren-
+sics”, Genetic and evolutionary computation, pp. 2082–2089, 2007.
+[6] G. Frantzeskou, E. Stamatatos, S. Gritzalis, and S. Katsikas, “Effective
+identification of source code authors using byte-level information”, In-
+ternational conference on Software engineering, pp. 893–896, 2006.
+[7] E. Spafford and S. Weeber, “Software forensics: Can we track code
+to its authors?” Computers & Security, vol. 12, no. 6, pp. 585–595,
+1993.
+[8] A. Gray, P. Sallis, and S. MacDonell, “Software forensics: Extending
+authorship analysis techniques to computer programs”, International
+Association of Forensic Linguists, 1997.
+[9] S. Bellon, “Detection of software clones”, http://www.bauhaus-
+stuttgart.de/clones/, November 2003.
+[10] I. Keivanloo, J. Rilling, and P. Charland, “Seclone-a hybrid approach
+to internet-scale real-time code clone search”, International Confer-
+ence on Program Comprehension , pp. 223–224, 2011.
+[11] J. Graves, “Source code plagiarism detection using a graph-based
+approach”, Ph.D. dissertation, Tennessee Technological University,
+2012.
+[12] G. Cosma, “An approach to source-code plagiarism detection and
+investigation using latent semantic analysis”, Ph.D. dissertation, Uni-
+versity of Warwick, 2008.
+[13] S. Burrows, S. Tahaghoghi, and J. Zobel, “Efficient plagiarism detec-
+tion for large code repositories”, Software: Practice and Experience,
+vol. 37, no. 2, pp. 151–175, 2007.
+[14] S. Livieri, Y. Higo, M. Matushita, and K. Inoue, “Very-large scale
+code clone analysis and visualization of open source programs using
+distributed ccfinder: D-ccfinder”, International Conference on Soft-
+ware Engineering, pp. 106–115, 2007.
+[15] A. Aiken et al., “Moss: A system for detecting software plagia-
+rism”, University of California–Berkeley. See www. cs. berkeley.
+edu/aiken/moss. html, 2005.
+[16] T. Kamiya, S. Kusumoto, and K. Inoue, “Ccfinder: a multilinguistic
+token-based code clone detection system for large scale source code”,
+IEEE TSE, vol. 28, no. 7, pp. 654–670, 2002.
+[17] B. Zeidman, “Detection source-code plagiarism”,
+http://drdobbs.com/architecture-and-design/184405734, July 2004.
+[18] D. Madigan, A. Genkin, D. Lewis, S. Argamon, D. Fradkin, and L. Ye,
+“Author identification on the large scale”, in Proc. of the Meeting of
+the Classification Society of North America, 2005.
+[19] M. D. Ambros, M. Lanza, and R. Robbes, “An extensive comparison
+of bug prediction approaches”, MSR, pp. 31–41, 2010.
+[20] G. Canfora, L. Cerulo, M. Cimitile, and M. Di Penta, “Social
+interactions around cross-system bug fixings: the case of freebsd and
+openbsd”, MSR, vol. 11, pp. 143–152, 2011.
+[21] A. Begel, Y. Khoo, and T. Zimmermann, “Codebook: discovering
+and exploiting relationships in software repositories”, International
+Conference on Software Engineering , vol. 1, pp. 125–134, 2010.
+[22] S. Thomas, B. Adams, A. Hassan, and D. Blostein, “Modeling the
+evolution of topics in source code histories”, MSR, Honolulu, 2011.
+[23] J. Davies, D. German, M. Godfrey, and A. Hindle, “Software bertillon-
+age: Finding the provenance of an entity”, MSR, 2011.
+[24] A. Hemel, K. Kalleberg, R. Vermaas, and E. Dolstra, “Finding
+software license violations through binary code clone detection”, MSR,
+pp. 63–72, 2011.
+2012 28th IEEE International Conference on Software Maintenance (ICSM)
+612

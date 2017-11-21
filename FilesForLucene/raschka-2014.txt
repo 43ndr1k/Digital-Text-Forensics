@@ -1,0 +1,765 @@
+Naive Bayes and Text Classification I
+Introduction and Theory
+Sebastian Raschka
+se.raschka@gmail.com
+October 4, 2014
+Contents
+1 Introduction 2
+2 Naive Bayes Classification 3
+2.1 Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+2.2 Posterior Probabilities . . . . . . . . . . . . . . . . . . . . . . . . 3
+2.3 Class-conditional Probabilities . . . . . . . . . . . . . . . . . . . 5
+2.4 Prior Probabilities . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+2.5 Evidence . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.6 Multinomial Naive Bayes - A Toy Example . . . . . . . . . . . . 9
+2.6.1 Maximum-Likelihood Estimates . . . . . . . . . . . . . . . 10
+2.6.2 Classification . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2.6.3 Additive Smoothing . . . . . . . . . . . . . . . . . . . . . 11
+3 Naive Bayes and Text Classification 12
+3.1 The Bag of Words Model . . . . . . . . . . . . . . . . . . . . . . 12
+3.1.1 Tokenization . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.1.2 Stop Words . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+3.1.3 Stemming and Lemmatization . . . . . . . . . . . . . . . 14
+3.1.4 N -grams . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+3.2 The Decision Rule for Spam Classification . . . . . . . . . . . . . 15
+3.3 Multi-variate Bernoulli Naive Bayes . . . . . . . . . . . . . . . . 16
+3.4 Multinomial Naive Bayes . . . . . . . . . . . . . . . . . . . . . . 16
+3.4.1 Term Frequency . . . . . . . . . . . . . . . . . . . . . . . 16
+3.4.2 Term Frequency - Inverse Document Frequency (Tf-idf) . 17
+3.4.3 Performances of the Multi-variate Bernoulli and Multino-
+mial Model . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4 Variants of the Naive Bayes Model 18
+4.1 Continuous Variables . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4.2 Eager and Lazy Learning Algorithms . . . . . . . . . . . . . . . . 19
+1
+ar
+X
+iv
+:1
+41
+0.
+53
+29
+v2
+  [
+cs
+.L
+G
+] 
+ 2
+3 
+O
+ct
+ 2
+01
+4
+Sebastian Raschka Naive Bayes and Text Classification I
+1 Introduction
+Starting more than half a century ago, scientists became very serious about
+addressing the question: ”Can we build a model that learns from available data
+and automatically makes the right decisions and predictions?” Looking back,
+this sounds almost like a rhetoric question, and the answer can be found in
+numerous applications that are emerging from the fields of pattern classification,
+machine learning, and artificial intelligence.
+Data from various sensoring devices combined with powerful learning algo-
+rithms and domain knowledge led to many great inventions that we now take
+for granted in our everyday life: Internet queries via search engines like Google,
+text recognition at the post office, barcode scanners at the supermarket, the
+diagnosis of diseases, speech recognition by Siri or Google Now on our mobile
+phone, just to name a few.
+One of the sub-fields of predictive modeling is supervised pattern classifica-
+tion; supervised pattern classification is the task of training a model based on
+labeled training data which then can be used to assign a pre-defined class label
+to new objects. One example that we will explore throughout this article is
+spam filtering via naive Bayes classifiers in order to predict whether a new text
+message can be categorized as spam or not-spam. Naive Bayes classifiers, a
+family of classifiers that are based on the popular Bayes’ probability theorem,
+are known for creating simple yet well performing models, especially in the fields
+of document classification and disease prediction.
+Figure 1: A simplified diagram of the general model building procedure for pattern
+classification.
+A more detailed overview of predictive modeling can be found in my pre-
+2
+Sebastian Raschka Naive Bayes and Text Classification I
+vious article Predictive Modeling, Supervised Machine Learning, and Pattern
+Classification - The Big Picture.
+2 Naive Bayes Classification
+2.1 Overview
+Naive Bayes classifiers are linear classifiers that are known for being simple
+yet very efficient. The probabilistic model of naive Bayes classifiers is based on
+Bayes’ theorem, and the adjective naive comes from the assumption that the
+features in a dataset are mutually independent. In practice, the independence
+assumption is often violated, but naive Bayes classifiers still tend to perform
+very well under this unrealistic assumption [1]. Especially for small sample
+sizes, naive Bayes classifiers can outperform the more powerful alternatives [2].
+Being relatively robust, easy to implement, fast, and accurate, naive Bayes
+classifiers are used in many different fields. Some examples include the diagnosis
+of diseases and making decisions about treatment processes [3], the classifica-
+tion of RNA sequences in taxonomic studies [4], and spam filtering in e-mail
+clients [5]. However, strong violations of the independence assumptions and
+non-linear classification problems can lead to very poor performances of naive
+Bayes classifiers. We have to keep in mind that the type of data and the type
+problem to be solved dictate which classification model we want to choose. In
+practice, it is always recommended to compare different classification models
+on the particular dataset and consider the prediction performances as well as
+computational efficiency.
+In the following sections, we will take a closer look at the probability model
+of the naive Bayes classifier and apply the concept to a simple toy problem.
+Later, we will use a publicly available SMS (text message) collection to train a
+naive Bayes classifier in Python that allows us to classify unseen messages as
+spam or ham.
+2.2 Posterior Probabilities
+In order to understand how naive Bayes classifiers work, we have to briefly reca-
+pitulate the concept of Bayes’ rule. The probability model that was formulated
+by Thomas Bayes (1701-1761) is quite simple yet powerful; it can be written
+down in simple words as follows:
+posterior probability =
+conditional probability · prior probability
+evidence
+(1)
+Bayes’ theorem forms the core of the whole concept of naive Bayes classi-
+fication. The posterior probability, in the context of a classification problem,
+can be interpreted as: ”What is the probability that a particular object be-
+longs to class i given its observed feature values?” A more concrete example
+would be: ”What is the probability that a person has diabetes given a certain
+3
+Sebastian Raschka Naive Bayes and Text Classification I
+Figure 2: Linear (A) vs. non-linear problems (B). Random samples for two different
+classes are shown as colored spheres, and the dotted lines indicate the class boundaries
+that classifiers try to approximate by computing the decision boundaries. A non-linear
+problem (B) would be a case where linear classifiers, such as naive Bayes, would not
+be suitable since the classes are not linearly separable. In such a scenario, non-linear
+classifiers (e.g.,instance-based nearest neighbor classifiers) should be preferred.
+value for a pre-breakfast blood glucose measurement and a certain value for a
+post-breakfast blood glucose measurement?”
+P (diabetes | xi) , xi = [90mg/dl, 145mg/dl] (2)
+Let
+• xi be the feature vector of sample i, i ∈ {1, 2, ..., n},
+• ωj be the notation of class j, j ∈ {1, 2, ...,m},
+• and P (xi | ωj) be the probability of observing sample xi given that is
+belongs to class ωj .
+The general notation of the posterior probability can be written as
+P (ωj | xi) =
+P (xi | ωj) · P (ωj)
+P (xi)
+(3)
+The objective function in the naive Bayes probability is to maximize the
+posterior probability given the training data in order to formulate the decision
+rule.
+predicted class label← arg max
+j=1...,m
+P (ωj | xi) (4)
+4
+Sebastian Raschka Naive Bayes and Text Classification I
+To continue with our example above, we can formulate the decision rule
+based on the posterior probabilities as follows:
+person has diabetes if
+P (diabetes | xi) ≥ P (not-diabetes | xi),
+else classify person as healthy.
+(5)
+2.3 Class-conditional Probabilities
+One assumption that Bayes classifiers make is that the samples are i.i.d. The
+abbreviation i.i.d. stands for ”independent and identically distributed” and de-
+scribes random variables that are independent from one another and are drawn
+from a similar probability distribution. Independence means that the proba-
+bility of one observation does not affect the probability of another observation
+(e.g., time series and network graphs are not independent). One popular exam-
+ple of i.i.d. variables is the classic coin tossing: The first coin flip does not affect
+the outcome of a second coin flip and so forth. Given a fair coin, the probability
+of the coin landing on ”heads” is always 0.5 no matter of how often the coin if
+flipped.
+An additional assumption of naive Bayes classifiers is the conditional inde-
+pendence of features. Under this naive assumption, the class-conditional proba-
+bilities or (likelihoods) of the samples can be directly estimated from the training
+data instead of evaluating all possibilities of x. Thus, given a d-dimensional fea-
+ture vector x, the class conditional probability can be calculated as follows:
+P (x | ωj) = P (x1 | ωj) · P (x2 | ωj) · . . . · P (xd | ωj) =
+d∏
+k=1
+P (xk | ωj) (6)
+Here, P (x | ωj) simply means: ”How likely is it to observe this particular
+pattern x given that it belongs to class ωj?” The ”individual” likelihoods for
+every feature in the feature vector can be estimated via the maximum-likelihood
+estimate, which is simply a frequency in the case of categorical data:
+P̂ (xi | ωj) =
+Ni,c
+Ni
+(i = (1, ..., d)) (7)
+• Ni,c: Count of feature xi in class ωj .
+• Nic: Count of feature xi in all classes.
+To illustrate this concept with an example, let’s assume that we have a col-
+lection of 500 documents where 100 documents are spam messages. Now, we
+want to calculate the class-conditional probability for a new message ”Hello
+World” given that it is spam. Here, the pattern consists of two features: ”hello”
+5
+Sebastian Raschka Naive Bayes and Text Classification I
+and ”world,” and the class-conditional probability is the product of the ”prob-
+ability of encountering ’hello’ given the message is spam” — the probability of
+encountering ”world” given the message is spam.”
+P (x = [hello, world] | ω = spam) = P (hello | spam) · P (world | spam) (8)
+Using the training dataset of 500 documents, we can use the maximum-
+likelihood estimate to estimate those probabilities: We’d simply calculate how
+often the words occur in the corpus of all spam messages. E.g.,
+P̂ (x = [hello, world] | ω = spam) = 20
+100
+· 2
+100
+= 0.004 (9)
+However, with respect to the naive assumption of conditional independence,
+we notice a problem here: The naive assumption is that a particular word does
+not influence the chance of encountering other words in the same document.
+For example, given the two words ”peanut” and ”butter” in a text document,
+intuition tells us that this assumption is obviously violated: If a document
+contains the word ”peanut” it will be more likely that it also contains the word
+”butter” (or ”allergy”). In practice, the conditional independence assumption
+is indeed often violated, but naive Bayes classifiers are known to perform still
+well in those cases [6].
+2.4 Prior Probabilities
+In contrast to a frequentist’s approach, an additional prior probability (or just
+prior) is introduced that can be interpreted as the prior belief or a priori knowl-
+edge.
+posterior probability =
+conditional probability · prior probability
+evidence
+(10)
+In the context of pattern classification, the prior probabilities are also called
+class priors, which describe ”the general probability of encountering a particular
+class.” In the case of spam classification, the priors could be formulated as
+P (spam) = ”the probability that any new message is a spam message” (11)
+and
+P (ham) = 1− P (spam). (12)
+If the priors are following a uniform distribution, the posterior probabilities
+will be entirely determined by the class-conditional probabilities and the evi-
+dence term. And since the evidence term is a constant, the decision rule will
+entirely depend on the class-conditional probabilities (similar to a frequentist’s
+approach and maximum-likelihood estimate).
+6
+Sebastian Raschka Naive Bayes and Text Classification I
+Eventually, the a priori knowledge can be obtained, e.g., by consulting a do-
+main expert or by estimation from the training data (assuming that the train-
+ing data is i.i.d. and a representative sample of the entire population. The
+maximum-likelihood estimate approach can be formulated as
+P̂ (ωj) =
+Nωj
+Nc
+(13)
+• Nωj : Count of samples from class ωj .
+• Nc: Count of all samples.
+And in context of spam classification:
+P̂ (spam) =
+# of spam messages in training data
+# of all messages in training data
+(14)
+Figure 3 illustrates the effect of the prior probabilities on the decision rule.
+Given an 1-dimensional pattern x (continuous attribute, plotted as ”x” symbols)
+that follows a normal distribution and belongs to one out of two classes (blue and
+green). The patterns from the first class (ω1 = blue) are drawn from a normal
+distribution with mean x = 4 and a standard deviation σ = 1. The probability
+distribution of the second class (ω2 = green) is centered at x=10 with a similar
+standard deviation of σ = 1. The bell-curves denote the probability densities
+of the samples that were drawn from the two different normal distributions.
+Considering only the class conditional probabilities, the maximum-likelihood
+estimate in this case would be
+P (x = 4 | ω1) ≈ 0.4 and P (x = 10 | ω1) < 0.001
+P (x = 4 | ω2) < 0.001 and P (x = 10 | ω2) ≈ 0.4.
+(15)
+Now, given uniform priors, that is P (ω1) = P (ω2) = 0.5, the decision rule
+would be entirely dependent on those class-conditional probabilities, so that the
+decision rule would fall directly between the two distributions
+P (x | ω1) = P (x | ω2). (16)
+However, if the prior probability was P (ω1) > 0.5, the decision region of class
+ω1 would expand as shown in Figure 3. In the context of spam classification, this
+could be interpreted as encountering a new message that only contains words
+which are equally likely to appear in spam or ham messages. In this case, the
+decision would be entirely dependent on prior knowledge, e.g., we could assume
+that a random message is in 9 out of 10 cases not spam and therefore classify
+the new message as ham.
+7
+Sebastian Raschka Naive Bayes and Text Classification I
+Figure 3: The effect of prior probabilities on the decision regions. The figure shows
+a 1-dimensional random sample from two different classes (blue and green crosses).
+The data points for both classes are normally distributed with standard deviation 1,
+and the bell curves denote the class conditional probabilities. If the class priors are
+equal, the decision boundary of a naive Bayes classifier is placed at the center between
+both distributions (gray bar). An increase of the prior probability of the blue class
+(ω2) leads to an extension of the decision region R1 by moving the decision boundary
+(blue-dotted bar) towards the other class and vice versa.
+2.5 Evidence
+After defining the class-conditional probability and prior probability, there is
+only one term missing in order to compute posterior probability, that is the
+evidence.
+posterior probability =
+conditional probability · prior probability
+evidence
+(17)
+The evidence P (x) can be understood as the probability of encountering a
+particular pattern x independent from the class label. Given the more formal
+8
+Sebastian Raschka Naive Bayes and Text Classification I
+definition of posterior probability
+P (ωj | xi) =
+P (xi | ωj) · P (ωj)
+P (xi)
+, (18)
+the evidence can be calculated as follows (ωCj stands for ”complement” and
+basically translates to ”not class ωj .” ):
+P (xi) = P (xi | ωj) · P (ωj) + P (xi | ωCj ) · P (ωCj ) (19)
+Although the evidence term is required to accurately calculate the posterior
+probabilities, it can be removed from the decision rule ”Classify sample xi as
+ω1 if P (ω1 | xi) > P (ω2 | xi) else classify the sample as ω2,” since it is merely
+a scaling factor:
+P (xi | ω1) · P (ω1)
+P (xi)
+>
+P (xi | ω2) · P (ω2)
+P (xi)
+(20)
+∝ P (xi | ω1) · P (ω1) > P (xi | ω2) · P (ω2) (21)
+2.6 Multinomial Naive Bayes - A Toy Example
+After covering the basics concepts of a naive Bayes classifier, the posterior prob-
+abilities and decision rules, let us walk through a simple toy example based on
+the training set shown in Figure 4.
+Figure 4: A simple toy dataset of 12 samples 2 different classes +,− . Each sample
+consists of 2 features: color and geometrical shape.
+Let
+• ωj be the class labels: ωj ∈ {+,−}
+• and xi be the 2-dimensional feature vectors: xi = [xi1 xi2], xi1 ∈
+{blue, green, red, yellow}, xi2 ∈ {circle, square}.
+9
+Sebastian Raschka Naive Bayes and Text Classification I
+The 2 class labels are ωj ∈ {+,−} and the feature vector for sample i can
+be written as
+xi = [xi1 xi2]
+for i ∈ {1, 2, ..., n}, with n = 12
+and xi1 ∈ {blue, green, red, yellow}, xi2 ∈ {circle, square}
+(22)
+The task now is to classify a new sample — pretending that we don’t know
+that its true class label is ”+”:
+Figure 5: A new sample from class + and the features x = [blue, square] that is to
+be classified using the training data in Figure 4.
+2.6.1 Maximum-Likelihood Estimates
+The decision rule can be defined as
+Classify sample as + if
+P (ω = + | x = [blue, square]) ≥ P (ω = - | x = [blue, square])
+else classify sample as− .
+(23)
+Under the assumption that the samples are i.i.d, the prior probabilities can
+be obtained via the maximum-likelihood estimate (i.e., the frequencies of how
+often each class label is represented in the training dataset):
+P (+) =
+7
+12
+= 0.58
+P (-) =
+5
+12
+= 0.42
+(24)
+Under the naive assumption that the features ”color” and ”shape” are mu-
+tually independent, the class-conditional probabilities can be calculated as a
+simple product of the individual conditional probabilities.
+Via maximum-likelihood estimate, e.g., P (blue | −) is simply the frequency
+of observing a ”blue” sample among all samples in the training dataset that
+belong to class −.
+P (x | +) = P (blue | +) · P (square | +) = 3
+7
+· 5
+7
+= 0.31
+P (x | −) = P (blue | −) · P (square | −) = 3
+5
+· 3
+5
+= 0.36
+(25)
+10
+Sebastian Raschka Naive Bayes and Text Classification I
+Now, the posterior probabilities can be simply calculated as the product of
+the class-conditional and prior probabilities:
+P (+ | x) = P (x | +) · P (+) = 0.31 · 0.58 = 0.18
+P (− | x) = P (x | −) · P (−) = 0.36 · 0.42 = 0.15
+(26)
+2.6.2 Classification
+Putting it all together, the new sample can be classified by plugging in the
+posterior probabilities into the decision rule:
+If P (+ | x) ≥ P (- | x)
+classify as +,
+else classify as −
+(27)
+Since 0.18 > 0.15 the sample can be classified as +. Taking a closer look at
+the calculation of the posterior probabilities, this simple example demonstrates
+the effect of the prior probabilities affected on the decision rule. If the prior
+probabilities were equal for both classes, the new pattern would be classified as−
+instead of +. This observation also underlines the importance of representative
+training datasets; in practice, it is usually recommended to additionally consult
+a domain expert in order to define the prior probabilities.
+2.6.3 Additive Smoothing
+The classification was straight-forward given the sample in Figure 5. A trickier
+case is a sample that has a ”new” value for the color attribute that is not present
+in the training dataset, e.g., yellow, as shown in Figure 5.
+Figure 6: A new sample from class + and the features x = [yellow, square] that is
+to be classified using the training data in Figure 4.
+If the color yellow does not appear in our training dataset, the class-conditional
+probability will be 0, and as a consequence, the posterior probability will also be
+0 since the posterior probability is the product of the prior and class-conditional
+probabilities.
+P (ω1 | x) = 0 · 0.42 = 0
+P (ω2 | x) = 0 · 0.58 = 0
+(28)
+11
+Sebastian Raschka Naive Bayes and Text Classification I
+In order to avoid the problem of zero probabilities, an additional smoothing
+term can be added to the multinomial Bayes model. The most common variants
+of additive smoothing are the so-called Lidstone smoothing (α < 1) and Laplace
+smoothing (α = 1).
+P̂ (xi | ωj) =
+Ni,c + α
+Ni + αd
+(i = (1, ..., d)) (29)
+where
+• Ni,c: Count of observing feature xi in class ωj .
+• Nic: Count of observing feature xi in all classes.
+• α: Parameter for additive smoothing.
+• d: Dimensionality of the feature vector x = [x1, ..., xd].
+3 Naive Bayes and Text Classification
+This section will introduce some of the main concepts and procedures that are
+needed to apply the naive Bayes model to text classification tasks. Although
+the examples are mainly concerning a two 2-class problem — classifying text
+messages as spam or ham — the same approaches are applicable to multi-class
+problems such as classification of documents into different topic areas (e.g.,
+”Computer Science”, ”Biology”, ”Statistics”, ”Economics”, ”Politics”, etc.).
+3.1 The Bag of Words Model
+One of the most important sub-tasks in pattern classification are feature extrac-
+tion and selection; the three main criteria of good features are listed below:
+• Salient. The features are important and meaningful with respect to the
+problem domain.
+• Invariant. Invariance is often described in context of image classification:
+The features are insusceptible to distortion, scaling, orientation, etc. A
+nice example is given by C. Yao et al. in Rotation-Invariant Features for
+Multi-Oriented Text Detection in Natural Images [7].
+• Discriminatory. The selected features bear enough information to distin-
+guish well between patterns when used to train the classifier.
+Prior to fitting the model and using machine learning algorithms for training,
+we need to think about how to best represent a text document as a feature
+vector. A commonly used model in Natural Language Processing is the so-called
+bag of words model. The idea behind this model really is as simple as it sounds.
+First comes the creation of the vocabulary — the collection of all different words
+that occur in the training set and each word is associated with a count of how
+12
+Sebastian Raschka Naive Bayes and Text Classification I
+it occurs. This vocabulary can be understood as a set of non-redundant items
+where the order doesn’t matter. Let D1 and D2 be two documents in a training
+dataset:
+• D1: ”Each state has its own laws.”
+• D2: ”Every country has its own culture.”
+Based on these two documents, the vocabulary could be written as
+V = {each : 1, state : 1, has : 2, its : 2, own : 2,
+laws : 1, every : 1, country : 1, culture : 1}
+(30)
+The vocabulary can then be used to construct the d-dimensional feature
+vectors for the individual documents where the dimensionality is equal to the
+number of different words in the vocabulary (d = |V |). This process is called
+vectorization.
+Table 1: Bag of words representation of two sample documents D1 and D2.
+each state has its own laws every country culture
+xD1 1 1 1 1 1 1 0 0 0
+xD2 0 0 1 1 1 0 1 1 1∑
+1 1 2 2 2 1 1 1 1
+Given the example in Table 1 one question is whether the 1s and 0s of the
+feature vectors are binary counts (1 if the word occurs in a particular document,
+0 otherwise) or absolute counts (how often the word occurs in each document).
+The answer depends on which probabilistic model is used for the naive Bayes
+classifier: The Multinomial or Bernoulli model — more on the probabilistic
+models in Section 3.3 and Section 3.4.
+3.1.1 Tokenization
+Tokenization describes the general process of breaking down a text corpus into
+individual elements that serve as input for various natural language processing
+algorithms. Usually, tokenization is accompanied by other optional processing
+steps, such as the removal of stop words and punctuation characters, stemming
+or lemmatizing, and the construction of n-grams. Below is an example of a
+simple but typical tokenization step that splits a sentence into individual words,
+removes punctuation, and converts all letters to lowercase.
+13
+Sebastian Raschka Naive Bayes and Text Classification I
+Table 2: Example of tokenization.
+A swimmer likes swimming, thus he swims.
+↓
+a swimmer likes swimming thus he swims
+3.1.2 Stop Words
+Stop words are words that are particularly common in a text corpus and thus
+considered as rather un-informative (e.g., words such as so, and, or, the, ...”).
+One approach to stop word removal is to search against a language-specific stop
+word dictionary. An alternative approach is to create a stop list by sorting all
+words in the entire text corpus by frequency. The stop list — after conversion
+into a set of non-redundant words — is then used to remove all those words
+from the input documents that are ranked among the top n words in this stop
+list.
+Table 3: Example of stop word removal.
+A swimmer likes swimming, thus he swims.
+↓
+swimmer likes swimming , swims .
+3.1.3 Stemming and Lemmatization
+Stemming describes the process of transforming a word into its root form. The
+original stemming algorithm was developed my Martin F. Porter in 1979 and is
+hence known as Porter stemmer [8].
+Table 4: Example of Porter stemming.
+A swimmer likes swimming, thus he swims.
+↓
+a swimmer like swim , thu he swim .
+Stemming can create non-real words, such as ”thu” in the example above.
+In contrast to stemming, lemmatization aims to obtain the canonical (gram-
+matically correct) forms of the words, the so-called lemmas. Lemmatization is
+computationally more difficult and expensive than stemming, and in practice,
+both stemming and lemmatization have little impact on the performance of text
+classification [9].
+14
+Sebastian Raschka Naive Bayes and Text Classification I
+Table 5: Example of lemmatization.
+A swimmer likes swimming, thus he swims.
+↓
+A swimmer like swimming , thus he swim .
+The stemming and lemmatization examples were created by using the Python
+NLTK library (http://www.nltk.org).
+3.1.4 N -grams
+In the n-gram model, a token can be defined as a sequence of n items. The
+simplest case is the so-called unigram (1-gram) where each word consists of
+exactly one word, letter, or symbol. All previous examples were unigrams so
+far. Choosing the optimal number n depends on the language as well as the
+particular application. For example, Andelka Zecevic found in his study that
+n-grams with 3 ≤ n ≤ 7 were the best choice to determine authorship of Serbian
+text documents [10]. In a different study, the n-grams of size 4 ≤ n ≤ 8 yielded
+the highest accuracy in authorship determination of English text books [11] and
+Kanaris e. al. report that n-grams of size 3 and 4 yield good performances in
+anti-spam filtering of e-mail messages [12].
+• unigram (1-gram):
+a swimmer likes swimming thus he swims
+• bigram (2-gram):
+a swimmer swimmer likes likes swimming swimming thus ...
+• trigram (3-gram):
+a swimmer likes swimmer likes swimming likes swimming thus ...
+3.2 The Decision Rule for Spam Classification
+In context of spam classification the decision rule of a naive Bayes classifier
+based on the posterior probabilities can be expressed as
+if P (x | ω = spam) ≥ P (x | ω = ham) classify as spam,
+else classify as ham.
+(31)
+As described in Section 2.2 the posterior probability is the product of the
+class-conditional probability and the prior probability; the evidence term in the
+denominator can be dropped since it is constant for both classes.
+P (x | ω = spam) = P (ω = spam | x) · P (spam)
+P (x | ω = ham) = P (ω = ham | x) · P (ham)
+(32)
+15
+Sebastian Raschka Naive Bayes and Text Classification I
+The prior probabilities can be obtained via the maximum-likelihood estimate
+based on the frequencies of spam and ham messages in the training dataset:
+P̂ (ω = spam) =
+# of spam msg.
+# of all msg.
+P̂ (ω = ham) =
+# of ham msg.
+# of all msg.
+(33)
+Assuming that the words in every document are conditionally indepen-
+dent (according to the naive assumption), two different models can be used to
+compute the class-conditional probabilities: The Multi-variate Bernoulli model
+(Section 3.3) and the Multinomial model (Section 3.4).
+3.3 Multi-variate Bernoulli Naive Bayes
+The Multi-variate Bernoulli model is based on binary data: Every token in the
+feature vector of a document is associated with the value 1 or 0. The feature
+vector has d dimensions where d is the number of words in the whole vocabu-
+lary (in Section 3.1); the value 1 means that the word occurs in the particular
+document, and 0 means that the word does not occur in this document. The
+Bernoulli trials can be written as
+P (x | ωj) =
+m∏
+i=1
+P (xi | ωj)b · (1− P (xi | ωj))(1−b) (b ∈ 0, 1). (34)
+Let P̂ (xi | ωj) be the maximum-likelihood estimate that a particular word
+(or token) xi occurs in class ωj .
+P̂ (xi | ωj) =
+dfxi,y + 1
+dfy + 2
+(35)
+where
+• dfxi,y is the number of documents in the training dataset that contain the
+feature xi and belong to class ωj .
+• dfy is the number of documents in the training dataset that belong to class
+ωj .
+• +1 and +2 are the parameters of Laplace smoothing (Section 2.6.3).
+3.4 Multinomial Naive Bayes
+3.4.1 Term Frequency
+A alternative approach to characterize text documents — rather than binary
+values — is the term frequency (tf(t, d)). The term frequency is typically de-
+fined as the number of times a given term t (i.e., word or token) appears in a
+16
+Sebastian Raschka Naive Bayes and Text Classification I
+document d (this approach is sometimes also called raw frequency). In practice,
+the term frequency is often normalized by dividing the raw term frequency by
+the document length.
+normalized term frequency =
+tf(t, d)
+nd
+(36)
+where
+• tf(t, d): Raw term frequency (the count of term t in document d).
+• nd: The total number of terms in document d.
+The term frequencies can then be used to compute the maximum-likelihood
+estimate based on the training data to estimate the class-conditional probabili-
+ties in the multinomial model:
+P̂ (xi | ωj) =
+∑
+tf(xi, d ∈ ωj) + α∑
+Nd∈ωj + α · V
+(37)
+where
+• xi: A word from the feature vector x of a particular sample.
+•
+∑
+tf(xi, d ∈ ωj): The sum of raw term frequencies of word xi from all
+documents in the training sample that belong to class ωj .
+•
+∑
+Nd∈ωj : The sum of all term frequencies in the training dataset for class
+ωj .
+• α: An additive smoothing parameter (α = 1 for Laplace smoothing).
+• V : The size of the vocabulary (number of different words in the training
+set).
+The class-conditional probability of encountering the text x can be calculated
+as the product from the likelihoods of the individual words (under the naive
+assumption of conditional independence).
+P (x | ωj) = P (x1 | ωj) · P (x2 | ωj) · . . . · P (xn | ωj) =
+m∏
+i=1
+P (xi | ωj) (38)
+3.4.2 Term Frequency - Inverse Document Frequency (Tf-idf)
+The term frequency - inverse document frequency (Tf-idf) is another alternative
+for characterizing text documents. It can be understood as a weighted term
+frequency, which is especially useful if stop words have not been removed from
+the text corpus. The Tf-idf approach assumes that the importance of a word
+is inversely proportional to how often it occurs across all documents. Although
+17
+Sebastian Raschka Naive Bayes and Text Classification I
+Tf-idf is most commonly used to rank documents by relevance in different text
+mining tasks, such as page ranking by search engines, it can also be applied to
+text classification via naive Bayes.
+Tf-idf = tfn(t, d) · idf(t) (39)
+Let tfn(d, f) be the normalized term frequency, and idf , the inverse docu-
+ment frequency, which can be calculated as follows
+idf(t) = log
+(
+nd
+nd(t)
+)
+, (40)
+where
+• nd: The total number of documents.
+• nd(t): The number of documents that contain the term t.
+3.4.3 Performances of the Multi-variate Bernoulli and Multinomial
+Model
+Empirical comparisons provide evidence that the multinomial model tends to
+outperform the multi-variate Bernoulli model if the vocabulary size is relatively
+large [13]. However, the performance of machine learning algorithms is highly
+dependent on the appropriate choice of features. In the case of naive Bayes
+classifiers and text classification, large differences in performance can be at-
+tributed to the choices of stop word removal, stemming, and token-length [14].
+In practice, it is recommended that the choice between a multi-variate Bernoulli
+or multinomial model for text classification should precede comparative studies
+including different combinations of feature extraction and selection steps.
+4 Variants of the Naive Bayes Model
+So far, we have seen two different models for categorical data, namely, the
+multi-variate Bernoulli (Section 3.3) and multinomial (Section 3.4) models —
+and two different approaches for the estimation of class-conditional probabilities.
+In Section 4.1, we will take a brief look at a third model: Gaussian naive Bayes.
+4.1 Continuous Variables
+Text classification is a typical case of categorical data, however, naive Bayes
+can also be used on continuous data. The Iris flower data set would be a
+simple example for a supervised classification task with continuous features:
+The Iris dataset contains widths and lengths of petals and sepals measured
+in centimeters. One strategy for dealing with continuous data in naive Bayes
+classification would be to discretize the features and form distinct categories or
+to use a Gaussian kernel to calculate the class-conditional probabilities. Under
+18
+Sebastian Raschka Naive Bayes and Text Classification I
+the assumption that the probability distributions of the features follow a normal
+(Gaussian) distribution, the Gaussian naive Bayes model can be written as
+follows
+P (xik | ω) =
+1√
+2πσ2ω
+exp
+(
+− (xik − µω)
+2
+2σ2ω
+)
+, (41)
+where µ (the sample mean) and σ (the standard deviation) are the param-
+eters that are to be estimated from the training data. Under the naive Bayes
+assumption of conditional independence, the class-conditional probability can
+than be computed as the product of the individual probabilities:
+P (xi | ω) =
+d∏
+k=1
+P (xik | ω) (42)
+4.2 Eager and Lazy Learning Algorithms
+Being an eager learner, naive Bayes classifiers are known to be relatively fast
+in classifying new instances. Eager learners are learning algorithms that learn
+a model from a training dataset as soon as the data becomes available. Once
+the model is learned, the training data does not have to be re-evaluated in
+order to make a new prediction. In case of eager learners, the computationally
+most expensive step is the model building step whereas the classification of new
+instances is relatively fast.
+Lazy learners, however, memorize and re-evaluate the training dataset for
+predicting the class label of new instances. The advantage of lazy learning is
+that the model building (training) phase is relatively fast. On the other hand,
+the actual prediction is typically slower compared to eager learners due to the
+re-evaluation of the training data. Another disadvantage of lazy learners is
+that the training data has to be retained, which can also be expensive in terms
+of storage space. A typical example of a lazy learner would be a k-nearest
+neighbor algorithm: Every time a new instance is encountered, the algorithm
+would evaluate the k -nearest neighbors in order to decide upon a class label for
+the new instance, e.g., via the majority rule (i.e., the assignment of the class
+label that occurs most frequently amongst the k -nearest neighbors).
+References
+[1] Irina Rish. An empirical study of the naive bayes classifier. In IJCAI 2001
+workshop on empirical methods in artificial intelligence, pages 41–46, 2001.
+[2] Pedro Domingos and Michael Pazzani. On the optimality of the simple
+bayesian classifier under zero-one loss. Machine learning, 29(2-3):103–130,
+1997.
+19
+Sebastian Raschka Naive Bayes and Text Classification I
+[3] Joanna Kazmierska and Julian Malicki. Application of the näıve bayesian
+classifier to optimize treatment decisions. Radiotherapy and Oncology,
+86(2):211–216, 2008.
+[4] Qiong Wang, George M Garrity, James M Tiedje, and James R Cole. Naive
+bayesian classifier for rapid assignment of rrna sequences into the new bacte-
+rial taxonomy. Applied and environmental microbiology, 73(16):5261–5267,
+2007.
+[5] Mehran Sahami, Susan Dumais, David Heckerman, and Eric Horvitz. A
+bayesian approach to filtering junk e-mail. In Learning for Text Catego-
+rization: Papers from the 1998 workshop, volume 62, pages 98–105, 1998.
+[6] Harry Zhang. The optimality of naive bayes. AA, 1(2):3, 2004.
+[7] Cong Yao, Xin Zhang, Xiang Bai, Wenyu Liu, Yi Ma, and Zhuowen Tu.
+Rotation-invariant features for multi-oriented text detection in natural im-
+ages. PloS one, 8(8):e70173, 2013.
+[8] Martin F Porter. An algorithm for suffix stripping. Program: electronic
+library and information systems, 14(3):130–137, 1980.
+[9] Michal Toman, Roman Tesar, and Karel Jezek. Influence of word normal-
+ization on text classification. Proceedings of InSciT, pages 354–358, 2006.
+[10] Andelka Zecevic. N-gram based text classification according to authorship.
+In Student Research Workshop, pages 145–149, 2011.
+[11] Vlado Kešelj, Fuchun Peng, Nick Cercone, and Calvin Thomas. N-gram-
+based author profiles for authorship attribution. In Proceedings of the con-
+ference pacific association for computational linguistics, PACLING, vol-
+ume 3, pages 255–264, 2003.
+[12] Ioannis Kanaris, Konstantinos Kanaris, Ioannis Houvardas, and Efstathios
+Stamatatos. Words versus character n-grams for anti-spam filtering. Inter-
+national Journal on Artificial Intelligence Tools, 16(06):1047–1067, 2007.
+[13] Andrew McCallum, Kamal Nigam, et al. A comparison of event models for
+naive bayes text classification. In AAAI-98 workshop on learning for text
+categorization, volume 752, pages 41–48. Citeseer, 1998.
+[14] Lawrence M Rudner and Tahung Liang. Automated essay scoring using
+bayes’ theorem. The Journal of Technology, Learning and Assessment,
+1(2), 2002.
+20

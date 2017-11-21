@@ -1,0 +1,1237 @@
+A SYSTEM FOR NATURAL LANGUAGE 
+UNMARKED CLAUSAL 
+TRANSFORMATIONS IN TEXT-TO-TEXT 
+APPLICATIONS 
+A Thesis 
+presented to 
+the Faculty of California Polytechnic State University, 
+San Luis Obispo 
+ 
+ 
+ 
+ 
+In Partial Fulfillment of the Requirements for the 
+Degree Master of Science in Computer Science 
+by  
+Daniel Steven Miller 
+June 2009 
+  
+ii 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+© 2009 
+Daniel Steven Miller 
+ALL RIGHTS RESERVED 
+  
+iii 
+ 
+COMMITTEE MEMBERSHIP 
+ 
+ 
+TITLE: A System for Natural Language Unmarked Clausal 
+Transformations in Text-to-text Applications 
+ 
+ 
+AUTHOR: Daniel Steven Miller 
+ 
+DATE SUBMITTED: June 2009 
+ 
+ 
+ 
+COMMITTEE CHAIR:   Franz J. Kurfess 
+ 
+COMMITTEE MEMBER:  Gene Fisher 
+ 
+COMMITTEE MEMBER: Christopher Clark 
+ 
+iv 
+ 
+ 
+ABSTRACT 
+A System for Natural Language Unmarked Clausal Transformations in Text-to-text 
+Applications 
+Daniel Steven Miller 
+ 
+A system is proposed which separates clauses from complex sentences into simpler stand-
+alone sentences.  This is useful as an initial step on raw text, where the resulting processed text 
+may be fed into text-to-text applications such as Automatic Summarization, Question 
+Answering, and Machine Translation, where complex sentences are difficult to process.  
+Grammatical natural language transformations provide a possible method to simplify complex 
+sentences to enhance the results of text-to-text applications. Using shallow parsing, this system 
+improves the performance of existing systems to identify and separate marked and unmarked 
+embedded clauses in complex sentence structure resulting in syntactically simplified source for 
+further processing.  
+  
+ 
+ v 
+ACKNOWLEDGMENTS 
+Special thanks to my advisor Dr. Franz Kurfess, for being continually available and supportive, 
+and the members of my committee, Dr. Gene Fisher and Dr. Christopher Clark for helping 
+me clarify and focus this thesis.  I would like to thank my parents for helping to get me 
+through and inspire me to do my best.  Thanks especially to my wife Sarah, and my children 
+Lucas and Lydia for spurring me on to bring this to completion. 
+vi 
+Acknowledgments ................................................................................................................................ v 
+List of Figures ..................................................................................................................................... viii 
+1 Introduction ....................................................................................................................................... 1 
+1.1 Text-to-Text Transformations ............................................................................................... 2 
+2 Background ........................................................................................................................................ 5 
+2.1 Computational Linguistics ...................................................................................................... 5 
+2.1.1 Context-free grammar ................................................................................................... 6 
+2.1.2 Transformational Grammar........................................................................................ 10 
+2.2 Learning Methods .................................................................................................................. 13 
+2.2.1 Hidden Markov Models .............................................................................................. 14 
+2.2.2 Transformation-based Learning ................................................................................. 15 
+3 System Overview ............................................................................................................................. 17 
+3.1.1 Tokenization ................................................................................................................. 17 
+3.1.2 Part of Speech Tagging................................................................................................ 18 
+3.1.3 Chunking ....................................................................................................................... 19 
+3.1.4 Clause and Attachment Identification ....................................................................... 19 
+3.1.5 Sentence Extraction ..................................................................................................... 21 
+3.2 Regular Expression Implementation ................................................................................... 22 
+3.3 Sentence Transformations .................................................................................................... 27 
+3.3.1 Relative Clauses ............................................................................................................ 27 
+3.3.2 Appositives ................................................................................................................... 29 
+T A B L E  O F  C O N T E N T S  
+ 
+vii 
+ 
+3.3.3 Sequences ...................................................................................................................... 30 
+3.3.4 Unmarked Clauses ....................................................................................... 31 
+5 System Evaluation .................................................................................................... 34 
+6 Future Work .............................................................................................................. 37 
+7 Conclusions ............................................................................................................... 38 
+Bibliography .................................................................................................................. 39 
+Appendix 1- Example Output ............................................................................. 42 
+ 
+  
+ 
+viii 
+ 
+LIST OF FIGURES 
+Figure 1 - Illustration of phrase constituency .................................................................................... 5 
+Figure 2 - CFG Example ..................................................................................................................... 6 
+Figure 3 - Generation of "The man took the book"......................................................................... 7 
+Figure 4 - Parse Tree Example "The man took the book." ............................................................. 8 
+Figure 5 - Transformation with trace................................................................................................ 12 
+Figure 6 - System Pipeline .................................................................................................................. 17 
+Figure 7 - Regular expression relative clause identification algorithm .......................................... 20 
+Figure 8 - Siddharthan relative clause identification algorithm ...................................................... 21 
+Figure 9 – Non-Finite Automata ...................................................................................................... 24 
+Figure 10 – Relative Clause Identification Comparison ................................................................. 34 
+Figure 11 - Clause Identification Results .......................................................................................... 35
+1 
+  1 INTRODUCTION 
+With the expansion of massive amounts of digitized text available, most prominently through 
+the World Wide Web, advanced information retrieval (IR) techniques are more necessary than 
+ever. While language information is currently treated at the document or sentence level (Mani 
+and Maybury 1999), this is not the expected or optimal solution, often requiring people to 
+search through the clumsy, out of context results to find the information they require.  For 
+instance, in the Question Answering track of the Text REtrieval Conference (TREC) 2000 had 
+the question, What is the capital of Kosovo? as one of its reported examples (Voorhees 1999).  
+Answers ranged from 0 miles northwest of Pristina, five demonstrators which was judged correct to 
+protesters called for military intervention to end “the Albanian uprising.” </P><P> At Vucitrn, 20 miles 
+northwest of Pristina, five demonstrators were reported injured, apparently in clashes with police.  </P> <P> 
+Violent clashes were also repo which was judged incorrect.  The second was judged incorrect even 
+with the correct answer within the text because of the ambiguity of two possible city names in 
+the snippet.  A much better solution would be to have a short, direct sentence with the name 
+of the city. 
+Systems that answer queries for text retrieval must accept complex sentences with complex 
+references to other parts of the text within the search data. These data often contain linguistic 
+barriers that current systems are unable to handle which will often obscure relevant 
+information (Chandrasekar, Doran and Srinivas 1996). Keyword-based techniques have 
+improved IR at the document level, but have done little to extract the necessary data within the 
+document at the sentence or sub-sentence level. This thesis presents an architecture for a 
+ 
+2 
+ 
+preprocessing method which augments IR systems to enhance their results by identifying and 
+transforming several types of clauses within the text. 
+The goal of this thesis is to use shallow parsing and regular expressions for acquiring and 
+transforming clausal information from sentences, resulting in simplified sentences with a 
+similar degree of accuracy as Siddharthan (Siddharthan 2003), but without resorting to a hand-
+coded solution. Furthermore, Siddharthan‘s algorithm is improved upon so that clausal 
+boundaries are found using grammatical parts of speech instead of punctuation and word cues.  
+In this thesis, a system is presented for text processing methods to move from rule-based to a 
+potentially machine learning based approach. 
+Many of the most popular natural language applications today are text-to-text applications, that 
+is, applications which both accept and produce text as opposed to applications which perform 
+data analysis or parsing over text. These include machine translation, summarization, and 
+question answering. In each case, the primary focus of each is separate from modifying the 
+base text itself. In machine translation, the focus is in translating the words and phrases from 
+the input to the target language. In summarization and question answering, focus is on the 
+ability to accurately find the most salient sentences pertaining to the query (Erkan 2004). The 
+TREC 2003 and 2004 question answering track shows an increasing emphasis on linguistic 
+1 . 1  T E X T - T O - T E X T  T R A N S F O R M A T I O N S  
+ 
+3 
+ 
+parsing (Voorhees 2004, Voorhees 2005). Challenges in the TREC QA track first began in 
+1999 with document retrieval, then passage retrieval within the documents, and finally in 2002, 
+the exact answer to factoid questions such as Who invented the paper clip?  Introduced in 2003 
+were definition questions (Voorhees 2004). These questions are broad, open-ended questions 
+such as, What is mold? requiring retrieval across multiple documents. The TREC 2004 QA track 
+was designed to incorporate even more definition questions through a tell me more style 
+question at the end of each question series (Voorhees 2005). Using deeper linguistic constructs 
+has proven useful (Jinxi Xu 2004) to definition question answering, earning the highest score 
+in the TREC 2003 QA track definition question series. 
+While deeper linguistic constructs are useful, relatively few efforts have been made to separate 
+the task of initial parsing and final text-to-text processing from the main task of salience 
+(relevance) scoring and translation. Instead, text-to-text processing is handled as a part of the 
+main task, unique to each implementation. One effort to split this task is the application of 
+surface realization–generating the final text from a discourse plan–in natural language 
+generation (NLG) to text-to-text tasks like summarization and machine translation. In NLG, 
+the output of an expert system or other non-language source is finally ―realized‖ or expressed 
+as a human readable sentence at the stage of surface realization. Since many surface realization 
+implementations require deep subject-verb or verb-object relations unavailable to NLP 
+applications, only the recent formalization of ―interleave disjunction lock‖ or IDL-expressions 
+ 
+4 
+ 
+for natural language parsing (Mark-Jan Nederhof 2004) has allowed its application to text-to-
+text applications to be considered (Marcu 2005).  
+The most basic text-to-text transformations that process deeper than the sentence level are 
+sentence simplification techniques. Text simplification by itself is useful for generating closed-
+captioned text and other limited channel devices, aiding adult English learners, and aiding 
+people with language disabilities like aphasia (Carroll, et al. 1999).  
+ 
+5 
+ 
+2 BACKGROUND  
+Parsing Natural Language first began before computers with linguistics through formalizing 
+grammar in language so that a delineation could be made between grammatical and 
+ungrammatical sentences (Ouhalla 1999). Sentences contain groups of words that behave as a 
+single unit or phrase, called a constituent. A constituent may be a noun phrase such as Kermit 
+the Frog, an adjective phrase such as extremely clever, a prepositional phrase such as down by the 
+river, a verb phrase such as killed the rabbit and a handful of others. Evidence of the validity of 
+constituency is the phrase‘s ability to be placed in different locations throughout the sentence, 
+as in Figure 1.  
+2 . 1  C O M P U T A T I O N A L  L I N G U I S T I C S  
+ 
+Figure 1 - Illustration of phrase constituency 
+ 
+ 
+6 
+ 
+2.1.1 CONTEXT-FREE GRAMMAR 
+The most common way of modeling a constituency is a Context-free grammar (hereafter 
+CFG), which is also called a Phrase Structure Grammar or Backus-Naur Form. These models 
+were formalized by Chomsky in 1956 (Chomsky 1956), and independently by Backus in 1959. 
+A CFG may be represented by G=<T,N,S,R>in which S is a nonterminal start symbol, T is 
+the set of terminals, or lexicon, and N is the set of nonterminals. Structuring the CFG is a set 
+of rules R, or productions, in the form of X→ where X is a nonterminal and  is a sequence 
+of terminals and nonterminals applied to N and T to generate some language L. 
+The example in Figure 2 defines a formal language from (Chomsky 1956). A formal language 
+differs from a natural language in that a formal language is defined solely by the rules in the 
+ 
+Figure 2 - CFG Example 
+ 
+ 
+7 
+ 
+CFG. The application of the rules generates all possible grammatical sentence for our formal 
+language G. Any sentence formed that cannot be derived from G are called ungrammatical for 
+this particular formal language. In the example, NP stands for noun phrase, VP for verb 
+phrase, NOM for nominal. A nominal can be one or more nouns. In linguistics, this is called a 
+generative grammar, since the language is defined by the set of possible sentences ―generated‖ 
+by the grammar. We may generate the sentence The man took the book. as in Figure 3. 
+The generation of a sentence using a CFG is called derivation. In order to represent the 
+complete derivation, a parse tree is commonly used as in Figure 4. The parse tree begins at the 
+top with the nonterminal start symbol S. NP and VP are then derived from S using the CFG 
+rules in the next level down. The parse tree ends at the bottom with the words which make up 
+the sentence.  
+ 
+Figure 3 - Generation of "The man took the book" 
+ 
+ 
+8 
+ 
+While deriving sentences from a CFG is straight forward, finding the correct derivation of a 
+sentence is much harder. This task is called parsing, where given a sentence, one must find the 
+correct derivation. It must be noted that a particular sentence may have dozens or more parse 
+trees which all satisfy the rules of a given grammar. Parsing algorithms have been handled 
+computationally as search algorithms, where two popular algorithms are defined by their 
+starting points. Top down parsing begins at the start symbol S, and generates a derivation 
+using the grammar rules given. Bottom up parsing begins with the terminal words and using 
+the grammar rules in reverse to generate the derivation. Parsing itself is computationally 
+expensive. The popular Earley (Earley 1968) algorithm implements a parallel top-down 
+approach which gives a worst case behavior of O(N3), where N is the number of words in the 
+input. Parsing the complete derivation of the sentence, however, is not necessary for many 
+tasks in natural language processing. A common method used is called shallow parsing, where 
+the individual constituents of a sentence are identified, but their derivations are left unknown. 
+ 
+Figure 4 - Parse Tree Example "The man took the book." 
+ 
+ 
+9 
+ 
+Shallow parsing itself may be split into several tasks itself. The first is called tokenization, 
+where a string is split into sentences, words, and punctuation. Tokenization is a simple, but not 
+trivial task, and errors at this stage prove disastrous to the remaining tasks. The second task is 
+called tagging, where each token is identified by its part of speech, which may be a noun a 
+possessive ending, a comma, or a third-person singular present verb. Tag sets themselves may 
+differ greatly, identifying larger or smaller differences in parts of speech. Two popular tag sets 
+are noted by the corpuses in which they are used, the Brown tag set (Francis and Kucera 
+1982), and the Penn Treebank tag set (Santorini 1991). The third task in shallow parsing is 
+called chunking. Chunking results differ from the full parse of a sentence because chunks are 
+defined as non-overlapping consecutive groups. In a full parse, one chunk may be the 
+constituent of another, but in shallow parsing such information is not retrieved. A shallow 
+parser may run each of these tasks in succession, or generate the tokenized, tagged, and 
+chunked data in one pass. A shallow parse of the example sentence would appear: [NP 
+The/DT man/NN] [VP took/VBD] [NP the/DT book/NN]. Tags are shown after the slash 
+'/' for each word, while chunks are divided by square brackets '[]' with their constituency 
+preceding the text. 
+CFG is not the only or most recent or accepted method of representing language or syntax 
+structure. In linguistics, there are multiple competing philosophies of language (Martin 2000), 
+none of which have won out or completely described natural language without exceptions. 
+While constituency gained popularity early on in the United States, European syntactitians 
+ 
+10 
+ 
+retained the earlier word-based dependency grammars, which determine syntax by individual 
+word relations. Furthermore, CFG itself has been modified into a set of more abstract context-
+free templates known as X-bar schemata (Ouhalla 1999), which is still in active development. 
+While a large number of computational models were based on context free grammars due to 
+early work in computational parsing these grammars, dependency grammars have gained 
+popularity with statistical parsers. 
+2.1.2 TRANSFORMATIONAL GRAMMAR  
+Moving beyond phrase structure are the more complex grammatical transformations.  
+Transformational Grammar (Ouhalla 1999) is a version of Generative Grammar that 
+developed when linguistics moved from the mechanics of language to the underlying mental 
+processes of a broader range of the properties of language.  Transformational Grammar 
+introduced a set of construction-specific transformations on different types of sentences which 
+would either leave the meaning of the sentence the same, or accomplish a specific desired 
+grammatical change. 
+In order to understand transformations, we must first have a deeper understanding of sentence 
+structure.  It is tempting to consider some linear relationship between words in a sentence.  In 
+English, we come across many sentences with a subject-verb-object linear structure, but this is 
+merely a by-product of the geometrical aspects of the structures generated by Phrase Structure 
+ 
+11 
+ 
+rules.  Considering the tree structure of language it is possible to then observe specific 
+movements of structures as more than the NP movement introduced earlier.  In Figure 5, we 
+see two tree structures of the sentences I can solve this problem. And This problem, I can solve.  The 
+transformation in effect is called the Lexical Insertion Rule, where item X is inserted under 
+terminal node Y where Y corresponds to the categorical features of X, and YP corresponds to 
+the subcategorization properties of X.  The second tree structure has a t(race) symbol in the 
+object position of the verb.  Trace is a unique category in sentence structure in that it has no 
+lexically realized form, but instead marks grammatically the result of a transformation that has 
+taken place. 
+ 
+12 
+ 
+Trace does not require a purposeful linguistic transformation to exist.  It exists implicitly as 
+part of the grammatical structure of a sentence.  Consider the colloquial ―wanna‖ as a 
+contraction of the words ―want‖ and ―to‖ when they are adjacent.     
+1. I want to read this novel. 
+2. I wanna read this novel. 
+ 
+Now if there is a transformation that takes place, we can show the existence of a trace in the 
+resulting sentence: 
+1. This novel, I want to be considered for a prize. 
+ 
+Figure 5 - Transformation with trace 
+ 
+ 
+13 
+ 
+2. *This novel, I wanna be considered for a prize. 
+3. [NP This novel]i, I want [NP t]i to be considered for a prize. 
+ 
+Since the trace comes between ―want‖ and ―to‖, they cannot contract to ―wanna‖, showing 
+the grammatical visibility of the trace symbol. 
+ 
+NLP was exclusively rule-based for some time, but then statistical methods such as Hidden 
+Markov Models have been one of the most favored techniques for computational linguistics 
+(Martin 2000).  Statistical techniques have the advantage of being relatively hands-off while 
+producing generally positive results.  There are problems with statistical techniques though.  
+First, the resulting output of a training period is a set of interdependent statistical weights 
+which do not provide any insight into the methods used by the trained system.  The 
+programmer may then blindly or intuitively adjust certain aspects of the training, but the 
+programmer is essentially feeling around in the dark. 
+A compromise approach between rule-based and statistics based methods is Transformation 
+Based Learning (Brill, Transformation-based error-driven learning and natural language 
+processing: A case study in part of speech tagging 1995), which generates a set of rules as the 
+2.2  L E A R N I N G  M E T H O D S  
+ 
+14 
+ 
+result of its training.  These rules can be and have been manipulated by hand after training has 
+occurred in order to improve performance of the final algorithm. 
+2.2.1 HIDDEN MARKOV MODELS 
+Hidden Markov Models are one of the most important machine learning models in natural 
+language processing. To introduce Hidden Markov Models, one must first be introduced to 
+Markov Chains (Martin 2000). An extension of finite state automata, the Markov Chain is a 
+weighted special case automaton where the input sequence determines a unique set of states. A 
+Markov Chain is made up of a set of states Q=q1q2 … qN, a set of transition probabilities 
+A=a01a02…an1…ann, and start and end states. Since each transition aij has the probability p(qj|qi) 
+the sum of the outgoing transitions is always equal to 1. Start states may be represented as a 
+distribution over all states π where πi expresses the probability p(qi|START). In a first order 
+Markov chain, the probability of a particular state qi is dependent only on the previous state, so 
+p(qi|1… qi-1=p(qi|qi-1). From a Markov chain, we can compute the probabilities of a set of states 
+using the transition and start state probabilities.  
+While Markov chains are useful for observable events, many events in NLP are not 
+observable. In part-of-speech tagging, for instance, the observed events are words rather than 
+tags. The correct tags have to be inferred from the word sequence given. Hidden Markov 
+Models (HMM) allows for the modeling of hidden events based upon observed events. As 
+ 
+15 
+ 
+with a Markov Chain an HMM is made up of of a set of states Q=q1q2…qN, a set of transition 
+probabilities A=a01a02…an1…ann, and an initial distribution over states π, but an HMM also has 
+a set of observations O=o1o2…oN with each observation drawn from a vocabulary V=v1v2…vV 
+and a set of observation likelihoods B=bi(ot). A first-order HMM not only requires that the 
+probability of a state is only dependent on the previous state, but also the probability of an 
+output observation is dependent only on the state producing the observation.  
+2.2.2 TRANSFORMATION-BASED LEARNING 
+Transformation-based learning (Brill, Transformation-based error-driven learning and natural 
+language processing: A case study in part of speech tagging 1995, Brill, A simple rule-based 
+part-of-speech tagger 1992) (hereafter TBL) is the only remaining rule-based algorithm in 
+Natural Language Processing that has the advantages of statistical methods, but instead of 
+blocks of statistical data, a relatively simple rule-set is produced. Several advantages the rule-set 
+provides are that errors can be pinpointed to certain rules in the rule-set, and the rule-set is 
+intelligible enough to be hand-tweaked for further improvements. 
+TBL is an error-driven machine learning technique that works by first assigning an initial 
+classification to the data, and then searches through a set of possible transformations, selecting 
+the transformation which most decreases the error in the training set. This process repeats 
+until no transformation will decrease the error rate in the training set. Each transformation, or 
+ 
+16 
+ 
+rule, consists of a predicate and a target. In the case of part of speech tagging, two rule-sets are 
+applied to the data after its initial classification. The first are a set of lexical rules, which 
+incorporates the letters that make up the word being tagged, including prefixes, suffixes and 
+capitalization. The second is a set of contextual rules, which incorporate the surrounding 
+words and tags in order to assign a correct part of speech tag. 
+TBL has several attractive qualities beyond the generated rule-set. Since TBL is directly error-
+driven, it is resistant to over-training. It can automatically integrate heterogeneous types of 
+knowledge without explicit modeling. Furthermore it outperforms Hidden Markov Model 
+techniques (Ramshaw and Marcus, Exploring the statistical derivation of transformational rule 
+sequences for part-of-speech tagging 1994) that had taken over similar NLP tasks before its 
+arrival. 
+TBL was first proposed by Eric Brill (Brill 1992, Brill 1995), and subsequently modified to 
+both improve the training speed of the algorithm (Florian and Ngai 2001, Ramshaw and 
+Marcus, Exploring the statistical derivation of transformational rule sequences for part-of-
+speech tagging 1994) and expanding the scope of the original algorithm beyond part-of-speech 
+tagging to chunking (Ramshaw and Marcus 1995), parsing (Brill 1996), and handwritten 
+character segmentation (Kavallieratou, et al. 2000). 
+ 
+17 
+ 
+3 SYSTEM OVERVIEW 
+The overall structure of the system is separated into five parts: tokenization, part-of-speech 
+tagging, chunk tagging, clause and attachment identification, and sentence extraction.  The 
+system was programmed in Python using the natural language toolkit (NLTK) (Bird 2002).  
+The novel parts of this system are in the clause identification and sentence transformation 
+methods.   
+3.1.1 TOKENIZATION 
+In tokenization, a string of characters is grouped into tokens.  Normally this is an array of 
+words and punctuation in a sentence.  So the string, Mary‟s doll had red hair. gets tokenized into, 
+ 
+Figure 6 - System Pipeline 
+ 
+Tokenization POS Tagging Chunking
+Clause and 
+Attachment 
+Identification
+Sentence 
+Extraction
+ 
+18 
+ 
+[“Mary”, “’s”, “doll”, “had”, “red”, “hair”, “.”].  This facilitates further processing by allowing 
+the next steps to concentrate on a token rather than a stream of characters.  The tokenization 
+step in this system is from the Montytagger (Liu 2003), which is a transformation based part of 
+speech tagger written in Python.  For the purpose of this system the numeric identifier in the 
+Montytagger tokenizer was expanded to handle numbers larger than 1 million and currency 
+with more than two digits after the decimal point. 
+3.1.2 PART OF SPEECH TAGGING 
+Part of speech tagging takes the tokens produced at the tokenization step and applies a part of 
+speech tag to each token. In this step, the tags are applied using transformation-based learning.  
+The tokens, [“Mary”, “’s”, “doll”, “had”, “red”, “hair”, “.”], is input into the part of speech 
+tagging stage and results with the output, [“Mary”/NNP, “’s”/POS, “doll”/NN, “had”/VBD, 
+“red”/JJ, “hair”/NN, “.”/.]. There are several problems with training taggers from scratch.  
+The first is that the process can take weeks of computing time.  The second is that the freely 
+available tagged corpuses are much smaller than those for which rulesets are available.  The 
+fnTBL system has both part of speech and chunk tagging rulesets available which used the 
+large and well-established Penn Treebank Wall Street Journal corpus as its source.  The system 
+interprets fnTBL‘s trained rulesets and applies them to the tokens. 
+ 
+19 
+ 
+3.1.3 CHUNKING 
+In the chunking stage, the tagged tokens are separated into non-overlapping phrases called 
+―chunks‖.  The chunks are groups of adjoining tokens which form phrases that constitute the 
+most basic level of constituents within a sentence. In this implementation, chunks are 
+separated using chunk tags at each token. At this stage, the input, [“Mary”/NNP, “’s”/POS, 
+“doll”/NN, “had”/VBD, “red”/JJ, “hair”/NN, “.”/.], would be further tagged, [“Mary”/NNP/B-
+NP, “’s”/POS/B-NP, “doll”/NN/I-NP, “had”/VBD/B-VP, “red”/JJ/B-NP, “hair”/NN/I-NP, 
+“.”/./O].  In order to form groups, each chunk tag is prefixed with B- to mark the beginning of 
+the chunk or I- to continue the previous chunk.  A second trained set of rules from fnTBL 
+were used to apply chunk tags to the tokens. 
+3.1.4 CLAUSE AND ATTACHMENT IDENTIFICATION 
+At the clause and attachment identification stage, the tagged and chunked tokens are used to 
+identify the attachment and clause beginnings and endings.  The method used in this is a 
+custom regular expression engine which uses a tagged token as a unit rather than a character. 
+The clause identification algorithm for appositives and relative clauses are based on 
+Siddharthan‘s (Siddharthan 2003) work in rule based clause identification.  The difference can 
+ 
+20 
+ 
+be seen in Figure 8 and Figure 7, where the pseudocode from Siddharthan has been translated 
+into a regular expression. 
+ 
+ 
+Figure 7 - Regular expression relative clause identification algorithm 
+ 
+ 
+21 
+ 
+ 
+3.1.5 SENTENCE EXTRACTION 
+Sentence extraction takes the marked clauses and attachments and performs several operations 
+on them, extracting stand-alone sentences.  The clause may be removed as in the case with 
+appositives, or joined with its attachment to form a separate sentence. For relative clauses, the 
+relative pronoun must also be identified and dropped from the extracted sentence.  For 
+sequences, each clause may stand on its own within the sentence.  This was done through a 
+simple hand-coded algorithm, which would print out each extracted sentence. 
+ 
+Figure 8 - Siddharthan relative clause identification algorithm 
+ 
+ 
+22 
+ 
+In order to identify the clauses for extraction several approaches were considered, including a 
+variety of machine learning techniques.  Since clause identification concerns more complex 
+relationships between words, more advanced machine learning techniques and even hand-
+coded algorithms become relevant to the problem.  One main obstacle to a machine-learning 
+technique is the lack of training corpa available. The CoNLL 2001 shared task (Dejean and 
+Sang 2001) may have provided a training corpus had it identified clause types rather than 
+simple boundaries. Since only a handful of clause types lend themselves to extraction, and 
+different techniques are required for extraction on differing clausal categories, clausal type 
+information is essential to sentence extraction. 
+The technique used for clause identification is a similar approach to Thompson‘s regular 
+expression algorithm (Thompson 1968). Thompson‘s algorithm generates a non-deterministic 
+finite automata (NFA) from a postfix regular expression input to determine matches on a 
+string. In this system, the expression must match across an array of tokenized and tagged units 
+rather than an array of characters. This introduces several challenges in generating the 
+capability to express a clausal identification algorithm within an input expression which will be 
+further discussed later. 
+Thompson‘s algorithm uses a stack-based approach to generate the NFA, which pulls tokens 
+off a postfix-style regular expression and generates the NFA iterively from each subexpression. 
+3 . 2  R E G U L A R  E X P R E S S I O N  I M P L E M E N T A T I O N  
+ 
+23 
+ 
+This system uses a translator to create a postfix-style expression from an infix-style expression 
+input. The resulting expression is used to generate the NFA using a similar approach to 
+Thompson. The main difference with this algorithm is the data which the expression must 
+match against. Instead of a simple character array, each token has three components of which 
+one or more may need to be matched against the expression. Secondly, instead of a simple 
+character match, the match may only be on the whole word, the part of speech tag, or the 
+chunk tag. There are seven operators that this engine handles in the NFA structure and three 
+in the matching code. The seven operators include concatenation, or-style alternation, 
+matching of zero or more, matching of one or more, matching of zero or one instance, simple 
+tag concatenation, and tag continuation. The three handled in the matching code are matching 
+across a single token, negation, and wildcard matches. 
+ In each of the seven operators in Figure 9, the generator needs to create a NFA, and connect 
+them until a terminal matching state is reached. For states such as concatenation, simple tag 
+concatenation, and continuation, the NFA simply connects one input arrow to one output 
+arrow. For operators that require multiple possibilities such as alternation and matching zero, 
+one or more, the generator must split the path to connect the dangling arrows to multiple 
+future states. In alternation, the two preceding expressions are taken and connected in parallel. 
+To match zero or one, the generator must allow for a path through or around the tag. To 
+match one or more, the generator must connect the arrow leading out back into the tag as well 
+as proceeding to the next state. In order to match zero or more, an arrow must be connected 
+ 
+24 
+ 
+both around, and looping through the tag. These are generated in Python using state objects 
+with out lists that contain the next states. The out list may contain the state itself in order to 
+simulate arrows that loop back into the state for matching purposes. 
+In order to emulate the NFA across an array of tokens, we generate 3 lists of states. The first 
+list is the list of current states, which are tested one by one on the current token. The second 
+list is the list of next states, which are added as each state matches. The third list is the list of 
+complete states which are added as terminal matching states are found. The program iterates 
+through each token, and iterates through each current state. As matches are found, they are 
+added to the next-list which is swapped for current list when all current states have been 
+completed. The matching code matches for the part of speech tag, the chunking tag, or the 
+text itself. Using the ‗^‘ concatenator, a match may be across a combination of text, part of 
+ 
+Figure 9 – Non-Finite Automata 
+ 
+e1
+e2
+tag
+e1 e2
+e
+e1 e
+ConcatenationTag match
+Alternation (e1|e2 ) Alternation ( e? )
+Alternation ( e+ )Alternation ( e* )
+ 
+25 
+ 
+speech tag, or chunking tag. The negation operator is also handled here by matching across all 
+possibilities and returning false if a match occurs. 
+When an expression is created to match a clause, the detection may need to continue both 
+after and before the clause itself. This is both useful to limit the number of possible concentric 
+matches and to locate the starting point of a clause when it depends on the tokens that appear 
+before the beginning of the clause. Therefore we have added an open and closed bracket 
+operator. When the NFA reaches one of these operators, the location is noted in the state 
+node and passed along until either a terminal matching node is reached, or the path is dropped 
+from a non-matching state. When a bracket operator is encountered while running the NFA, 
+the NFA then advances to the next state without advancing the token array by adding the out 
+states to the current list for processing. When the completed match list is returned, the start 
+and ending locations are recorded for each matching state. 
+The expression itself differs from a regular expression in several subtle ways. The smallest unit, 
+which is called a tag, serves the same purpose of a character in a standard regular expression. 
+First, spaces must separate tags not otherwise separated by special characters since each tag in 
+the expression may have multiple characters. Second, the negation operator can only occur on 
+a tag unit and not across multiple tags or a large state set. Third, a tag may be either a part of 
+speech tag name, a full chunking tag including the beginning or internal identifiers, a truncated 
+chunking tag, or a unit of text from the tokenized sentence. The special characters used are a 
+ 
+26 
+ 
+pipe (―|‖) for alternation, a question mark to match zero or one of the preceding, an asterisk 
+to match zero or more, a plus symbol to match one or more, and a hash or pound symbol 
+(―#‖) for a wildcard. The hash was used for wildcard instead of a period that is the common 
+case because periods are commonly needed for regular expression matching, and no escape 
+character was implemented for this algorithm. The caret symbol (―^‖) is used to match 
+multiple tags on a single token. Parentheses are used to group sets of tags in the expression for 
+infix expression purposes, and square brackets are used to delineate the beginning and ending 
+of the clause in question. When the expression is translated to a postfix style expression, the 
+ampersand symbol (―&‖) is used for concatenation. 
+An example of a simple regular expression to illustrate this is the case of extracting the 
+adjective descriptors from a noun phrase. Consider the sentence, The fat, lazy, orange cat was 
+named Garfield. In this case, we have the noun phrase The fat, lazy, orange cat which is tagged, 
+―The/DT fat/JJ ,/, lazy/JJ ,/, orange/JJ cat/NN‖. To mark each adjective within a noun 
+phrase starting with a determiner and separated by commas, we would use the expression DT 
+(I-NP^JJ ,)* [ I-NP^JJ ] ,|NN . The DT looks for a determiner part of speech tag. The next 
+group handles zero or more instances of an adjective followed by a comma, then the open 
+square bracket marks the beginning of the clause. The I-NP^JJ tag looks for a token that is 
+within a noun phrase and has the part of speech tag for an adjective. This also makes sure that 
+the matching adjective does not appear in a separate noun phrase. The closing square bracket 
+marks the end of the clause, and the ,|NN matches a comma or noun part of speech tag after 
+ 
+27 
+ 
+the adjective. If there is no comma or noun after the adjective, then the expression will not 
+match. 
+Sentence transformations take place in a multi-step process that identifies the clause location 
+and type, the connecting phrase, and main verb for transformation if necessary.  The 
+identification process uses the regular expression engine to identify each type.  The clause 
+types handled in this system are restrictive and non-restrictive relative clauses, appositives, and 
+sequences.  Regular expressions identifying each were created using Siddharthan‘s algorithms 
+(Siddharthan 2003), simple English grammar tests from various websites, and CoNLL 2001 
+clausal boundary data (Dejean and Sang 2001).  The regular expressions were formed as an 
+initial step in order to allow for machine learning techniques to improve on their accuracy. 
+3.3.1 RELATIVE CLAUSES 
+Relative clauses are clauses which begin with a relative pronoun and give additional 
+information about a noun in the sentence.  An example of a relative clause is The man, who had 
+red hair, was the owner of the store.  In this case, we wish to identify the relative clause who had red 
+hair, and the attached noun The man, to form the sentences The man had red hair and The man was 
+3 . 3  S E N T E N C E  T R A N S F O R M A T I O N S  
+ 
+28 
+ 
+the owner of the store.  In this system we use the following  regular expression to identify relative 
+clauses:  
+, [RC CC?RL(, #+ ,)?(((NP|PP)+, 
+(NR^NP|NR^PP)(NR^NP|PP|ADJP|VBG)*(RL(VP|NP|PP|ADJP|ADVP)(NR^NP|PP|ADJP
+|VBG|ADVP)*)*)|(RB|RBR|RBS , RB|RBR|RB)|(JJ|JJR|JJS , JJ|JJR|JJS)|(, (B-VP^VBN|B-
+VP^VBG) (I-VP^VBN|I-VP^VBG)* !I-VP)|!O*)* RC](,|.) 
+The expression begins with a comma to begin the relative clause and then we mark the 
+beginning of the clause.  The CC marks ―and‖ or ―in‖ for expressions like ―and who…‖ 
+before matching for the relative pronoun.  In this case, relative pronouns are ―who‖, ―whom‖, 
+―whose‖, and ―which‖.  The relative pronoun ―that‖ is not considered because of its 
+ambiguity.  In the case of an aside, a comma delineated phrase is allowed directly after the 
+relative pronoun.  We then expect a noun phrases with constituent prepositional phrases.  This 
+is multiple due to the nature of chunking.  We then allow for several types of phrases, 
+including internal relative clauses.  Lastly, strings of adverbs and adjectives with internal 
+commas are allowed before closing the relative clause at a comma or a period.  This was 
+patterned after the algorithm outlined by Siddharthan, which performed at an accuracy of 
+91%, the best CoNLL task on relative clause identification by comparison was 81% (Marquez 
+2003).  The regular expression performed similarly. 
+ 
+29 
+ 
+3.3.2 APPOSITIVES 
+Appositives are nouns that explain or identify nearby nouns.  An example of a sentence with 
+an appositive is, My brother 's car , [Appos a sporty convertible with bucket seats Appos] , is the envy of my 
+friends.  Since an appositive is equivalent to the noun it is explaining or identifying, we can 
+create several alternative sentences: My brother‟s car is the envy of my friends. , A sporty convertible with 
+bucket seats is the envy of my friends., and My brother‟s car is a sporty convertible with bucket seats.  We use 
+the following regular expression in this system to identify appositives: 
+ (NP|PP)+, 
+[Appos(NR^NP^!ST|NR^PP^!IN|VBG|VBN|ADJP)(NR^NP|PP|ADJP|VBG|VBN|(, 
+ST))*(RL(VP|NP|PP|ADJP|ADVP)(NR^NP|PP|ADJP|VBG|ADVP)*)*Appos]((, !ST)|.) 
+First, the appositive must come after a noun phrase and its constituent prepositional phrases.  
+We begin the appositive after a comma, but the appositive can begin with a noun phrase as 
+long as it‘s not a relative pronoun or state name, a prepositional phrase as long as it‘s not a 
+subordinating conjunction or relative pronoun, a verb in present or past participle form, or an 
+adjectival phrase.  State logic was added in to prevent false positives in ―city, state‖ form.  This 
+probably should be expanded to all location names for comprehensive coverage.  We then 
+allow for a continuation of the noun phrase with prepositional, or adjectival phrases, and 
+internal relative clauses.  Verbs in base or present form will stop the system from identifying a 
+relative clause. Finally, we end the appositive with a comma or period, making sure that we are 
+not ending with a state name. 
+ 
+30 
+ 
+3.3.3 SEQUENCES 
+Sequences are three or more phrases which refer to the same object within a sentence.  An 
+example of a sequence is: The man on the pier was wearing sunglasses, a fisherman's cap, a hawaiian shirt, 
+and flip-flops.  We can create several sentences based on the number of elements in the 
+sequence: The man on the pier was wearing sunglasses., The man on the pier was wearing a fisherman‟s cap., 
+etc.  This system can identify more complex sequences such as: It is proposing [Seq increased tax 
+rebates for textiles and labor-intensive products Seq] , [Seq expanded bank lending to small businesses Seq] , 
+[Seq reduced taxes on housing transactions Seq] , and [Seq speeded-up infrastructure construction Seq] .  The 
+identification of sequences are three separate regular expressions: one for nouns, one for 
+pronouns, and one for verbs and adjectives. This is to match the beginning of each sequence 
+item, and to handle the differences in complexity between each type of sequence.  For 
+instance, in order to match the verb and adjective sequence, we use the regular expression:  
+VP ([Seq(VBN|JJ) (NR^NP|NR^PP|VBG|VBN|ADJP) (NR^NP|PP|ADJP|VBG|VBN|CC|(, 
+ST))*(RL(VP|NP|PP|ADJP|ADVP)(NR^NP|PP|ADJP|VBG|ADVP)*)* Seq] ,)+ 
+([Seq(VBN|JJ) (NR^NP|NR^PP|VBG|VBN|ADJP) (NR^NP|PP|ADJP|VBG|VBN|CC|(, 
+ST))*(RL(VP|NP|PP|ADJP|ADVP)(NR^NP|PP|ADJP|VBG|ADVP)*)* Seq] , ?)? CC 
+[Seq(VBN|JJ) (NR^NP|NR^PP|VBG|VBN|ADJP) (NR^NP|PP|ADJP|VBG|VBN|CC|(, 
+ST))*(RL(VP|NP|PP|ADJP|ADVP)(NR^NP|PP|ADJP|VBG|ADVP)*)* Seq] (VP^!VBN|.) 
+ 
+31 
+ 
+The length of the expression is to make sure to capture the beginning, middle, and ending 
+states of the sequence.  In this expression, we begin with a verb phrase and match either the 
+past participle verb or adjective and then match a sequence similar to an appositive.  The 
+difference between each state is the placement of commas or a coordinating conjunction such 
+as ―and‖ or ―or‖.  To end this type of sequence, we match on a verb phrase that does not 
+begin with the past participle form, or with the end of the sentence. 
+ 
+When there are no commas surrounding a clause, it is more difficult to identify in a sentence.  
+The sentence, The car sliding out of control toward the building will likely hit the window, contains a 
+participial phrase that can be treated similarly to appositives.  The participial phrase, sliding out of 
+control toward the building, may be removed from the sentence without affecting the meaning or 
+correctness of the sentence.  It also may be placed equal to the attached noun phrase.  In 
+identifying participial phrases, the algorithm first finds a noun phrase followed by a verb in 
+gerund form.  Further noun phrases, relative clauses, and verbs in gerund form are allowed, 
+ending the clause with a verb phrase or end of sentence. 
+Another common unmarked clause is an unmarked appositive.  An appositive may have 
+commas surrounding it, or may be placed in the sentence unmarked with the assumption that 
+the native speaker will understand its context.  Consider the sentence: Evan's friend John cheated 
+on the test.  The word John is an appositive, and the sentence could be rendered: Evan's friend, 
+3 . 3 . 4  U N M A R K E D  C L A U S E S  
+ 
+32 
+ 
+John, cheated on the test.  This sequence can be identified without commas by finding a proper set 
+of NP-NP sequences in a row.  The regular expression that identifies both unmarked 
+appositives and unmarked participial phrases is: 
+((B-NP I-NP* B-NP^POS I-NP+)|(B-NP^!POS I-NP* I-NP^!DT)|B-NP^!DT^NR^!RB) [Appos 
+(NR^B-NP^DT|NR^B-NP^NNP|NR^B-NP^NNPS|(VBG I-VP*(NP|PP))|VBN I-VP* 
+NP)(NR^NP|PP|ADJP|VBG|(TO I-
+VP+)*)*(RL(VP|NP|PP|ADJP|ADVP)(NR^NP|PP|ADJP|VBG|ADVP)*)*Appos] (B-VP|.) 
+The first part makes sure to combine noun phrases that are connected with a possessive.  
+Technically, in our example Evan and „s friend are two separate noun phrases and may be 
+treated as separate entities based on phrase structure.  For the purposes of splitting clauses into 
+sentences, we want to attach Evan‟s friend to John as one unit.  
+Restrictive relative clauses are similar to unmarked appositives in that they are not surrounded 
+by commas.  We can detect restrictive relative clauses by looking for the relative pronoun 
+marking the beginning of the clause.  A sentence like I told you about the woman who lives next door. 
+is separated into the sentences I told you about the woman.  The woman lives next door.  The following 
+is able to find restrictive relative clauses. 
+B-NP I-NP*(PP^!IN|NP)* [RRC IN?RL(, #+,)?(NP? !VP* 
+VP)(((NP|PP)+,(NR^NP|NR^PP)(NR^NP|PP|ADJP|VBG)*(RL(VP|NP|PP|ADJP|ADVP)(NR
+^NP|PP|ADJP|VBG|ADVP)*)*)|(RB|RBR|RBS , RB|RBR|RB)|(JJ|JJR|JJS , 
+ 
+33 
+ 
+JJ|JJR|JJS)|(,(B-VP^VBN|B-VP^VBG)(I-VP^VBN|I-VP^VBG)*!I-
+VP)|(NR^NP|ADJP|ADVP|SBAR)*)*RRC](,|:|;|.|B-VP|RL)  
+We can also detect unmarked contact clauses like in the sentence: The book we ordered was very 
+expensive.  This allows us to generate the sentences: The book was very expensive. We ordered the book.  
+Since a contact clause is a type of relative clause, we use a modified relative clause regular 
+expression to find it. 
+(B-NP I-NP B-VP I-VP*!PP*|B-VP I-VP*!PP*)? [Attach B-NP I-NP* Attach] [Contact SBAR? 
+(B-NP^!POS I-NP*)((PP* NP+)?!VP*VP+NP*(PP+ NP*)*) Contact](.|B-VP|RL) 
+The Attach tag is used to identify where the attached noun phrase is located. 
+Unfortunately, unmarked appositives, restrictive relative clauses, and contact clauses were not 
+found in large enough quantities in the test data to give a valid measurement.  The system was 
+able to handle a sampling found on the internet located in appendix 1. 
+ 
+  
+ 
+34 
+ 
+5 SYSTEM EVALUATION 
+Evaluation of an information retrieval algorithm is usually done through three different 
+measures: precision, recall, and F-measure (Rijsbergen 1979). Precision and recall are both 
+represented as percentages while F-measure is represented as a single number. Precision is the 
+number correct over the total marked. Recall is the number correct over the total number of 
+instances in the data. F-measure is the harmonic mean of precision and recall:
+RP
+PR
+F
+
+
+2
+2
+2
+
+
+ . This is usually computed with β=1. Changing the value of β weights the F-
+measure score toward either precision or recall. A lower β favors precision while a larger β 
+favors recall. TREC 2003 QA track used β=5 to give recall 5 times the weight of precision in 
+its definition question section. 
+In order to evaluate the system, the first 1,000 sentences of CoNLL 2001 test data were 
+analyzed by hand to identify whether each of the three clausal types were identified correctly, 
+missed, or whether there was a clause incorrectly identified.   The results in Figure 10 show 
+ 
+Figure 10 – Relative Clause Identification Comparison 
+ 
+Algorithm RC Recall
+Top Scoring CoNLL 2001 shared task (perceptrons) 81%
+Siddharthan (hand coded) 91%
+Miller (regular expression) 90%
+ 
+35 
+ 
+that the relative clause results roughly match the results of Siddharthan, which is similar to the 
+best recent results (Van Nguyen, Nguyen and Shimazu 2007), showing a similarly high recall.  
+The F-measure was calculated with a β of 1. Overmarks were most common on sequences 
+with titles such as ―Mr. Smith, President and CEO of…‖.  Changes in writing style also were 
+problematic.  In the CoNLL data, there are both news articles and instructions.  While news 
+articles were generally parsed correctly, the instruction sections were not.  Other sources of 
+error were references to time and locations not covered by day and state identifiers, as well as 
+stock market specific language such as, ―B.A.T ended the day at 778 , [Appos down 5 Appos] , 
+on turnover of 7.5 million shares.‖  These presumably could be improved through more 
+external reference information. 
+Transformations conducted on the same data showed only a handful of errors when clauses 
+were identified correctly, mostly due to the simple structure of the majority of the sentences in 
+the source data.  The attachment algorithm is a basic nearest phrase picker, so complex 
+sentence structure will cause the transformation to fail, but this occurred rarely. 
+ 
+Figure 11 - Clause Identification Results 
+ 
+Figure 11 - Clausal Identification Results 
+ 
+Identification Correct Miss Overmark Recall Precision F-measure
+Appos 99 13 35 88.39% 73.88% 0.80
+Seq 19 8 9 70.37% 67.86% 0.69
+RC 27 3 5 90.00% 84.38% 0.87
+ 
+36 
+ 
+Other clauses were attempted as well as the three listed above, but did not occur in the test 
+corpus, since newspaper accounts tend to have a narrow grammar.  A sentence such as ―The 
+photographer could not develop the pictures I had taken in Australia,‖ can be broken down by 
+the system into: ―The photographer could not develop the pictures,‖ and ―I had taken the 
+pictures in Australia.‖  This transformation turned out to be less common than expected and 
+was dropped from the results when no matching sentences were found in the test data. 
+ 
+37 
+ 
+6 FUTURE WORK 
+The system currently has several limitations such as inability to distinguish references to time 
+and location and inability to handle complex attachment.  The ability to reliably identify clauses 
+within a single regular expression means that it should be possible to further advance the 
+algorithm through machine learning techniques such as TBL (Li, et al. 2008).  Furthermore, 
+the system may be able to identify other sentence features reliably for other purposes than 
+clausal extraction, such as changing a sentence to and from passive voice, moving NP‘s and 
+other grammatical transformations useful for paraphrasing or making sentence structure 
+uniform across multiple sources. 
+A future project may be to apply a TBL or other machine learning algorithm to generate 
+regular expression strings identifying specific clauses more reliably. Another may be to 
+incorporate this system into a search engine or question answering system and compare the 
+accuracy of the resulting data. A final project would be to expand the possible clause types and 
+test their results on different styles of writing, such as forum posts and encyclopedia articles. 
+ 
+38 
+ 
+7 CONCLUSIONS 
+This system serves as an initial step for text to text tasks such as summarization, translation, 
+and paraphrase engines.  Data on the web tends to be in complex natural language form such 
+as ―Sao Paulo, the world‘s second-largest city, has a population of just over ten million. Three 
+other cities, Bombay, Jakarta and Karachi, have grown to more than nine million people.‖  
+Extracting clauses allows for systems which focus on accuracy to be more precise and allows 
+for an extra dimension in systems that rely primarily on keywords. We have demonstrated a 
+system with high accuracy that is able to both identify and extract information from complex 
+sentences relying on the grammatical structure.  Furthermore, we have moved in the direction 
+from rule-based algorithms to machine learning on complex structures proving that it is 
+possible to match hand-coded algorithms with a type of regular expression string. 
+While certain semantic information would be useful to add and would cut down sharply on 
+error rates, the results based on the tests conducted are better than all but hand-coded 
+methods, bringing complex grammatical analysis near to practical use. 
+ 
+39 
+ 
+ BIBLIOGRAPHY 
+Bird, Edward Loper and Steven. "NLTK: The Natural Language Toolkit." In Proceedings of the 
+ACL Workshop on Effective Tools and Methodologies for Teaching Natural Language Processing and 
+Computational Linguistics. Philadelphia: Association for Computational Linguistics, 2002. 
+Brill, Eric. "A simple rule-based part-of-speech tagger." 3rd Conference on Applied Natural 
+Language Processing. 1992. 152 - 155. 
+Brill, Eric. "Learning to Parse with Transformations." In Recent Advances in Parsing Technology, by 
+Harry C. Bunt and Masaru Tomita, 221 - 240. Springer, 1996. 
+Brill, Eric. "Recent Advances in Parsing Technology." In Learning to Parse with Transformations, 
+by Marsaru Tomita Harry Bunt. Dordrecht: Kluwer Academic Publishers, 1996. 
+Brill, Eric. "Transformation-based error-driven learning and natural language processing: A 
+case study in part of speech tagging." Computational Linguistics, 1995: 543-565. 
+Carroll, John, Guido Minnen, Darren Pearce, Yvonne Canning, Siobhan Devlin, and John 
+Tait. "Simplifying text for language-impaired readers." 9th Conference of the European Chapter 
+of the ACL. Bergen, Norway, 1999. 
+Chandrasekar, Raman, Christine Doran, and Bangalore Srinivas. "Motivations and Methods 
+for Text Simplification." COLING. 1996. 1041-1044. 
+Chomsky, Noam. "Three models for the description of language." Information Theory, IEEE 
+Transactions on 2, no. 3 (1956): 113-124. 
+Dejean, Herve, and Erik F. Tjong Kim Sang. "Introduction to the CoNLL-2001 Shared Task: 
+Clause Identification." Edited by Walter Daelemans and Remi Zajac. Proceedings of CoNLL-
+2001. Toulouse, France, 2001. 53-57. 
+Earley, Jay. "An Efficient Context-Free Parsing Algorithm." PhD Thesis, Carnegie-Mellon 
+University, 1968. 
+Erkan, Gunes, and Dragomir R. Radev. "LexRank: Graph-based Lexical Centrality as Salience 
+in Text Summarization." Journal of Artificial Intelligence Research, 2004: 457-479. 
+Florian, Radu, and Grace Ngai. "Transformation-based learning in the fast lane." North 
+American Chapter of the Association for Computational Linguistics. Pittsburgh, 2001. 40-47. 
+Francis, W. Nelson, and Henry Kucera. Frequency Analysis of English Usage: Lexicon and Grammar. 
+Boston: Houghton Mifflin, 1982. 
+Jinxi Xu, Ralph Weischedel , Ana Licuanan. "Evaluation of an extraction-based approach to 
+answering definitional questions." 27th annual international ACM SIGIR conference on Research 
+and development in information retrieval. Sheffield, United Kingdom, 2004. 418 - 424. 
+Kavallieratou, Ergina, Efstathios Stamatatos, Nikos Fakotakis, and George Kokkinakis. 
+"Handwritten Character Segmentation using Transformation-based Learning." International 
+Conference on Pattern Recognition. Barcelona, 2000. 634-637. 
+ 
+40 
+ 
+Klebanov, B. Beigman, Kevin Knight, and Daniel Marcu. "Text Simplification for 
+Information-Seeking Applications. On the Move to Meaningful Internet Systems." Lecture 
+Notes in Computer Science 3290, 2004: 735-747. 
+Knight, Kevin, and Daniel Marcu. "Statistics-Based Summarization - Step One: Sentence 
+Compression." Seventeenth National Conference on Artificial intelligence and Twelfth Conference on 
+innovative Applications of Artificial intelligence. AAAI Press / The MIT Press, 2000. 703-710. 
+Li, Yunyao, Rajasekar Krishnamurthy, Sriram Raghavan, and Shivakumar Vaithyanathan. 
+"Regular Expression Learning for Information Extraction." Proceedings of the 2008 Conference 
+on Emperical Methods in Natural Language Processing. Honolulu, 2008. 21-30. 
+Liu, Hugo. MontyTagger. 2003. http://web.media.mit.edu/~hugo/montytagger. 
+Mani, Inderjeet, and Mark T. Maybury. Advances in Automatic Text Summarization. Cambridge, 
+MA: MIT Press, 1999. 
+Marcu, Daniel and Soricut, Radu. "Towards Developing Generation Algorithms for Text-to-
+Text Applications." Association for Computational Linguistics Conference. Ann Arbor, MI, 2005. 
+Mark-Jan Nederhof, Giorgio Satta. "IDL-Expressions: A Formalism for Representing and 
+Parsing Finite Languages in Natural Language Processing." J. Artif. Intell. Res. (JAIR), 2004: 
+287-317. 
+Marquez, Xavier Carreras and Lluis. "Phrase Recognition by Filtering and Ranking with 
+Perceptrons." Borovets, Bulgaria: Proceedings of the International Conference on Recent 
+Advances in Natural Language Processing, 2003. 
+Martin, Daniel Jurafsky and James H. Speech and Language Processing: An Introduction to Natural 
+Language Processing, Computational Linguistics and Speech Recognition. Upper Saddle River, N.J.: 
+Prentice Hall, 2000. 
+Ouhalla, Jamal. Introducing Transformational Grammar - From Principles and Parameters to Minimalism. 
+New York, NY: Oxford University Press, Inc., 1999. 
+Palmer, Marc Vilain and David. "Transformation-based bracketing: Fast algorithms and 
+experimental results." Workshop on Robust Parsing, held at ESSLLI. 1996. 93 - 102. 
+Ramshaw, Lance A., and Mitchell P. Marcus. "Exploring the statistical derivation of 
+transformational rule sequences for part-of-speech tagging." Balancing Act Workshop on 
+Combining Symbolic and Statistical Approaches to Language. Association for Computational 
+Linguistics, 1994. 86-95. 
+—. "Text Chunking using Transformation-Based Learning." ACL Third Workshop on Very 
+Large Corpa. 1995. 82-94. 
+Rijsbergen, Cornelis J. Van. Information Retrieval 2ed. London: Butterworth's, 1979. 
+Sang, Erik F. Tjong Kim, and Sabine Buchholz. "Introduction to the CoNLL-2000 shared 
+task: Chunking." Conference on Computational Natural Language Learning. 2000. 127-132. 
+Santorini, Beatrice. Part-of-Speech Tagging Guidelines for the Penn Treebank Project. Department of 
+Computer and Information Science, University of Pennsylvania, 1991. 
+Siddharthan, Advaith. "Syntactic Simplification and Text Cohesion." PhD thesis, University of 
+Cambridge, UK., 2003. 
+Thompson, Ken. "Programming Techniques: Regular expression search algorithm." 
+Communications of the ACM, Vol 11, 1968: 419-422. 
+ 
+41 
+ 
+Van Nguyen, Vinh, Minh Le Nguyen, and Akira Shimazu. "Using Conditional Random Fields 
+for Clause Splitting." Proceedings of The Pacific Association for Computational Linguistics. 
+Melmourne, Australia, 2007. 58-65. 
+Voorhees, Ellen. "Overview of the TREC 2003 Question Answering track." TREC 2003. 
+2004. 
+—. "Overview of the TREC 2004 Question Answering track." TREC 2004. 2005. 
+—. "The TREC-8 Question-Answering Track Report." In Proceedings of TREC-8. Gaithersburg, 
+MD: National Institute of Standards and Technology, 1999. 77-82. 
+ 
+  
+ 
+42 
+ 
+Examples are from grammar tests and other sentences found in various locations on the 
+internet.  Only output is shown with identification first and extracted sentences following. 
+Input was unmarked sentences.  The system adds bracketed markings with keywords for 
+identification.  Extracted sentences are on the following lines with each algorithm labeled.  
+Some minor errors include extraneous commas, and incorrect capitalization.  Other errors are 
+noted with each example. 
+[Attach Her husband Attach] , [Appos Fritz Appos] , is a nice guy . 
+Added Appos sentence:  Her husband is Fritz . 
+Added Appos sentence:  Her husband , is a nice guy .  
+ 
+The firm chose [Attach Mary Attach] , [Appos vice president of public 
+affairs Appos] , as its chief executive officer . 
+Added Appos sentence:  Mary is vice president of public affairs . 
+Added Appos sentence:  The firm chose Mary , as its chief executive 
+officer . 
+ 
+[Attach The Grand Canyon Attach] , [Appos one of our nation 's most 
+popular tourist attractions Appos] , is breathtaking to behold . 
+Added Appos sentence:  The Grand Canyon is one of our nation 's most 
+popular tourist attractions . 
+Added Appos sentence:  The Grand Canyon , is breathtaking to behold . 
+ 
+[Attach Neil Armstrong Attach] , [Appos the first man who walked on the 
+moon Appos] , is a native of Ohio . 
+Added Appos sentence:  Neil Armstrong is the first man who walked on the 
+moon . 
+Added Appos sentence:  Neil Armstrong , is a native of Ohio . 
+ 
+[Attach Evan 's friend Attach] [Appos2 John Appos2] cheated on the test 
+. 
+Added Appos2 sentence:  Evan 's friend is John . 
+Added Appos2 sentence:  Evan 's friend cheated on the test . 
+ 
+[Attach The car Attach] [Appos2 sliding out of control toward the 
+building Appos2] will likely hit the window . 
+Added Appos2 sentence:  The car is sliding out of control toward the 
+building . 
+Added Appos2 sentence:  The car will likely hit the window . 
+ 
+A P P E N D I X  1 -  E X A M P L E  O U T P U T  
+ 
+43 
+ 
+Cameron spotted [Attach his brother Attach] [Appos2 throwing rocks at 
+the passing cars Appos2] . 
+Added Appos2 sentence:  his brother is throwing rocks at the passing 
+cars . 
+Added Appos2 sentence:  Cameron spotted his brother . 
+ 
+[Attach The astronaut Attach] [Appos2 chosen to ride the space shuttle 
+to Mars Appos2] is afraid of heights . 
+Added Appos2 sentence:  The astronaut is chosen to ride the space 
+shuttle to Mars . 
+Added Appos2 sentence:  The astronaut is afraid of heights . 
+ 
+[Attach2 The book Attach2] [RRC2 we ordered RRC2] was very expensive . 
+Added RRC2 sentence:  we ordered The book . 
+Added RRC2 sentence:  The book was very expensive . 
+ 
+The paint on [Attach2 the bench Attach2] [RRC2 you are sitting on RRC2] 
+is still wet . 
+Added RRC2 sentence:  you are sitting on the bench . 
+Added RRC2 sentence:  The paint on the bench is still wet . 
+ 
+(In the following example, the first sentence needs the attached noun 
+phrase to occur within the relative clause instead of after to read more 
+fluidly.) 
+ 
+The photographer could not develop [Attach2 the pictures Attach2] [RRC2 
+I had taken in Australia RRC2] . 
+Added RRC2 sentence:  I had taken in Australia the pictures . 
+Added RRC2 sentence:  The photographer could not develop the pictures . 
+It is proposing [Seq increased tax rebates for textiles and labor-
+intensive products Seq] , [Seq expanded bank lending to small businesses 
+Seq] , [Seq reduced taxes on housing transactions Seq] , and [Seq 
+speeded-up infrastructure construction Seq] . 
+Added Seq sentence:  It is proposing increased tax rebates for textiles 
+and labor-intensive products . 
+Added Seq sentence:  It is proposing expanded bank lending to small 
+businesses . 
+Added Seq sentence:  It is proposing reduced taxes on housing 
+transactions . 
+Added Seq sentence:  It is proposing speeded-up infrastructure 
+construction . 
+ 
+(The first added sentence does not factor in the plural or the lead in 
+“such as”) 
+ 
+Ship companies carrying [Attach bulk commodities Attach] , [Appos such 
+as [Seq oil Seq] , [Seq grain Seq] , [Seq coal Seq] and [Seq iron ore 
+Appos] Seq] , have been able to increase their rates in the last couple 
+of years . 
+Added Appos sentence:  bulk commodities is such as oil , grain , coal 
+and iron ore . 
+Added Seq sentence:  Ship companies carrying bulk commodities , such as 
+oil , have been able to increase their rates in the last couple of years 
+. 
+ 
+44 
+ 
+Added Seq sentence:  Ship companies carrying bulk commodities , such as 
+grain , have been able to increase their rates in the last couple of 
+years . 
+Added Seq sentence:  Ship companies carrying bulk commodities , such as 
+coal , have been able to increase their rates in the last couple of 
+years . 
+Added Seq sentence:  Ship companies carrying bulk commodities , such as 
+iron ore , have been able to increase their rates in the last couple of 
+years . 
+Added Appos sentence:  Ship companies carrying bulk commodities , have 
+been able to increase their rates in the last couple of years . 
+ 
+Share prices closed higher in [Seq Sydney Seq] , [Seq Taipei Seq] , [Seq 
+Wellington Seq] , [Seq Manila Seq] , [Seq Hong Kong Seq] and [Seq 
+Singapore Seq] and were lower in Seoul . 
+Added Seq sentence:  Share prices closed higher in Sydney and were lower 
+in Seoul . 
+Added Seq sentence:  Share prices closed higher in Taipei and were lower 
+in Seoul . 
+Added Seq sentence:  Share prices closed higher in Wellington and were 
+lower in Seoul . 
+Added Seq sentence:  Share prices closed higher in Manila and were lower 
+in Seoul . 
+Added Seq sentence:  Share prices closed higher in Hong Kong and were 
+lower in Seoul . 
+Added Seq sentence:  Share prices closed higher in Singapore and were 
+lower in Seoul . 
+ 
+[Attach Sao Paulo Attach] , [Appos the world 's second-largest city 
+Appos] , has a population of just over ten million . 
+Added Appos sentence:  Sao Paulo is the world 's second-largest city . 
+Added Appos sentence:  Sao Paulo , has a population of just over ten 
+million . 
+ 
+(The complexity of forming new sentences causes several grammatical 
+errors here after successfully identifying the clauses) 
+ 
+[Attach Three other cities Attach] , [Appos [Seq Bombay Seq] , [Seq 
+Jakarta Seq] and [Seq Karachi Appos] Seq] , have grown to more than nine 
+million people . 
+Added Appos sentence:  Three other cities is Bombay , Jakarta and 
+Karachi . 
+Added Seq sentence:  Three other cities , Bombay , have grown to more 
+than nine million people . 
+Added Seq sentence:  Three other cities , Jakarta , have grown to more 
+than nine million people . 
+Added Seq sentence:  Three other cities , Karachi , have grown to more 
+than nine million people . 
+Added Appos sentence:  Three other cities , have grown to more than nine 
+million people . 
+ 
+The company already markets a wide range of [Seq detergents Seq] , [Seq 
+food Seq] , [Seq household Seq] and [Seq health-care products Seq] . 
+Added Seq sentence:  The company already markets a wide range of 
+detergents . 
+Added Seq sentence:  The company already markets a wide range of food . 
+ 
+45 
+ 
+Added Seq sentence:  The company already markets a wide range of 
+household . 
+Added Seq sentence:  The company already markets a wide range of health-
+care products . 
+ 
+ 
+Simpler English Wikipedia: 
+ 
+This is the first section of the Oklahoma article of the simple English Wikipedia as processed 
+through the system: 
+ 
+Oklahoma is [Attach2 a state Attach2] that [RRC2 is in the southern part 
+of the Central United States RRC2] . 
+Added RRC2 sentence:  is in the southern part of the Central United 
+States a state . 
+Added RRC2 sentence:  Oklahoma is a state . 
+It had a population of about 3,617,000 people in 2007 . 
+The state has a land area of about 68,667 sq mi . 
+Oklahoma is the 28th largest state by population . 
+It is the 20th largest state by area . 
+The name of the state comes from the Choctaw words okla and humma . 
+It means `` Red People '' . 
+It is also known by its nickname , The Sooner State . 
+ 
+(The number “1907” was mistagged as a noun rather than a cardinal 
+number, which threw off the system) 
+The state was formed from [Attach Indian Territory on [Attach November 
+16 Attach] Attach] , [Appos [Appos 1907 Appos] Appos] . 
+Added Appos sentence:  Indian Territory on November 16 is 1907 . 
+Added Appos sentence:  November 16 is 1907 . 
+Added Appos sentence:  The state was formed from Indian Territory on 
+November 16 . 
+Added Appos sentence:  The state was formed from Indian Territory on 
+November 16 . 
+It was the 46th state to become part of the United States . 
+[Attach2 The people Attach2] who [RRC2 live in the state RRC2] are known 
+as Oklahomans . 
+Added RRC2 sentence:  live in the state The people . 
+Added RRC2 sentence:  The people are known as Oklahomans . 
+The state 's capital and largest city is Oklahoma City . 
+Oklahoma is a large producer of [Seq natural gas Seq] , [Seq oil Seq] 
+and [Seq food Seq] . 
+Added Seq sentence:  Oklahoma is a large producer of natural gas . 
+Added Seq sentence:  Oklahoma is a large producer of oil . 
+Added Seq sentence:  Oklahoma is a large producer of food . 
+ 
+(The first element of the sequence is misidentified, throwing off the 
+later sentences) 
+It has [Seq large industries in aviation Seq] , [Seq energy Seq] , [Seq 
+telecommunications Seq] , and [Seq biotechnology Seq] . 
+Added Seq sentence:  It has large industries in aviation . 
+Added Seq sentence:  It has energy . 
+ 
+46 
+ 
+Added Seq sentence:  It has telecommunications . 
+Added Seq sentence:  It has biotechnology . 
+The state has one of the fastest growing economies in the nation . 
+Between 2005 and 2006 , it had the third highest percentage of income 
+growth and the highest percentage in gross domestic product growth . 
+Oklahoma City and Tulsa are the main economic areas of Oklahoma . 
+Almost 60 percent of Oklahomans live in these two metropolitan 
+statistical areas . 
+Oklahoma has [Seq small mountain ranges Seq] , [Seq prairies Seq] , and 
+[Seq eastern forests Seq] . 
+Added Seq sentence:  Oklahoma has small mountain ranges . 
+Added Seq sentence:  Oklahoma has prairies . 
+Added Seq sentence:  Oklahoma has eastern forests . 
+Most of Oklahoma is in the Great Plains . 
+It is regularly hit by severe weather . 
+ 
+(Grammatically ambiguous wording in the following sentence cause a 
+misidentification of the first sequence element, and follows to 
+incorrect derived sentences) 
+ 
+The cultural heritage of Oklahoma is [Seq affected by a population 
+descending from German Seq] , [Seq Irish , British Seq] and [Seq Native 
+American people Seq] . 
+Added Seq sentence:  The cultural heritage of Oklahoma is affected by a 
+population descending from German . 
+Added Seq sentence:  The cultural heritage of Oklahoma is Irish , 
+British . 
+Added Seq sentence:  The cultural heritage of Oklahoma is Native 
+American people . 
+More than 25 Native American languages are spoken in Oklahoma . 
+This is more than in any other state . 
+ 
+(The unrecognized sequence causes confusion in the system for the 
+appositive identification algorithm) 
+ 
+In the past , the state was used as [Attach a path for [Attach cattle 
+drives Attach] Attach] , [Appos [Appos a place for southern settlers 
+Appos] Appos] , and a government-made territory for Native Americans . 
+Added Appos sentence:  a path for cattle drives is a place for southern 
+settlers . 
+Added Appos sentence:  cattle drives is a place for southern settlers . 
+Added Appos sentence:  In the past , the state was used as a path for 
+cattle drives , and a government-made territory for Native Americans . 
+Added Appos sentence:  In the past , the state was used as a path for 
+cattle drives , and a government-made territory for Native Americans . 
+Oklahoma is part of the Bible Belt . 
+Many people believe in evangelical Christianity . 
+Oklahoma is one of the most politically conservative states , but voter 
+registration is largest for the Democratic Party . 
