@@ -1,8 +1,9 @@
 package de.uni_leipzig.digital_text_forensics.controller;
 
-import de.uni_leipzig.digital_text_forensics.service.UserLogging.UserLoggingService;
-import java.util.ArrayList;
+import de.uni_leipzig.digital_text_forensics.model.Query;
+import de.uni_leipzig.digital_text_forensics.service.DocQuery.DocQueryService;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,31 +17,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class AutoCompleteController {
 
 	@Autowired
-	UserLoggingService userLoggingService;
+	DocQueryService docQueryService;
 
 	@RequestMapping(method = RequestMethod.GET, path = "/auto-complete", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<List<String>> autoComplete(
 			@RequestParam(defaultValue = "")
-					String tag) {
+					String query) {
 
-		List<String> list = new ArrayList<>();
+		List<Query> list1 = docQueryService.findByQueryStartingWith(query);
 
-		if (tag.equals("te")) {
-			list.add("Test1");
-			list.add("Test2");
-			list.add("Test6");
-			list.add("Test9");
-			list.add(tag);
-
-		}
-		else {
-
-			list.add("Welt");
-			list.add("Welt2");
-			list.add("Welt3");
-			list.add("Welt5");
-
-		}
+		List<String> list = list1.stream().map(query1 -> {
+			return query1.getQuery().trim();
+		}).collect(Collectors.toList());
 
 		return new ResponseEntity<List<String>>(list, HttpStatus.OK);
 	}

@@ -21,7 +21,14 @@ public class Pager {
 		}
 
 		int from = (currentPage * RESULTS_PER_PAGE) - RESULTS_PER_PAGE;
+		if (from == 0) {
+			from = 1;
+		}
 		int to = currentPage * RESULTS_PER_PAGE;
+
+		if (searchDocList.size() < 10) {
+			to = searchDocList.size();
+		}
 		List<SearchResult> ret = searchDocList.subList(from, to);
 
 		return ret;

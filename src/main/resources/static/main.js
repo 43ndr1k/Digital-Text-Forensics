@@ -3,7 +3,7 @@ $(function () {
   $('#search').autocomplete({
     source: function (request, response) {
       $.ajax({
-        url: "/auto-complete/?tag=" + document.getElementById("search").value,
+        url: "/auto-complete/?query=" + document.getElementById("search").value,
         dataType: 'json',
         data: {q: request.term},
         success: function (data) {
