@@ -6,6 +6,8 @@ import java.io.IOException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
@@ -15,10 +17,15 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.xmlbeans.impl.soap.Node;
+import org.w3c.dom.CDATASection;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -26,14 +33,15 @@ import org.docear.pdf.PdfDataExtractor;
 
 import com.google.common.base.Objects;
 
-import de.uni_leipzig.digital_forensics.testpackage.pdfbox.MyNameGetter;
+import de.uni_leipzig.digital_forensics.testpackage.MyNameGetter.MyNameGetter;
 
 public class ConvertPdfXML {
+	
 	private DocumentBuilderFactory docFactory;
 	private DocumentBuilder docBuilder;
 	
-	static int MIN_TITLE_LENGTH = 5;
-	// could also be used for author.
+	static int MIN_TITLE_LENGTH = 3;
+	static int MAX_TITLE_LENGTH = 500;
 	static String NO_ENTRY = "No proper data found.";
 	// -> List!
 	static String BLOCK_WORDS[] = {".pdf",".doc",".dvi","title","Chapter","rights reserved","Article", "http"};
@@ -70,10 +78,11 @@ public class ConvertPdfXML {
 		
 	}
 	
-	/**
+	/** extracts first page and runs a NE-recognition. 
 	 * 
-	 * @param pdftext
-	 * @return
+	 * @param stripper to extract first page of doc
+	 * @param doc 
+	 * @return String authors
 	 * @throws IOException 
 	 */
 	private String extractAuthors(PDFTextStripper stripper, PDDocument doc) throws IOException{
@@ -112,7 +121,56 @@ public class ConvertPdfXML {
 	 * @param doc
 	 * @param outputFile
 	 */
-	private void writeToXML(Document doc, String outputFile) {
+	public void writeToXML(Article article, String outputFile) {
+	    this.docFactory = DocumentBuilderFactory.newInstance();
+		try {
+			this.docBuilder = docFactory.newDocumentBuilder();
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+		}
+		Document doc = this.docBuilder.newDocument();
+
+		Element rootElement = doc.createElement("article");
+		doc.appendChild(rootElement);
+		Element metaDataElement = doc.createElement("metaData");
+		rootElement.appendChild(metaDataElement);
+
+		metaDataElement.setAttribute("docId", article.getDoi());
+		Element parseTimeElement = doc.createElement("parseTime");
+		parseTimeElement.appendChild(doc.createTextNode(article.getParseDate()));
+		metaDataElement.appendChild(parseTimeElement);
+		
+		Element fileNameElement = doc.createElement("fileName");
+		fileNameElement.appendChild(doc.createTextNode(article.getFileName()));
+		metaDataElement.appendChild(fileNameElement);
+		
+		Element filePathElement = doc.createElement("filePath");
+		filePathElement.appendChild(doc.createTextNode(article.getFilePath()));
+		metaDataElement.appendChild(filePathElement);
+
+		Element titleElement = doc.createElement("title");
+		titleElement.appendChild(doc.createTextNode(article.getTitle()));
+		metaDataElement.appendChild(titleElement);		
+		
+		Element authorElement = doc.createElement("authors");
+		authorElement.appendChild(doc.createTextNode(article.getAuthorsAsString()));
+		metaDataElement.appendChild(authorElement);
+
+		Element pubDate = doc.createElement("publicationDate");
+		pubDate.appendChild(doc.createTextNode(article.getPublicationDate()));
+		metaDataElement.appendChild(pubDate);
+
+		Element textElements = doc.createElement("textElements");
+		rootElement.appendChild(textElements);
+		Element articleAbstract = doc.createElement("abstract");
+		articleAbstract.appendChild(doc.createTextNode("Dummy. Please Implement."));
+		textElements.appendChild(articleAbstract);
+		
+		Element fullTextElement = doc.createElement("fullText");
+		fullTextElement.appendChild(doc.createCDATASection(article.getFullText()));
+		textElements.appendChild(fullTextElement);
+		//System.out.println(article.getFullText());
+		
 		try {
 			// write the content into xml file
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
@@ -132,9 +190,9 @@ public class ConvertPdfXML {
 			tfe.printStackTrace();
 		} catch (java.lang.NullPointerException npr) {
 			npr.printStackTrace();
-			System.out.println(outputFile);
+			System.out.println("hey"+outputFile);
 		}
-	}
+	} // end of function
 	
 	/**
 	 * 
@@ -173,40 +231,24 @@ public class ConvertPdfXML {
 		return sb.toString();
 	}
 	
-	/**
-	 * 
+	/** converts pdf file to xml-data
+	 *  writing in writeToXML
+	 *  @todo: also accept doc and html
+	 *  
 	 * @param file
 	 * @param id
 	 */
 	public void run(File file, int id) throws IOException{
 		DBLPDataAccessor da = new DBLPDataAccessor();
 		try { 
-			/*
-			 * Initializing of XML- Elements/ Builder  
-			 */
-			this.docFactory = DocumentBuilderFactory.newInstance();
-			this.docBuilder = docFactory.newDocumentBuilder();
-			Document doc = this.docBuilder.newDocument();
+	        // could also be called by outer function
+			LocalDateTime now = LocalDateTime.now();	
+	        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-			Element rootElement = doc.createElement("article");
-			doc.appendChild(rootElement);
-			Element metaData = doc.createElement("metaData");
-			rootElement.appendChild(metaData);
-			/*
-			 * @todo insert real docid
-			 */
-			metaData.setAttribute("docId", String.valueOf(id));
-			Element fileName = doc.createElement("fileName");
-			fileName.appendChild(doc.createTextNode(file.getName()));
+	        String parseTime = now.format(formatter);
 			String originalFilename = file.getName();
 			String outputName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
-			String outputPath = file.getParentFile().getParent()+"/xmlOutput/"+ outputName;
-
-			metaData.appendChild(fileName);
-			Element filePath = doc.createElement("filePath");
-			filePath.appendChild(doc.createTextNode(file.getCanonicalPath()));
-			metaData.appendChild(filePath);
-			
+			String outputPath = "xmlFiles/"+ outputName;			
 			String title = null;
 			String author = null;
 			String pubDateString = null;
@@ -226,37 +268,43 @@ public class ConvertPdfXML {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			/*--------------------------------------------------------
+			/*----------------------------------------------
 			 * get & set the title
-			 *--------------------------------------------------------*/
+			 *----------------------------------------------*/
 			String pdfbox_title = clean_field(myDoc.getDocumentInformation().getTitle());
+			Boolean success = false;
 			if (Objects.equal(pdfbox_title, NO_ENTRY) || (pdfbox_title.length()==0)) {
 				title = clean_field(getFieldDocearStyle(file).trim());
 				// titleLike!
 				//title = NO_TITLE;
 			} else {
 				title = pdfbox_title;
+				success = true;
 			}
-			Element titleElement = doc.createElement("title");
-			titleElement.appendChild(doc.createTextNode(title));
-			metaData.appendChild(titleElement);
-			
-			Article article = da.getArticleObj(title);
-			
+
+			Article article = null;
+			if (success) {
+				/*----------------------------------------------
+				 * only use dblp if we have an ok title
+				 *----------------------------------------------*/
+				article = da.getArticleObj(title);
+			}
 			if (article != null) {
 				// wenn er was findet, dann nimm das auch: natuerlich fehleranfaellig.
+				// idee: nimm das mit dem hoechsten score.
 				List<String> authors = article.getAuthors();
 				StringBuilder sb = new StringBuilder();
 				for (int i=0;i<authors.size();i++){
 					sb.append(authors.get(i));
 				}
 				author = sb.toString();
-				pubDateString = article.getYear();
+				pubDateString = article.getPublicationDate();
 				
 			} else {
-				/*--------------------------------------------------------
-				 * wenn er keine results hat.
-				 *--------------------------------------------------------*/
+				article = new Article();
+				/*----------------------------------------------
+				 * if there aren't any results:
+				 *----------------------------------------------*/
 				String first_try_author = clean_field(myDoc.getDocumentInformation()
 						.getAuthor());
 				if (Objects.equal(first_try_author, NO_ENTRY)
@@ -274,7 +322,6 @@ public class ConvertPdfXML {
 					author = first_try_author;
 				}
 				
-				
 				try{
 					pubDateString = myDoc.getDocumentInformation()
 							.getCreationDate().getTime().toString();
@@ -283,49 +330,79 @@ public class ConvertPdfXML {
 					pubDateString = NO_ENTRY;
 				}
 			}
-			Element authorElement = doc.createElement("authors");
-			authorElement.appendChild(doc.createTextNode(author));
-			metaData.appendChild(authorElement);
+			article.setAuthors(author);
+			article.setPublicationDate(pubDateString);
+			article.setMyAbstract("Dummy. Please Implement.");
+			article.setFileName(originalFilename);
+			article.setFilePath(outputPath);
+			article.setDoi(String.valueOf(id));
+			article.setParseDate(parseTime.replace(" ", "T"));
+			
 
-			Element pubDate = doc.createElement("publificationDate");
-			pubDate.appendChild(doc.createTextNode(pubDateString));
-			metaData.appendChild(pubDate);
 
-			Element textElements = doc.createElement("textElements");
-			rootElement.appendChild(textElements);
-			Element articleAbstract = doc.createElement("abstract");
-			articleAbstract.appendChild(doc.createTextNode("Dummy. Please Implement."));
-			textElements.appendChild(articleAbstract);
-			/*
-			 * get & set the main text
-			 */
 			String fullText = null;
 			try {
+				/*----------------------------------------------
+				 * get & set the main text
+				 *----------------------------------------------*/
 				stripper.setStartPage(0);
 				stripper.setEndPage(Integer.MAX_VALUE);
 				fullText =  stripper.getText(myDoc);
 			} catch (IOException e) {
 				e.printStackTrace();
 			} 
-			//System.out.print(fullText);
-			Element mainText = doc.createElement("article");
-			mainText.appendChild(doc.createTextNode(fullText));
-			textElements.appendChild(mainText);
-			
-			writeToXML(doc,outputPath);
+			article.setFullText(fullText);
+			// finally write the article to xml.
+			writeToXML(article,outputPath);
 
-		} catch (ParserConfigurationException pce) {
-			pce.printStackTrace();
 		} catch (DOMException e1) {
 			e1.printStackTrace();
 		} 
 
 
-	}
+	} // end of function
 	
+	/**
+	 * gets the index created in the indexing process and corresponding file,
+	 * i.e. xmlFiles/document.xml. then
+	 * 1) read xml with sax-parser -> maybe i can do this without building a
+	 * new xml-file. 
+	 * 2) alter doi 
+	 * 3) write doc back.
+	 * 
+	 * 
+	 * @param docId
+	 * @param file
+	 */
+	public void insertIndexerDOCID(String docId, File file) {
+		
+		Article article = getArticleFromXML(file);
+		article.setDoi(docId);
+		writeToXML(article,"/home/tobias/Dokumente/blibla.xml");
+		
+	} // end of insertIndexerDOCID
 	
+	/**
+	 * 
+	 * @param file
+	 * @return
+	 */
+	public Article getArticleFromXML(File file){
+		Article article = null;
+		SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
+	    try {
+	        SAXParser saxParser = saxParserFactory.newSAXParser();
+	        ArticleHandler handler = new ArticleHandler();
+	        saxParser.parse(file, handler);
+	        article = handler.getArticle();
+	    } catch (ParserConfigurationException pce){
+	    	pce.printStackTrace();
+	    } catch(SAXException sae) {
+	    	sae.printStackTrace();
+	    }catch ( IOException ioe) {
+	    	ioe.printStackTrace();
+	    }
+		return article;
+	} // end of getArticleFromXML
 	
-	
-
-	
-}
+} // end of class

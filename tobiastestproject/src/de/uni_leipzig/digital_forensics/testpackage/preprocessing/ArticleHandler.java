@@ -32,6 +32,7 @@ public class ArticleHandler extends DefaultHandler {
     boolean bAuthors = false;
     boolean bPublicationDate = false;
     boolean bAbstract = false;
+    boolean bParseDate = false;
 
     
     @Override
@@ -61,15 +62,17 @@ public class ArticleHandler extends DefaultHandler {
             bPublicationDate = true;
         }else if (qName.equalsIgnoreCase("abstract")) {
             bAbstract = true;
+        } else if (qName.equalsIgnoreCase("parseTime")){
+        	bParseDate = true;
         }
     }
 
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
-        if (qName.equalsIgnoreCase("article")) {
-            //add Employee object to list
-           return;
-        }
+//        if (qName.equalsIgnoreCase("article")) {
+//            //add Employee object to list
+//           return;
+//        }
     }
 
     @Override
@@ -86,7 +89,7 @@ public class ArticleHandler extends DefaultHandler {
             article.setMyAbstract(new String(ch, start, length));
             bAbstract = false;
         } else if (bPublicationDate) {
-            article.setPublificationDate(new String(ch, start, length));
+            article.setPublicationDate(new String(ch, start, length));
             bPublicationDate = false;
         } else if (bFilePath) {
             article.setFilePath(new String(ch, start, length));
@@ -97,6 +100,9 @@ public class ArticleHandler extends DefaultHandler {
         }else if (bFullText) {
             article.setFullText(new String(ch, start, length));
             bFullText = false;
+        } else if (bParseDate) {
+        	article.setParseDate(new String(ch, start, length));
+        	bParseDate = false;
         }
     }
 }
