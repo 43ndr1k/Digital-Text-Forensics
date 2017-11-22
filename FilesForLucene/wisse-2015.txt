@@ -1,0 +1,976 @@
+ilable at ScienceDirect
+Digital Investigation xxx (2015) 1e11Contents lists avaDigital Investigation
+journal homepage: www.elsevier .com/locate/d i inScripting DNA: Identifying the JavaScript programmer
+Wilco Wisse a, Cor Veenman b, *
+a Delft University of Technology, Software Engineering Research Group, Mekelweg 5, 2628 CD, Delft, Netherlands
+b Netherlands Forensic Institute, Knowledge and Expertise Centre for Intelligent Data Analysis, Laan van Ypenburg 6, 2497 GB, The Hague,
+Netherlandsa r t i c l e i n f o
+Article history:
+Received 16 March 2015
+Received in revised form 8 September 2015
+Accepted 15 September 2015
+Available online xxxx
+Keywords:
+Authorship identification
+Authorship verification
+Source code
+JavaScript
+Abstract Syntax Tree
+Syntactic features* Corresponding author.
+E-mail addresses: wilco.wisse@gmail.com (W. W
+minvenj.nl (C. Veenman).
+http://dx.doi.org/10.1016/j.diin.2015.09.001
+1742-2876/© 2015 Elsevier Ltd. All rights reserved.
+Please cite this article in press as: Wisse W
+tigation (2015), http://dx.doi.org/10.1016/ja b s t r a c t
+The attribution of authorship is required in diverse applications, ranging from ancient
+novels (Shakespeare's work, Federalist papers) for historical interest to recent novels for
+linguistic research or even out of curiosity (Robert Galbraith alias J.K.Rowling). For this
+problem extensive research has resulted in effective general purpose methods. Also, for
+other types of text the original author needs to be discovered. Especially, we are interested
+in methods to identify JavaScript programmers, which can be used to reveal the offender
+who produced malicious software on a website. So far, for this hardly studied problem,
+mainly general purpose methods from natural language authorship attribution have been
+applied. Moreover, no suitable reference dataset is available to allow for method evaluation
+and method development in a supervised machine learning approach. In this work we first
+obtain a reference dataset of substantial size and quality. Further, we propose to extract
+structural features from the Abstract Syntax Tree (AST) to describe the coding style of an
+author. In the experiments, we show that the specifically designed features indeed
+improve the authorship attribution of scripting code to programmers, especially in addi-
+tion to character n-gram features.
+© 2015 Elsevier Ltd. All rights reserved.Introduction
+Authorship identification is roughly defined as the task
+of identifying the true author of a document given samples
+with undisputed authorship from a finite set of candidate
+authors (Potha and Stamatatos, 2014). The fundamental
+basis of authorship identification is that language is flexible
+enough in its expression to identify authors purely on the
+basis of their individual writing style. Traditionally, this
+task has mainly been used for historical interests. Arguably
+the most well-known and most influential work is the
+identification of the author of the Federalist Papers by
+Mosteller and Wallace (1963). The successes in authorship
+identification have led to the development of moreisse), c.veenman@nfi.
+, Veenman C, Scripting
+.diin.2015.09.001advanced automated identification techniques, that play a
+crucial role in various applications, ranging from cases of
+academic dishonesty to forensic investigations (Burrows,
+2010).
+With the rapid growth and popularity of the Internet
+an increasing number of criminals employ the Web to
+illegal ends, such as sharing child pornography and
+committing cyber crimes. The ease of hiding your real
+identity on the Web has heightened the need for effective
+identification techniques in recent years (Zheng et al.,
+2006; Stamatatos, 2009; Lambers and Veenman, 2009).
+The use of Internet technology by criminals also provides
+additional opportunities to detect the author of fraudu-
+lent content. In this study, we address the authorship
+identification of programming source code. In particular,
+we focus on interpreted JavaScript that it is commonly
+embedded within web pages. As such, the programming
+code is attainable in their original form. Most previousDNA: Identifying the JavaScript programmer, Digital Inves-
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e112studies on programmer identification focused on pro-
+gramming languages that are encountered in compiled
+form, e.g. (Burrows, 2010; Krsul and Spafford, 1997;
+MacDonell et al., 1999). The focus on JavaScript as
+target language is of great interest when considering the
+wide-spread use of JavaScript on the Web. The identifi-
+cation of a JavaScript developer may serve as a useful
+means in cybercrime investigations, such as tracing the
+authors of malicious websites.
+The most straightforward authorship identification task
+is its closed-set form, where reference data is available of a
+finite set of candidate authors. Then, a questioned docu-
+ment must be assigned to one of these candidates. More
+difficult is the open-set form, where the questioned docu-
+ment may be written by an unknown, previously unseen
+author. In this work we consider the closed-set form and a
+special case of the open-set form in which the set of
+candidate authors is singleton. The latter problem boils
+down to the question whether a document has or has not
+been written by a given author and is known as authorship
+verification (Potha and Stamatatos, 2014).
+Previous studies have shown that especially character n-
+gram based approaches are effective for programmer
+identification (Burrows et al., 2014; Tennyson, 2013). Such
+general purpose methods consider a source file as a mere
+sequence of characters.
+In this study we propose a set of language specific fea-
+tures that express JavaScript language properties at a
+higher syntactic level, by parsing the source into an Ab-
+stract Syntax Tree (AST). The AST lends itself in particular
+for the extraction of structural features, which for instance
+ignore layout style. As a consequence, AST features are less
+susceptible to pretty printing and code minification.
+A key issue in authorship identification studies is a
+reliable dataset for validation purposes. Unfortunately, no
+labeled JavaScript source code datasets are readily avail-
+able. In this paper we propose a way to obtain a reference
+dataset of substantial size and quality from the world's
+largest repository hosting service GitHub. With this dataset
+we evaluate the language specific method and compare the
+performance with two state-of-the-art identification tech-
+niques, which have been reported to be effective
+(Frantzeskou et al., 2007; Chatzicharalampous et al., 2012).
+The layout of the paper is as follows. In the next section,
+we first describe related work in authorship attribution,
+while we focus on programmer identification. Then we
+describe our programmer identification approach. The
+main part of this section is concerned with AST feature
+extraction. The following section describes the corpus
+construction, which is further detailed in Appendix A. In
+the experiments the proposed method is tested on the
+described corpus.We finalize the paper with a discussion of
+results and conclusions.
+Related work
+Below we describe previous research that has been
+done in relation to our work. We first elaborate on previous
+work in authorship identification with a focus on pro-
+grammer identification. Secondly, we describe research in
+which parse tree features were used in a similar context.Please cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001Authorship identification
+Authorship identification in general can be viewed as a
+text classification task where a set of reference samples is
+given for the candidate authors. One major subtask in
+authorship identification is the extraction of stylistic char-
+acteristics, known as stylometric features, that differ be-
+tween documents written by different authors. For natural
+language authorship identification Stamatatos (2009)
+distinguished techniques on the types of extracted stylo-
+metric features. These range from lexical (Iqbal et al., 2008)
+and character features (Mikros and Perifanos, 2013;
+Magdalena Jankowska and Keselj, 2014) to syntactic
+(Narayanan et al., 2012) and semantic features (McCarthy
+et al., 2006). Also combinations of these feature types
+have been implemented, for instance in Abbasi and Chen
+(2008). We refer to the survey (Stamatatos, 2009) for an
+overview on authorship attribution for natural language.
+In this work, we focus on authorship attribution for
+program source code, i.e., programmer identification. Also
+for programmer identification various features have been
+used. Most early studies attempted to capture high level
+programming characteristics by extracting a few dozen of
+specific textual measurements and software metrics. Such
+features may be divided into layout features (that relate to
+typographic aspects such as indentation and spacing), style
+features (such as naming conventions and variable length)
+and structural features (which express the structural
+decomposition of the code) (Krsul and Spafford, 1997).
+Since detailed text analysis is required to extract such fea-
+tures, we refer to these features as language-specific fea-
+tures. Languages specific features have been utilized in
+several language domains, including Pascal (Oman and
+Cook, 1989), Java (Ding and Samadzadeh, 2004), C (Krsul
+and Spafford, 1997) and Cþþ (MacDonell et al., 1999).
+Besides language specific methods, low level features
+may be extracted by considering each source file as a
+sequence of characters or tokens. The application of char-
+acter n-grams has shown to be among the most effective
+identification methods in both natural language
+(Stamatatos; Houvardas and Stamatatos, 2006) and source
+code (Tennyson, 2013). Character n-grams implicitly cap-
+ture lexical, syntactic and structural writing characteristics
+by representing each source file as relative frequencies of
+occurrence of character sequences. Since no deep linguistic
+analysis is required to extract character n-grams, such ap-
+proaches are language independent.
+Different classification techniques have been utilized to
+attribute an unlabeled document to a candidate author.
+These techniques can be divided into profile based ap-
+proaches and instance based approaches. Profile based ap-
+proaches produce a single representation (profile) of all
+documents of an author. The author of the questioned or
+unlabeled document is identified using a similarity func-
+tion that quantifies the degree of shared information be-
+tween the author profiles and the unlabeled document
+(Stamatatos, 2009). Instance based techniques, on the
+contrary, produce an individual representation for each
+document. Commonly, these approaches represent each
+source file by a vector in multivariate space, where all files
+of an author have the same (class) label. Then, a range ofDNA: Identifying the JavaScript programmer, Digital Inves-
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e11 3machine learning algorithms can be used for classification.
+Fig. 1 illustrates the difference between the instance based
+and profile based approach. It should be noted that simi-
+larity based classification models have been used in the
+instance based paradigm as well. The latter methods are
+sometimes referred to as nearest neighbor or information
+retrieval approaches, since the identification takes place by
+a similaritymeasure that is used to obtain the class labels of
+the reference file most similar to the unlabeled source file
+(Burrows et al., 2009; Koppel et al., 2006).
+Parse tree features
+In natural language, syntactic structures have proven to
+be good features for authorship identification (Kim et al.,
+2011). A parse tree is a convenient way to determine the
+syntactic structure of a sentence (Narayanan et al., 2012).
+Baayen et al. (1996) was the first to extract rewrite-rule
+frequencies from the parse tree for the purpose of author-
+ship identification. Rewrite-rules represent the combina-
+tions of a node and its immediate constituents in the tree.
+Later authorship studies in natural language studies
+examined related tree characteristics such as the depth of
+the syntax trees (Kaster et al., 2005), the frequency parent-
+child node types (Narayanan et al., 2012), n-grams defined
+on node types (Tschuggnall and Specht, 2014), and frequent
+subtree patterns (Kim et al., 2011). In source code, the Ab-
+stract Syntax Tree (AST) is a convenient way to represent
+the syntactic structure of a program. ASTs are usually
+employed for code analysis in compilers and developer
+tools, but also enable to select detailed structural features
+for programming style characterization. As such, AST sub-
+trees have been applied to detect code cloning and
+plagiarism by allowing for the computation of structural
+similarity between programs (Chilowicz et al., Roussel;
+Baxter et al., 1998). These plagiarism studies, however,
+deal with detecting approximate matches of larger chunks
+of code, which are the result of copy paste modifications.
+Approach
+We now describe our approach for programmer iden-
+tification of JavaScript source code. We deal with two
+programmer identification tasks: closed-set identificationFig. 1. Profile based versus instance based authorship identification. Source
+file u is an unlabeled file which has to be attributed to one of the candidate
+authors. The profile based model has a data points for each author. The
+instance based approach has a data point for each individual sample.
+Please cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001and programmer verification. We approach these problems
+as (instance based) machine learning problems in which a
+properly designed feature set is essential. In our proposal,
+the feature set consists of features derived from the parse
+tree. In the next section, we describe how we obtain these
+features. After that, we work out our machine learning
+model for closed-set programmer identification and pro-
+grammer verification.
+Feature extraction
+In this work we utilize parse trees to extract structural
+features. The parse trees are obtained by the Esprima
+(Hidayat, 2015) parser, which generates a Mozilla
+compatible JavaScript AST (Mozilla Developer Network and
+individual contributors, 2015). Fig. 2 shows an example of
+such an AST. Every node has a corresponding node object,
+that indicates the node type and has a number of corre-
+sponding attributes (child-nodes) which are either
+expression or statement nodes. In the AST, the name of the
+attributes are indicated as labels on the edges. For instance,
+the function call node in Fig. 2 is represented by a Call-
+Expression object that implements the following interface
+(Mozilla Developer Network and individual contributors,
+2015):
+Traversing the parse tree nodes allows to extract
+detailed language specific features from the node objects,
+which are detailed in the remainder of this section.
+Structural features
+The AST lends itself in particular for the extraction of
+features related to the tree structure. First, we tracked the
+length of node lists that are present in the AST nodes. The
+length of these lists reflects the number of children of a
+node, such as the number of arguments defined in a func-
+tion declaration and the number of elements initialized in
+an array. Additionally, we tracked the number of de-
+scendants nodes of particular node types (i.e., the number
+of nodes having a common ancestor). This is depicted in
+Fig. 3a. The number of descendant nodes indicates the
+complexity of node attributes, e.g., whether identifiers orFig. 2. An AST corresponding to the JavaScript code foo.bar(a,1).
+DNA: Identifying the JavaScript programmer, Digital Inves-
+Fig. 3. Examples of language specific properties related to the code of Fig. 2.
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e114comprehensive objects are passed as arguments in a
+CallExpression.
+To capture how the nodes are structured in the AST, we
+maintain the frequency of the most frequent node n-grams
+for n ¼ 1;2 and 3. We define node n-grams as contiguous
+sequences of nodes in the AST, where each node in this
+sequence is a child of its preceding node (see Fig. 3b). The
+frequency of node uni-grams (i.e., n ¼ 1) captures the fre-
+quency of individual node types. This may for instance
+indicate the preference for different loop types. Also, the
+appearance of NewExpression and MemberExpression
+nodes may be an indicator of an object-oriented pro-
+gramming style. Furthermore, with node 2 and 3-grams we
+aim to capture how nodes are connected to each other in
+the tree. For example, different expression types may be
+used as callee in a CallExpression, such as a member
+expression or an identifier. The appearance of such features
+may reflect characteristic habits in program structure be-
+tween different programmers.
+Layout features
+Program layout features deal specifically with the
+layout, such as the use of indentation and spacing. In the
+AST, this information is disregarded, since it is irrelevant for
+program analysis during code compilation or interpreta-
+tion. Because the layout may be an important marker of
+coding style, we added layout information to the AST by
+introducing additional nodes of the type Layout, Block-
+Comment and LineComment. The process is clarified in
+Fig. 3c. Adding the layout nodes was done by inspecting the
+raw source code while traversing the parse tree. The
+BlockComment and LineComment nodes contain the raw
+comments as attribute, while the Layout nodes contain the
+spacing that is used at the given position within the source
+code, e.g., spaces before and behind brackets. For every
+layout position in each node type, we recorded the numberPlease cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001of times that zero, one, two or many spaces, tabs and line
+breaks were used. A number of layout positions with
+roughly the same meaning were grouped, such as the
+layout slots before closing parenthesis and the layout slots
+before different operators in binary expressions.
+Coding style features
+A disadvantage of layout features is that layout may
+easily be obfuscated by pretty printers and source code
+formatters. Coding style features concern stylistic charac-
+teristics that are less susceptible to be changed automati-
+cally. In this feature category, we recorded style
+information of comments, naming conventions and data
+types. A number of nodes in the AST contain textual infor-
+mation that can be used for this purpose. For comments we
+maintain the length of block and line comments, the ratio
+between line and block comments and the parent node
+type of comments. The latter should reflect where com-
+ments are placed in the source code. Next, naming con-
+ventions and the use of literal data types are extracted by
+applying regular expressions on identifier names and literal
+values. We measured the length of literal values and
+identifier names, the use of capital letters in identifier
+names and the use of different literal data types (see
+Table 1).
+Feature representation
+The discussed features are used to represent each
+JavaScript repository as a feature vector in multivariate
+space. Table 1 presents the number of features that corre-
+spond to the discussed layout, style and structural features.
+For each feature we maintain a histogram distribution,
+which records the frequency of observed values related to
+the feature. This approach is comparable to the approach of
+Lange (Lange and Mancoridis, 2007). For instance, to ex-
+press the length of identifiers in the source code, the bins ofDNA: Identifying the JavaScript programmer, Digital Inves-
+Table 1
+Number of defined measurements on the AST.
+Structural
+Node 1-grams (expressions) 19
+Node 1-grams (statements) 17
+Node 2-grams 433
+Node 3-grams 546
+Descendant count of nodes 110
+Length of lists defined in nodes 126
+Style
+String patterns on identifiers (naming conventions) 16
+Type of comments (block/line) 2
+Type of parent node of comments 33
+Length of comments 18
+Literal data types (string with double/single quotes, null value,
+number, boolean or regex)
+6
+Layout
+Number of tabs at a position 121
+Number of spaces at a position 121
+Number of returns at a position 121
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e11 5the histogram corresponds to every recorded identifier
+length, while the height of the bin expresses the number of
+identifiers with that length in the source code. After
+generating the raw histogram distributions for each re-
+pository, we normalize the bin values. This enables us to
+compare distributions of features between different pro-
+grammers. We either evaluated binary normalization (such
+that each histogram value becomes 1 if it is observed at
+least once and 0 otherwise) and feature wise normalization
+by dividing the value of each bin by the sum of the other bin
+values of the same measure (such that the sum of occur-
+rences in each histogram becomes 1).
+Classification in closed-set programmer identification
+In closed-set programmer identification, reference data
+is available for each candidate programmer and the ques-
+tioned source file surely belongs to one of the candidate
+programmers. The describedmultivariate representation of
+the available source files enables us to adopt a machine
+learning approach for classification. We modeled the pro-
+grammer identification problem as a multi-class classifi-
+cation problem, where the reference data of the candidate
+programmers acts as training data. The trained multi-class
+classifier predicts the authorship of previously unseen
+documents.
+Classification in programmer verification
+In addition to closed-set programmer identification we
+address programmer verification. The goal of programmer
+verification is to determine whether or not a source file is
+written by a certain target programmer. Consequently, the
+questioned documents may be written by a previously
+unseen programmer for which no training data is provided.
+The absence of these data raises the question of how to
+train the classifier. In the literature two general models
+have been used, namely intrinsic and extrinsic classification
+models (Potha and Stamatatos, 2014). In the intrinsic clas-
+sification model only the target class (corresponding to the
+target programmer) is modeled by using training data, seePlease cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001Fig. 4a. Then, the problem is handled as a one-class clas-
+sification problem. In this work we adopt the extrinsic
+classification model, where the problem is modeled as a
+two-class classification problem. In this case both the target
+and the non-target classes are modeled using training data,
+see Fig. 4b. The non-target class represents source code
+developed by programmers different from the target pro-
+grammer. Since the non-target class is very heterogeneous,
+there should be enough and representative source code
+samples available as reference data. Then, an unlabeled
+document is attributed to the class (target or non-target)
+with the highest confidence. Alternatively, a confidence
+threshold can be specifically selected to decide for the
+target class when exceeded. Typically, an ROC curve is used
+to characterize the performance of the classifier as a func-
+tion of such a classification threshold. It demonstrates the
+trade-off between the true positive rate and false positive
+rate (Fawcett, 2006).
+Corpus construction
+To develop and evaluate the performance of the pro-
+posed method, a labeled set of JavaScript source code
+samples is needed. Unfortunately, no such datasets are
+readily available. A naive approach would be to collect
+JavaScript code manually from websites. A problem is
+however that it is often unclear who is the true program-
+mer of the source code, especially when multiple pro-
+grammers collaborated in the same code base. Therefore,
+we propose an automated approach by collecting JavaScript
+repositories from GitHub. GitHub is the worlds largest on-
+line repository hosting service and includes many Java-
+Script repositories (Gousios et al., 2014). The collected
+GitHub repositories can be used as reference data to model
+the programmer style of each of the programmers. The
+history information in the Git repository allows to deter-
+mine the author of each line of code in a repository. These
+repositories are possibly not representative for (malware)
+JavaScript on web pages, but can serve as a comprehensive
+corpus for method exploration on Java code.
+In this paper we define a source code sample as a single
+repository. Also, we only use repositories that have been
+developed by a single programmer since the unit of
+recognition is a repository. In addition, we need ground
+truth of the true original programmer per repository. To
+enable a machine learning approach, multiple source code
+samples per programmer are required to develop an ac-
+curate identification model. This means that programmers
+should be selected that own a large number of repositories
+exclusively developed by themselves. To be able to find
+such GitHub users, we used the database of GitHub meta-
+data provided by the GHTorrent project (Gousios et al.,
+2014). The published GHTorrent relational database in-
+cludes the information necessary to select appropriate
+GitHub repositories with the corresponding collaborators.
+A more detailed description of the corpus construction is
+found in Appendix A.
+Table 2 details statistics about the authors and re-
+positories that were included in the corpus. After cloning
+the repositories we removed the files that were irrelevant
+for our experiments. These are the JavaScript files that areDNA: Identifying the JavaScript programmer, Digital Inves-
+Fig. 4. Example two-dimensional training dataset for intrinsic (a) and extrinsic (b) machine learning models. The intrinsic model can only exploit properties of
+the target class (‘o’) itself, while the extrinsic model has information about the differences between the targets (‘o’) and non-targets (‘*’).
+Table 2
+Statistics of the composed corpus in number of repositories, kB, lines of
+code (LOC), and files.
+Min. Max. Mean Median Std.
+Author size (repositories) 5 167 24.0 17.5 22.2
+Author size (kB) 10.8 761.5 160.9 138.9 131.4
+Author size (LOC) 339 31,347 5867 5020 4878.7
+Repo size (files) 1 32 2.29 1.00 2.6
+Repo size (kB) 1.0 49.4 6.7 3.8 7.7
+Repo size (LOC) 7 2614 244.1 148.0 271.0
+Fig. 5. The cumulative density function of the size of the collected source
+code repositories. The dashed lines correspond to the size of the repositories
+before cleaning the dataset.
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e116not parsable. Also, many repositories included source code
+of JavaScript libraries such as JQuery in their code base.
+Since such libraries are developed by other programmers
+they do not reflect the coding style of the owner of the
+repository and need to be excluded. We first attempted to
+remove libraries by a predefined blacklist of file names of
+well-known libraries. However, we found that this was not
+sufficient, as there was much variation in the name of the
+library files. Thereforewe adopted the following strategy to
+eliminate libraries from the code base. First, we observed
+that in general, libraries were much larger than other
+JavaScript files. We removed all files that were larger than
+100 kB. Secondly, the entire content of JavaScript libraries
+was usually committed in a single commit. Therefore, we
+removed all files that were committed in one single
+commit. Manual inspection showed that this approach was
+effective in removing libraries from the repositories.
+Finally, we removed files smaller than 1 kB from the re-
+pository, because these turned out to be not parsable or
+comment-only files. Fig. 5 presents the cumulative density
+function of the number of files per repository and the size
+in kB of repositories in the constructed dataset, before and
+after the cleaning phase.Experiments
+In the following we describe the experiments we did to
+evaluate the proposed programming style features with the
+constructed dataset. We differentiate the experiments be-
+tween closed-set recognition and programmer verificationPlease cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001experiments. To be able to focus on the contribution of the
+proposed features and to make the experiments compu-
+tationally feasible, we did initial tests on which classifier to
+use for the elaborate experiments and to tune the hyper
+parameters and other model parameters. We tested stan-
+dard classifiers like linear discriminant analysis (LDA), lo-
+gistic regression, and state-of-the-art classifiers like
+adaboost, support vector machine with various kernels and
+regularizations, random forest, and regularized logistic
+regression. In these initial experiments we also tested the
+best normalization of the feature vectors, either binariza-
+tion or division by the sum of all feature frequencies. There
+were several methods that performed comparably. It
+turned out that the support vector machine with linear
+kernel and L2 regularization gave robust competitive re-
+sults. This is in line with various other text mining and
+authorship attribution research, e.g. (Zheng et al., 2006;
+Sidorov et al., 2014). We used the LibSVM implementa-
+tion (Chang and Lin, 2011) for all experiments below. As
+normalization, the binarization turned out to give the best
+results.DNA: Identifying the JavaScript programmer, Digital Inves-
+Fig. 6. Validation of the programmer verification task as a binary classifi-
+cation problem. The target class is modeled with repositories of one pro-
+grammer. The non-target class is constructed by repositories of different
+programmers divided into 5 random folds. The red areas in this figure
+indicate the code that is used for testing, while the remaining code is used
+for training the classifier. (For interpretation of the references to colour in
+this figure legend, the reader is referred to the web version of this article.)
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e11 7Closed-set programmer identification
+We first address closed-set programmer identification.
+We tested the performance for an increasing number of
+candidate authors in the identification task. This was done
+by repeatedly selecting a random subset of programmers
+from the whole dataset. For each programmer the samples
+(repositories) were randomly split into two sets. The first
+set always contained 25 repositories and was used for
+training. The second set contained the remaining re-
+positories and was used for validation. To accurately esti-
+mate the accuracy, 10 iterations were performed using a
+different set of programmers and different sampling of the
+repositories for training and validation.
+We defined samples in our corpus to be entire Git re-
+positories. This ensures that source code of the same re-
+pository is not used both for training and validation. This
+enables us to validate how well the identification algo-
+rithms generalize beyond the training set to source code of
+previously unseen software repositories. As a result, the
+classification results will be more representative for vary-
+ing coding style between repositories and application
+domains.
+Feature selection
+One of the proposed ways to quantify the coding style of
+the programmers is by node n-grams defined on the AST.
+However, the JavaScript syntax defines a large number of
+expression and statement types, which makes the number
+of node n-grams to be tracked extremely large. A number of
+infrequent node n-grams are therefore removed from the
+feature space to keep the problem computationally
+feasible. To eliminate infrequent n-grams we empirically
+determined the most frequent node n-grams in the Java-
+Script source dataset. To keep this selection process
+computationally feasible, the process was carried out in a
+greedy way. We started with node 1-grams, of which the
+most frequently observed 1-grams were extended to node
+2-grams. Similarly, the most frequently observed node 2-
+grams were extended to node 3-grams. We ended up
+with 36 node 1-grams, 433 node 2-grams and 582 node 3-
+grams.
+Methods
+The accuracy of the proposed technique is compared to
+two existing character n-gram based approaches. First, we
+evaluated the performance of the Scap (Frantzeskou et al.,
+2007) approach. This is a profile based method that cre-
+ates for each programmer a profile that contains the most
+frequently observed character n-grams in the pro-
+grammer's training data. Classification takes place by a
+similarity measure that quantifies the degree of shared
+information between the program profile (which charac-
+terizes the questioned source file) and the author profiles
+(which characterize the source code of the programmers).
+The adopted similaritymeasure is the SPI measure, which is
+the cardinality of the intersection between the program
+profile and the author profiles. In our study, we set the
+profile size L to the 1500 most frequent n-grams as was
+originally proposed by the authors (Frantzeskou et al.,
+2007). In addition to Scap, we compare our method to aPlease cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001character n-gram approach that sticks to the instance based
+paradigm as is described in Chatzicharalampous et al.
+(2012). In this method, each document is represented
+individually in the same dimensional vector space, where
+each dimension corresponds to the relative frequency of
+occurrences of a particular n-gram. Also for the character n-
+gram feature representation, the classification is performed
+by a Support Vector Machine (SVM) with a linear kernel
+(Chang and Lin, 2011). The document representation in
+multivariate space may be sparse, since not all selected n-
+grams are necessarily observed in each document. There-
+fore we chose a larger number of n-grams thanwas done in
+the Scap method and defined the feature space by the 7000
+most frequent n-grams found in the whole corpus.
+Since the machine learning classification techniques are
+both feature vector based, the feature spaces of the n-gram
+based and language specific approach can be combined into
+a single higher dimensional representation. The two
+feature spaces may express different programmer infor-
+mation, since they are extracted from a different language
+representation. For instance, domain specific features may
+be better able to describe the structural aspects, while the
+character n-grams may be better able to describe layout
+related aspects. As a consequence, the two feature spaces
+may complement each other, resulting in amore expressive
+characterization of coding style. We use early fusion (Snoek
+et al., 2005), i.e., we concatenate both feature vectors.Results
+Fig. 7a presents the effectiveness of the techniques. The
+presented results are obtained by using binary feature
+normalization. Overall, the instance based approach that
+combines the domain specific and character n-gram fea-
+tures achieved the highest accuracy. The figure shows that
+in a classification problem with 10 programmers, the
+combined method achieves an accuracy of 0.91, while the
+n-gram based method, the domain specific method and the
+Scap method respectively achieve an accuracy of 0.90, 0.85
+and 0.83. The difference between accuracy of the combined
+method and the character n-gram based method is small,
+but becomes larger when the number of candidate authors
+increases. For instance, with 34 candidate authors the n-DNA: Identifying the JavaScript programmer, Digital Inves-
+Fig. 7. Accuracy of the techniques in closed-set programmer identification.
+a). Present the results by training with 25 samples per programmer. b).
+Presents the achieved accuracy by the individual feature types, which can be
+found in Table 1.
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e118gram based method achieves an accuracy of 0.80, while the
+combined method has an accuracy of 0.85. When consid-
+ering the feature sets separately the n-gram based tech-
+nique achieved the best performance.
+Additionally, we were interested in the contribution of
+the individual language specific feature types of the pro-
+posed approach. This is especially of importance if some
+feature types are suspected of being changed by external
+tools. For instance, layout and naming style may be
+imposed by editors or pretty printers, so that they do not
+reflect the particular coding style of a programmer. Fig. 7b
+shows the accuracy of the language specific approach,
+when including one feature type and removing the other
+ones from the feature space. The feature types on the x-axis
+correspond to the features presented in Table 1. As the re-
+sults show, the structural features achieved a relatively
+high accuracy, which supports our hypothesis that struc-
+tures in the AST are effective in distinguishing developer
+styles. However, the accuracy of using only layout featuresPlease cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001is higher than the accuracy of all the remaining features
+together (i.e., excluding the layout features from the feature
+space). The importance of layout features is in line with
+earlier results that indicated that the layout plays a crucial
+role in programmer identification of source code (Ding and
+Samadzadeh, 2004; Frantzeskou et al., 2008).Programmer verification
+For programmer verification we used the same dataset
+as for programmer identification. In the experiments we
+repeatedly selected one programmer as target program-
+mer. The repositories of this programmer are randomly
+split into training and validation samples. The non-target
+class is modeled by the repositories of the other pro-
+grammers in the dataset. By applying 5-fold cross valida-
+tion on the non-target class we examine the performance
+of the classification process, i.e., the repositories in the non-
+target class are randomly partitioned into 5 equally sized
+subsets of which one set is used for training and the others
+are used for validation. The training and validation samples
+are drawn such that all repositories from a programmer are
+either in the training set or all in the validation set. In this
+way we modeled the case that the programmer of non-
+target validation samples have not been observed before,
+which is the most representative for the real-world situa-
+tion. Fig. 6 illustrates one fold in this process. In the ex-
+periments the 5-fold cross validation process is repeated
+multiple times in such a way that each programmer in the
+corpus is used once as target. The resulting performance
+results are averaged. In the authorship verification task we
+did not include the Scap method, since it was designed to
+be used in a closed-set authorship identification setting.Results
+Fig. 8a shows the ROC-curves of the verification tech-
+niques. We tested with 7 samples for the target user in
+order to be able to differentiate between the methods. That
+is, with more than 25 samples per target programmer all
+methods perform almost equally well. The ROC curve
+characterizes the compromise between the false positive
+rate (FPR) and true positive rate (TPR). Often the Area
+Under the ROC Curve (AUC) is used to be able to compare
+different techniques with a single scalar value. The AUC can
+be interpreted as the probability that the classifier will rank
+a randomly chosen positive instance higher than a
+randomly chosen negative instance (Fawcett, 2006). Fig. 8b
+compares the AUC values of the verification techniques
+with a varying number of training samples. The AUC values
+with 7 samples used to model the target author for the
+combined technique, the character n-gram technique and
+the language specific technique are respectively 0.96, 0.95
+and 0.94. The results indicate, as was the case in closed-set
+programmer identification, that the feature vector based
+classification with character n-gram and domain specific
+features was the most successful technique, while the
+machine learning approach with character n-grams was
+the most effective when considering the feature sets
+separately.DNA: Identifying the JavaScript programmer, Digital Inves-
+Fig. 8. Validation results in programmer verification. a). Shows the ROC-
+curves when trained with 7 samples per programmer. The AUC-values for
+various training samples are presented in b).
+1 http://www.github.com.
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e11 9Conclusions
+In this work, we proposed and evaluated a language
+specific programmer identification technique for JavaScript
+source code. The first contribution of this work is the use of
+features directly extracted from the AST. We showed that
+structures in the AST, of which especially node 2- and 3-
+grams, are effective markers of a programmer's coding
+style. The proposed technique was compared to two tech-
+niques that are based on character n-grams. The results
+point out that features that exploit language structure
+through the AST improve the programmer identification
+tasks, both for closed-set programmer identification and
+for programmer verification. Accordingly, the best perfor-
+mance is obtained by fusing the AST features to the char-
+acter n-gram features. For closed-set identification for 34
+authors the achieved accuracy with n-grams only is 0.80
+andwith the combinedmethod the accuracy is 0.85. For thePlease cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001programmer verification task the combined features ach-
+ieve AUC ¼ 0.96 with 7 training samples and the n-grams
+achieve AUC ¼ 0.95, while with more than 25 samples all
+methods perform similarly good.
+Similar to our study, a recent (at the time of writing
+unpublished) study also proposed to employ structures in
+the AST to quantify coding style (Caliskan-Islam et al.,
+2015). Instead of adding character features to the AST fea-
+tures, they enrich the AST featureswith lexical features. The
+node n-grams, which play a central role in our study, were
+not considered. Further, their focus is on Cþþ source code
+that is distributed in binary form after compilation. In
+contrast, our method has broader applicability since it fo-
+cuses on JavaScript, which is commonly encountered in its
+source code form on web pages.
+The second contribution of this research is the design of
+a labeled JavaScript code dataset of substantial size, by
+utilizing source code from the repository hosting service
+GitHub. The proposed method is generic and flexible
+enough to be used with different selection criteria, such as
+different programming languages and repositories devel-
+oped by multiple programmers. For the current research, it
+was important to have repositories developed by single
+programmers. This was established by collecting source
+files committed by the same GitHub user. Although GitHub
+provides specific organization accounts for teams, we
+cannot be sure that ordinary user accounts have not been
+used by multiple programmers. However, account sharing
+would have made the problem more difficult. In that case,
+the reported results would be conservative.
+The research presented in paper has raised several
+questions that provide the basis for further research.
+Further research is needed to see how well the method
+works with short scripts that can be found embedded in
+web pages. With the constructed corpus we were not able
+to test this, because no such small repositories were
+available. Taking snippets from the available repositories
+instead was not possible, because these were generally not
+parsable.
+We consider JavaScript the most suitable programming
+language to consider, as it can be found as source code on
+web pages. Still the method can easily been used for other
+programming languages as well. Indeed, the proposed
+structural features open up the possibility of cross language
+programmer identification. That is, even when the syntax
+definitions of the languages are different, the underlying
+programming structures remain similar per programmer
+over different programming languages. Finally, while the
+current study shows the effectiveness of features based on
+structures in the AST, the selection of more sophisticated
+structural features could be investigated, such as frequent
+subtree patterns in the AST (Kim et al., 2011).Appendix A. Approach to Construct the Corpus
+In this appendix we describe the followed process to
+construct a dataset with GitHub1 JavaScript repositories.DNA: Identifying the JavaScript programmer, Digital Inves-
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e1110The result is a collection of source code repository labeled
+by the appropriate GitHub user name.
+To prevent topic biasses during validation, we defined
+each code sample in the corpus be a complete JavaScript
+repository. In this way the training and validation data is
+taken from different JavaScript repositories. As a result,
+classification will less likely be based on characteristics of a
+repository such as specific variable names and repositories
+specific style conventions. In the remainder of this appen-
+dix we first describe how we selected appropriate GitHub
+users in the first section. Thenwe detail howwe cloned and
+included suitable repositories in the corpus.
+Mining appropriate GitHub users using GHTorrent
+In this work we limit ourselves to repositories that have
+been developed by a single programmer. To select GitHub
+users we use the GitHub metadata provided by the
+GHTorrent project.2 We used the relational repository
+metadata that is offered as download in a MySQL database.
+This database contains the information necessary to select
+appropriate GitHub repositories with the corresponding
+collaborators. Fig. A.9 shows the database tables which are
+relevant in our context. The database table repositor-
+y_members links the users to the repository which they
+have commit access to. We removed all repositories from
+the dataset which are no JavaScript repositories (as our
+target language is JavaScript).
+To enable a machine learning approach many samples
+per author are required. Consequently, we need to find
+users which own a large number of repositories that are
+exclusively developed by themselves. To find such users we
+imported the GHTorrent database in network analysis tool
+Gephi.3 In this tool we represented users and repositories
+in a directed graph, where a directed edge ðu; vÞ represents
+a user u with commit access to repository v. Because we
+only include samples in our corpus which were developed
+by a single programmer, or single user in GitHub termi-
+nology, we removed all edges v with in-degree larger than
+1. For team work GitHub has special organization accounts,
+so account sharing is not to be expected. Thenwe listed the
+user nodes u in descending order on their out-degree. The
+result is a list of GitHub users sorted on the number of re-
+positories they own. This list is used in the next step where
+we download the repositories of the users with the largest
+out-degree.Fig. A.9. Relevant GHTorrent MySQL database tables.2 http://www.ghtorrent.org.
+3 http://gephi.github.io.
+Please cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001Downloading repositories
+Unfortunately we cannot be sure that the repositories
+selected in Gephi were developed by a single author.
+Besides the collaborators (which have direct commit ac-
+cess), code of other GitHub, code of other users may be
+merged into the repository by means of pull-requests.
+Likewise, an already existing Git repository with multi-
+ple collaborators may later on be pushed to GitHub by a
+developer (this developer may be the only contributor on
+GitHub). Also, the GHTorrent data may be outdated and
+new users may have been added to a repository. As a
+consequence, we have to validate who are the eventual
+code committers in each repository. To determine the set
+of GitHub users that definitely contributed code to a re-
+pository we created a tool that clones the repository and
+annotated the Git identity of each line of code in the
+repository.4 The latter is possible by using the standard
+blame functionality in the Git system. Git blame shows
+for each line of code the identity of the committer. If all
+lines of code in a repository originate from a single pro-
+grammer we include the repository as sample in our
+corpus. Otherwise it is rejected.References
+Abbasi A, Chen H. Writeprints: a stylometric approach to identity-level
+identification and similarity detection in cyberspace. ACM Trans Inf
+Syst 2008;26(2):7:1e7:29.
+Baayen H, Van Halteren H, Tweedie F. Outside the cave of shadows: using
+syntactic annotation to enhance authorship attribution. Lit Linguist
+Comput 1996;11(3):121e32.
+Baxter ID, Yahin A, Moura L, Sant’Anna M, Bier L. Clone detection using
+abstract syntax trees. In: Software maintenance, 1998; 1998.
+p. 368e77. Proceedings., International Conference on, IEEE.
+Burrows S. Source code authorship attribution [Ph.D. thesis]. Melbourne,
+Australia: School of Computer Science and Information Technology,
+RMIT University; 2010.
+Burrows S, Uitdenbogerd AL, Turpin A. Application of information
+retrieval techniques for source code authorship attribution. In:
+Database systems for advanced applications. Springer; 2009.
+p. 699e713.
+Burrows S, Uitdenbogerd AL, Turpin A. Comparing techniques for
+authorship attribution of source code. Softw Pract Exp 2014;44(1):
+1e32.
+Caliskan-Islam A, Harang R, Liu A, Narayanan A, Voss C, Yamaguchi F, et al.
+De-anonymizing programmers via code stylometry. In: 24th USENIX
+Security Symposium (USENIX Security 15). Washington, D.C.: USENIX
+Association; 2015. p. 255e70. https://www.usenix.org/conference/
+usenixsecurity15/technical-sessions/presentation/caliskan-islam.
+Chang C-C, Lin C-J. LIBSVM: a library for support vector machines. ACM
+Trans Intell. Syst Technol 2011;2:1e27. software available at: http://
+www.csie.ntu.edu.tw/~cjlin/libsvm.
+Chatzicharalampous E, Frantzeskou G, Stamatatos E. Author identification
+in imbalanced sets of source code samples. In: Tools with Artificial
+Intelligence (ICTAI), 2012 IEEE 24th International Conference on, Vol.
+1, IEEE; 2012. p. 790e7.
+M. Chilowicz, E. Duris, G. Roussel, Syntax tree fingerprinting: a foundation
+for source code similarity detection, Universitye Paris-Est.
+Ding H, Samadzadeh MH. Extraction of java program fingerprints for
+software authorship identification. J Syst Softw 2004;72(1):49e57.
+Fawcett T. An introduction to roc analysis. Pattern Recognit Lett 2006;
+27(8):861e74.
+Frantzeskou G, Stamatatos E, Gritzalis S, Chaski CE, Howald BS. Identifying
+authorship by byte-level n-grams: the source code author profile
+(scap) method. Int J Digit Evid 2007;6(1):1e18.4 https://github.com/wilcowisse/Shibboleth.
+DNA: Identifying the JavaScript programmer, Digital Inves-
+W. Wisse, C. Veenman / Digital Investigation xxx (2015) 1e11 11Frantzeskou G, MacDonell S, Stamatatos E, Gritzalis S. Examining the
+significance of high-level programming features in source code
+author classification. J Syst Softw 2008;81(3):447e60.
+Gousios G, Vasilescu B, Serebrenik A, Zaidman A. Lean ghtorrent: Github
+data on demand. In: Proceedings of the 11th Working Conference on
+Mining Software Repositories. ACM; 2014. p. 384e7.
+Hidayat A. Esprima: Ecmascript parsing infrastructure for multipurpose
+analysis. 2015. http://esprima.org [accessed 03.04.15].
+Houvardas J, Stamatatos E. n-gram feature selection for authorship
+identification. In: Artificial intelligence: methodology, Systems, and
+applications. Springer; 2006. p. 77e86.
+Iqbal F, Hadjidj R, Fung BC, Debbabi M. A novel approach of mining write-
+prints for authorship attribution in e-mail forensics. Digit Investig
+2008;5, Supplement. S42 e S51, the Proceedings of the Eighth Annual
+{DFRWS} Conference.
+Kaster A, Siersdorfer S, Weikum G. Combining text and linguistic docu-
+ment representations for authorship attribution. In: SIGIR workshop:
+stylistic analysis of text for information access; 2005.
+Kim S, Kim H, Weninger T, Han J, Kim HD. Authorship classification: a
+discriminative syntactic tree mining approach. In: Proceedings of the
+34th International ACM SIGIR Conference on research and develop-
+ment in information retrieval. ACM; 2011. p. 455e64.
+Koppel M, Schler J, Argamon S, Messeri E. Authorship attribution with
+thousands of candidate authors. In: Proceedings of the 29th annual
+international ACM SIGIR conference on research and development in
+information retrieval. ACM; 2006. p. 659e60.
+Krsul I, Spafford EH. Authorship analysis: identifying the author of a
+program. Comput Secur 1997;16(3):233e57.
+Lambers M, Veenman CJ. Forensic authorship attribution using
+compression distances to prototypes. In: Computational forensics.
+Springer; 2009. p. 13e24.
+Lange RC, Mancoridis S. Using code metric histograms and genetic algo-
+rithms to perform author identification for software forensics. In:
+Proceedings of the 9th annual conference on genetic and evolu-
+tionary computation. ACM; 2007. p. 2082e9.
+MacDonell SG, Gray AR, MacLennan G, Sallis PJ. Software forensics for
+discriminating between program authors using case-based reasoning,
+feedforward neural networks and multiple discriminant analysis. In:
+Neural information processing; 1999. p. 66e71. Proceedings.
+ICONIP’99. 6th International Conference on, Vol. 1, IEEE, 1999.
+Magdalena Jankowska EM, Keselj V. Author verification using common
+n-gram profiles of text documents. In: Proceedings of International
+Conference on Computational Linguistics (COLING); 2014.
+p. 387e97.Please cite this article in press as: Wisse W, Veenman C, Scripting
+tigation (2015), http://dx.doi.org/10.1016/j.diin.2015.09.001McCarthy PM, Lewis GA, Dufty DF, McNamara DS. Analyzing writing
+styles with coh-metrix. In: Sutcliffe G, Goebel R, editors. FLAIRS
+Conference. AAAI Press; 2006. p. 764e9.
+Mikros G, Perifanos K. Authorship attribution in greek tweets using au-
+thor's multilevel n-gram profiles. In: AAAI Spring Symposium Series;
+2013.
+Mosteller F, Wallace DL. Inference in an authorship problem: a compar-
+ative study of discrimination methods applied to the authorship of
+the disputed federalist papers. J Am Stat Assoc 1963;58(302):
+275e309.
+Mozilla Developer Network and individual contributors. Parser api. 2015.
+https://developer.mozilla.org/en-US/docs/Mozilla/Projects/
+SpiderMonkey/Parser_API [accessed 03.04.15].
+Narayanan A, Paskov H, Gong NZ, Bethencourt J, Stefanov E, Shin ECR,
+et al. On the feasibility of internet-scale author identification. In:
+Security and Privacy (SP), 2012 IEEE Symposium on, IEEE; 2012.
+p. 300e14.
+Oman PW, Cook CR. Programming style authorship analysis. In: Pro-
+ceedings of the 17th conference on ACM Annual Computer Science
+Conference. ACM; 1989. p. 320e6.
+Potha N, Stamatatos E. A profile-based method for authorship verification.
+In: Artificial intelligence: methods and applications. Springer; 2014.
+p. 313e26.
+Sidorov G, Velasquez F, Stamatatos E, Gelbukh AF, Chanona-Hernandez L.
+Syntactic n-grams as machine learning features for natural language
+processing. Expert Syst Appl 2014;41(3):853e60.
+Snoek CGM, Worring M, Smeulders AWM. Early versus late fusion in
+semantic video analysis. In: Proceedings of the 13th Annual ACM
+International Conference on Multimedia, MULTIMEDIA ’05. New York,
+NY, USA: ACM; 2005. p. 399e402. http://dx.doi.org/10.1145/
+1101149.1101236. URL, http://doi.acm.org/10.1145/1101149.1101236.
+E. Stamatatos. On the robustness of authorship attribution based on
+character n-gram features.
+Stamatatos E. A survey of modern authorship attribution methods. J Am
+Soc Inf Sci Technol 2009;60(3):538e56.
+Tennyson MF. On improving authorship attribution of source code. In:
+Digital forensics and cyber crime. Springer; 2013. p. 58e65.
+Tschuggnall M, Specht G. Enhancing authorship attribution by utilizing
+syntax tree profiles. EACL 2014. 2014. p. 195.
+Zheng R, Li J, Chen H, Huang Z. A framework for authorship identification
+of online messages: writing-style features and classification tech-
+niques. J Am Soc Inf Sci Technol 2006;57(3):378e93.DNA: Identifying the JavaScript programmer, Digital Inves-

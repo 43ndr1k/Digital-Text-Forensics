@@ -1,0 +1,1158 @@
+Chapter 15
+Integrating Content and Structure Learning:
+A Model of Hypertext Zoning and Sounding
+Alexander Mehler and Ulli Waltinger
+Abstract. The bag-of-words model is accepted as the first choice when it comes to
+representing the content of web documents. It benefits from a low time complex-
+ity, but this comes at the cost of ignoring document structure. Obviously, there is a
+trade-off between the range of document modeling and its computational complex-
+ity. In this chapter, we present a model of content and structure learning that tackles
+this trade-off with a focus on delimiting documents as instances of webgenres. We
+present and evaluate a two-level algorithm of hypertext zoning that integrates the
+genre-related classification of web documents with their segmentation. In addition,
+we present an algorithm of hypertext sounding with respect to the thematic demar-
+cation of web documents.
+15.1 Introduction
+With the advent of the web, a range of linguistic concepts became significant in
+research on hypertexts. This includes the multifaceted notion of genre that sup-
+ports the classification of textual units with regard to their (pragmatic) function in
+addition to their (semantic) content [17, 8, 25]. Webgenre modeling applies this no-
+tion to web documents (e.g., webpages or websites) [40, 43, 48] by distinguishing
+a range of functionally demarcated document types that are ideally orthogonal to
+topic categories (for a recent overview of webgenre modeling see Mehler et al 34).
+Alexander Mehler
+Computer Science and Informatics, Goethe-Universität Frankfurt, Senckenberganlage 31,
+D-60325 Frankfurt am Main, Germany
+e-mail: Mehler@em.uni-frankfurt.de
+Ulli Waltinger
+Faculty of Technology, Bielefeld University, Universitätsstraße 25,
+D-33615 Bielefeld, Germany
+e-mail: Ulli_Marc.Waltinger@uni-bielefeld.de
+A. Mehler et al. (Eds.): Modeling, Learning, and Proc. of Text-Tech. Data Struct., SCI 370, pp. 299–329.
+springerlink.com c© Springer-Verlag Berlin Heidelberg 2011
+300 A. Mehler and U. Waltinger
+The machine learning of such document types, that is, webgenre learning, is
+primarily conceived as the task of automatically mapping web pages onto genre
+labels [cf. 43]. In this line of research, webgenre learning is performed similarly to
+text categorization [47]. That is, instead of textual units, webpages are processed
+as target units by means of a bag-of-features model [42], which may but does not
+necessarily include hypertextual features such as the number of hyperlinks in a page.
+Following this line of thinking, several approaches have been developed that model
+content-related structures of webpages. This includes the exploration of so-called
+broad topics [11], or thematic clusters of webpages [37] as well as thematic aspects
+of page linkage [35]. These approaches – whether topic- or genre-oriented – have
+in common that they use the bag-of-words model and related methods.
+This chapter presents an integrated model of genre- and topic-based structures
+of web documents. The background of this research is reviewed in Section 15.1.1.
+In this introduction, we also set the stage for integrating genre with topic modeling
+from the point of view of structure formation. This is done in terms of thematic-
+generic hypertext zoning, tracking and sounding as illustrated in Section 15.1.2.
+15.1.1 Webgenre Learning in a Two-Level Perspective
+Webgenre modeling gains from an extensive research on text categorization with its
+focus on single texts as the target units of learning [47, 19]. However, by utilizing
+this research, webgenre modeling abstracts information from a central characteris-
+tic of web documents, that is, their hypertextual structure [14]. On the one hand,
+webpages are preferably tagged as correspondents of textual units based on prede-
+fined sets of genre labels. This approach disregards both the build-up of websites
+by interlinked pages (page-external structure) and their segmentation (page-internal
+structure) [9]. That is, webpages are mainly referred to as instances of webgen-
+res, which are explored for lexical and markup-related features. Obviously, this
+mono-level approach combines a structural indifference on the side of the input of
+webgenre learning (webpages) with a structural indifference on the side of its input
+(genre labels).
+The mono-level approach is problematic for several reasons. [32] show that due
+to effects of structural uncertainty, webpages are non-reliable manifestation units
+of webgenres. Obviously, pages are layout units that do not necessarily coincide
+with the boundaries of webgenre instances, which range from units as complex as
+websites to units as small as segments of single pages. Thus, the genre-related
+segmentation of pages together with the linkage of the resulting segments is an in-
+dispensable ingredient of a multi-level perspective on webgenre learning. The multi-
+level approach is shown in Figure 15.1 in relation to its mono-level counterpart.
+As the set of webgenre instances does not coincide with the set of webpages,
+two scenarios of generic delimitation have to be distinguished. Firstly, in order
+to demarcate instances of genres that are distributed over several pages we need to
+know the genres’ internal structure since, in this case, pages no longer manifest units
+on the genre-, but on the subgenre level. Secondly, these subgenre units may also
+15 Integrating Content and Structure Learning 301
+Fig. 15.1 The same outline of the web seen from the point of view of a mono-level approach
+(left) and its two-level counterpart (right). Vertices denote webpages while edges stand for
+hyperlinks whose direction is omitted. From the point of view of a two-level approach, Page
+A raises the question whether it belongs to the project website, to the conference website or
+to any other site. Hypertext zoning aims at answering questions of this sort.
+Fig. 15.2 Schematic representation of a two-level model of hypertext types or webgenres:
+an instance of the webgenre conference website is subdivided into several modules or stages
+(e.g., call for papers, programm committee and schedule) each of which may be manifested
+by one or more pages.
+occur as segments of single pages so that a generic segmentation of pages comes to
+the fore. In both cases, webgenre learning goes along the demarcation of subgenre
+units or, analogously, the segmentation of subgenre units within single pages. The
+present chapter is about this interplay of generic categorization and segmentation,
+that is, about a two-level approach. We present a model of hypertext types, and
+explore structural modules in order to classify instances of these types. As a result,
+a segmentation of web documents is conducted to get generic modules as input to
+classifying the documents by their genre. Accordingly, we distinguish two levels of
+webgenre modeling (as shown in Figure 15.2):
+302 A. Mehler and U. Waltinger
+1. On level 1, web documents are distinguished as instances of webgenres (e.g., as
+conference websites, personal homepages or city websites).
+2. On level 2, constituents of these documents are demarcated above, below, or on
+the level of pages by mapping them onto genre-related functions that are obliga-
+torily or optionally met to manifest the corresponding webgenre [cf. 17].
+To implement this approach, we make the classification of documents on level 1 a
+function of the segmentation and classification of their constituents on level 2. That
+is, we build a classifier that explores sets of structural units as a representation model
+of webgenre instances. In this sense, we present a bag of structures approach as an
+alternative to the bag of features approach. As we classify documents subject to their
+internal structures this means that we integrate the task of hypertext categorization
+into the framework of document grammars.
+At this stage, one may object that there is already a range of approaches that
+explore bags of structural features as, for example, the number of outgoing links
+in a page (cf. Lim et al 23, Lindemann and Littig 24, Kanaris and Stamatatos
+21). It would seem, from this perspective, that what we are doing is tantamount
+to a structure-based classification. However, we respond from a sign-theoretical
+perspective that distinguishes between the (explicit) layout structure, the (implicit)
+logical structure, the (hidden) thematic and the (hidden) functional structure of a
+document [8, 38]. To clarify this distinction, take the example of URLs as can-
+didate resources of structural features [45]. Just as we resist to calling the page
+structure of a book a reliable indicator of the logical document structure of the un-
+derlying text, we do not assume that URLs provide reliable indicators of hypertext
+structure. Rather, one has to assume – as is clarified in the Alternative Document
+Model of [49] (cf. Lindemann and Littig 24) – an additional reference point of web
+document analysis, that is, physical storage that includes file format and directory
+structures. It is important to keep these reference points apart as they refer to differ-
+ent resources of hypertext categorization. This can be exemplified in the framework
+of Amitay et al’s (2003) approach who introduce the notion of a side link that exists
+between pages located in the same directory. Apparently, side links are structural
+units, but only conditionally. A side link may manifest as, e.g., a hypotactic down
+link in terms of the logical document structure, while at the same time manifesting as
+a paratactic link according to its physical storage [29]. Any approach that explores
+structural features should clarify their origin according to thematic, generic, layout
+or physical web document structure before speaking unspecifically of a structure-
+based approach.
+From this point of view, mono-level approaches are vulnerable to criticism for
+their insufficient sign theoretical underpinning as they blur the source of structuring
+of webgenre instances. In contrast to this, a sign theoretical notion conceives such
+instances as complex signs that have a characteristic structure due to their mem-
+bership in a certain genre. As a sign, a web document has a content plane and an
+expression plane whose structuring may origin in thematically or functionally based
+structures. From the point of view of webgenre modeling, we are interested in those
+structures that have a functional provenance. To map these structures, we trans-
+fer the notion of logical document structure of textual units [38] onto the level of
+15 Integrating Content and Structure Learning 303
+Fig. 15.3 A typical scenario of hypertext zoning that answers the question whether the source
+page is continued by the target page generically or thematically.
+hypertexts. These structures are logical as they are based neither upon thematic
+units, nor on layout units as, for example, webpages. As a consequence, a con-
+stituent of the logical web document structure may simultaneously cut across the
+borders of thematic units and layout units. We show that with the logical web doc-
+ument structure we gain a further reference point of webgenre learning.
+15.1.2 Thematic-Generic Tracking, Zoning and Sounding
+Our approach would fall short of the complexity of web documents if we ignored
+their content. Obviously, document structures may also reflect thematic structures.
+The aim of including content modeling is to get a further reference point of hypertext
+zoning, that is, the task of automatic hypertext delimitation. This is exemplified by
+Figure 15.1 (right), where page A raises the question about its generic-thematic
+identity:
+• Does page A manifest a constituent of a website as an instance of a webgenre?
+• Is page A thematically related to its neighboring pages (with whom together it
+forms a thematic cluster) or does it, by being unrelated, change their topics?
+In order to answer questions of this sort in face of the thematic openness of the
+web, we are in need of an open topic model [52] that grows with the underlying
+universe of topics. Together with our two-level webgenre model, such a topic model
+allows for the zoning of hypertexts according to their generic and thematic structure.
+It starts from the idea that hyperlinks can be characterized by the thematic or generic
+relatedness of the pages linked by them. From the point of view of a source page of
+a hyperlink in relation to a target page, this scenario can be exemplified as shown in
+Figure 15.3. It poses three related questions:
+1. Generic continuation: Is the genre of the target page of a hyperlink functionally
+related to the genre of the source page? Does the former continue the genre of
+the latter, is it similar to it or does it change it?
+2. Thematic continuation: Is the topic of the target page semantically related to the
+topic of the source page? Does the former continue the topic of the latter, is it
+similar to it or does it change it?
+304 A. Mehler and U. Waltinger
+3. Thematic-generic continuation: Is the target both generically and thematically
+related to the source?
+By answering questions of this sort, we get information about the membership of
+the target to the thematic cluster to which the source belongs (thematic delimitation)
+or to the webgenre that possibly includes both the source and the target (generic de-
+limitation). Answering these and related questions is the task of hypertext zoning
+including the delimitation of instances of webgenres, thematic clusters and broad
+topics in the web [11]. Hypertext zoning can also be conceived as the task of au-
+tomatically delimiting websites as instances of webgenres based on an integrated
+functional-thematic model irrespective of the pages’ physical storage. Generally
+speaking, hypertext zoning explores the sign character of web documents in order
+to delimit websites in terms of their meaning and function.
+Now, one might object that zoning is more than identifying interlinked pages or
+clustering them thematically. There is structure formation beyond pairwise link-
+age in terms of thematic or generic progressions manifested by paths of interlinked
+pages. This is also the starting point of our approach, which integrates the notion of
+(thematic/generic) zoning with that of (thematic/generic) tracking and sounding.
+1. Thematic/generic tracking means that for a stream of documents it is decided to
+which given topic/genre category a newly encountered document belongs. This
+is a variant of topic tracking [2], where for a stream of news stories one has to
+decide whether they are about a given topic or not.
+2. Thematic/generic sounding is the task of exploring the thematic/generic continu-
+ation or extrapolation starting from a given document. By the thematic sounding
+of a document x we get information about how long we keep track with its topic
+when following a chain of hyperlinks starting with x. Sounding may also inform
+us about topic changes or explorations of x. Other than tracking, sounding looks
+ahead by selecting the topic/genre of x and asking how it is developed by docu-
+ments (mediately) connected to x. From a user perspective, tracking takes place
+after the user has activated a hyperlink starting from x, while sounding is per-
+formed before deciding where to go next. In this sense, both tasks are related so
+that methods should be sharable for tackling them. However, other than in topic
+tracking, sounding does not assume a linearly ordered stream of documents, but a
+network of interlinked documents. Note that sounding may also inform us about
+what [9] calls genre/topic drift, that is, the specific discontinuation of genre/topic
+by interlinked pages.
+3. Thematic/generic zoning is the most demanding task. It aims at delimiting docu-
+ments in terms of their thematic/functional structure. Other than sounding, zon-
+ing explores the structure of the website to which the focal page x belongs. As
+exemplified in Figure 15.4, zoning does not only ask what to expect when select-
+ing among the links of x. Rather it asks for the structure and, thus, the delimi-
+tation of the whole website to which x belongs. Thus, zoning explores both the
+direction of pages connected to x and of the pages to which x is connects.
+Take the example of an arbitrary article in Wikipedia, say, about nanotechnology.
+In this case, thematic tracking means to answer the question whether this article is
+15 Integrating Content and Structure Learning 305
+Fig. 15.4 Thematic-generic tracking, zoning and sounding from the point of view of the
+vertex tagged as focus. Vertices are divided into two parts where the upper part denotes
+thematic continuity by , while⊥ is used to denote thematic discontinuity. Analogously, the
+lower part denotes generic continuity and discontinuity. Note that zoning generally explores
+arcs in both directions, that is, outgoing as well as incoming links when using a randomly
+chosen unit as a starting point to delimit the web document to which it belongs. Further,
+zoning may also include concurrent paths of units that form “siblings” as indicated by the
+shaded area.
+about the topic that we decided to track. Thematic sounding asks how far we get
+when following links that focus on nanotechnology, while thematic zoning means
+to delimit the cluster of all Wikipedia articles about nanotechnology. From the
+point of view of an application, we may envision a thematic sounder as an add-
+on to a browser that allows you to fix the topic of the present article, masks all
+hyperlinks that link to thematically unrelated pages and displays for all remaining
+links the sounded depth of possible continuations. Obviously, such an add-on may
+help to master the problem of getting lost by the plethora of hyperlinks in Wikipedia.
+Below, we present such an approach by example of thematic-generic soundings of
+webpages.
+Facing the dual task of hypertext zoning and sounding, the chapter is organized
+as follows: Section 15.2 presents our two-stage model of genre-oriented hypertext
+zoning. The model is evaluated by means of a corpus of three webgenres. Section
+15.3 presents a model of thematic-generic sounding by focusing on directly linked
+webpages. Finally, Section 15.4 estimates the effort of thematic sounding by addi-
+tionally regarding indirectly connected webpages. This is done using Wikipedia as
+an example.
+15.2 A Two-Level Model of Logical Web Document Structures
+In this section, we present a two-level model of genre-related hypertext zoning.
+Other than mono-level approaches that focus on pages as manifestation units of
+web genres, we integrate a genre-related segmentation in order to explore page seg-
+ments as manifestation units. Take the example of a personal academic homepage
+that usually manifests a number of modules on the subgenre-level such as publi-
+cation, teaching, or contact [40]. Obviously, the contact module is also present in
+306 A. Mehler and U. Waltinger
+Fig. 15.5 Overview of the two-level model of logical web document structures.
+many conference and project websites. So if we focus on single pages as the target
+units of classification, these web genres would hardly be distinguished correctly.
+In this example, a unit on the subgenre level (the contact module) is manifested
+by a monomorphic page (that does not manifest any other module of the same or
+any other genre). Obviously, there are two additional scenarios of manifesting the
+contact module: on the one hand, it may be distributed over several pages. On the
+other hand, it may occur as a segment of a single page that additionally manifests
+different modules of the same or any other genre. In the latter case we speak of a
+polymorphic webpage.
+The chapter is about a two-level model of genre that integrates a segmentation of
+polymorphic webpages in terms of subgenre modules or stages.1 We present and
+evaluate a two-level algorithm of hypertext zoning that integrates the genre-related
+classification of websites with their segmentation. The idea is to segment pages in
+order to classify subgeneric modules (hypertext stage classifier) that, in turn, are
+input to classifying sites or pages by their genre (hypertext type classifier).
+15.2.1 Hypertext Stage Classifier
+The architecture of our two-level classifier is shown in Figure 15.5. It includes
+four steps of computing classified segmentations of webpages as input to our
+hypertext-type- or webgenre-classifier: in a first step, a layout-based segmentation
+of webpages is conducted by means of the Segmenter module, which decomposes
+polymorphic pages into monomorphic segments. Secondly, the Tagger module
+generates three representations per segment: a tfidf -biased term vector of lexical
+1 This term is reminiscent of the notion of staging of Halliday & Hasan’s (1989) genre
+model.
+15 Integrating Content and Structure Learning 307
+features, a structure vector of structural features in terms of quantitative struc-
+ture analysis [31] and a so called tag vector that comprises a quantitative model
+of the usage of HTML-Tags within the segments. This feature model is input to
+the hypertext-stage-classifier, which uses Support Vector Machines (SVM) for pro-
+cessing the feature vectors. As any such classification may result in ambiguities we,
+fourthly, integrate a Disambiguation module. Based on a Markov-model of stage
+transitions, that is, based on a probabilistic grammar of subgeneric hypertext stages,
+this module predicts the most probable stages for ambiguous segments that are fi-
+nally input to the hypertext type classifier. Subsequently, we describe these four
+working steps of our stage-classifier in detail.
+Hypertext Segmentation
+Normally, humans have no problem identifying functionally demarcated segments
+of webpages such as navigation bars or contact information by exploring their vi-
+sual depiction. Our segmenter simulates this behavior in that it decomposes pages
+by exploring their visual depiction in terms of structure- and layout-oriented fea-
+tures (such as whitespace, font-size or differences in color) [39, 53]. The idea is
+to decompose pages into their Logical Document Structure (LDS) by analogy to
+texts [38]. Thus, we assume that the logical document structure of a page cor-
+relates with its visually separable segments. This separability is indicated, for
+example, by highlighting (e.g., headers with an increased font-size or changing
+colors), image separators (e.g., logo or animations), or empty sections with no
+textual or graphical content. At first glance, this approach seems to be super-
+fluous as we may simply explore structure-related HTML tags such as paragraph
+markers. However, we face the tag abuse problem [5], which results from the
+notorious tendency of writers to overload the functionality of any HTML tag to
+explicate any kind of document structure. Take the example of highlighting head-
+lines. On the one hand, we may use structure-related tags for annotating them
+(e.g., <h1>headline</h1>). However, we may also utilize document-external
+stylesheet (e.g., .myHeader { font-size: 20px;}) or internal stylesheet
+information (<span style=’font-size:15px;’>). As these cases can be
+mixed, we face a huge range of alternatives that can nevertheless be disambiguated
+by their visual depiction.
+Thus, in order to circumvent the tag abuse problem, we extract the LDS of pages
+by additionally exploring their cascaded style sheets (CSS), whether internally or
+externally embedded. To do this, we have selected a set of frequent indicators of
+segment boundaries (e.g. <div>, <h1>, <h2>, <a>, font-size that exceeds a cer-
+tain threshold and font-color information). This set is denoted by SF (see Algorithm
+1). For each detected candidate of a segment boundary, a document decomposi-
+tion is performed that results in a set of consecutive segments denoted by SV (see
+Segment Cutting in Algorithm 1). In a second step, we perform a Segment Re-
+Connection that amalgamates consecutive segments, which, because of their size,
+are unlikely real segments. This step is needed since the initial segmentation of-
+ten extracts segments that are too small such as navigational items, single headings
+308 A. Mehler and U. Waltinger
+Require: String H as the input website
+String C as the stylesheet information
+SF as the set of predefined segment features
+SV as the set of output segments
+minl as the minimum threshold (string length)
+Parse website H and stylesheet information C;
+// Segment Cutting
+p:=0; m:=0;
+for each occurrence of f ∈ SF in H at p do
+add substring H[m, p] to SV ;
+m:=p;
+end for
+// Segment Re-Connection
+for each entry in SV as i do
+if ilength < minl then
+connect SV [i] with SV [i+1];
+end if
+end for
+return SV
+Algorithm 1. Segmenting webpages by means of their visual depiction.
+or images. Thus, we use a threshold minl to indicate the minimal allowable size
+of a segment. This threshold corresponds to the number of characters within the
+candidate segment, where HTML tags and scripts are excluded. As an output of
+page segmentation, we get a set of possibly monomorphic stages on the subgenre
+level, which are further used for feature extraction and classification. Figure 15.6
+exemplifies a page segmentation as generated by Algorithm 1.
+Hypertext Stage Representation
+In a typical scenario of text classification, feature selection focuses on lexical units
+[47]. In our approach, we additionally integrate two levels of feature extraction.
+This includes structural features and HTML-related features.
+In a first step, we build a term vector per input segment based on lexical fea-
+tures by processing the textual content of the segments. All textual data are passed
+through a linguistic preprocessing module [33, 51] that includes a tokenizer, lemma-
+tizer and stemmer as well as modules for language identification, sentence bound-
+ary detection, Named Entity Recognition (NER) and Part-of-Speech (PoS) tagging.
+Note that the detection of named entities is of great importance in webgenre anal-
+ysis as certain stages of academic webgenres (e.g., the publication stage) are easily
+detected by frequent occurrences of proper nouns. The resulting term vectors are
+based on nouns, verbs, adjectives, adverbs, numerals, punctation marks and named
+entities. In order to arrive at a second segment-related feature vector, we explore
+the frequencies of 91 HTML tags (e.g. <div>, <p>, <img>, <span>, . . . ). This
+15 Integrating Content and Structure Learning 309
+Fig. 15.6 A sample segmentation of a webpage as part of a personal academic website.
+follows the idea that the usage of certain tags correlates with the instantiation of cer-
+tain generic stages. For example, list-items (e.g. <li>, <ul>) tend to occur more
+often in FAQ- or publication-sections than in about- or contact-sections. As a third
+feature vector, we explore quantitative characteristics of the logical document struc-
+ture of the textual content of the input segments. We compute μ and σ of the length
+of sections, paragraphs and sentences. The idea is that, e.g., the average sentence
+and segment length of an about- or publication-section differs significantly from a
+contact- or link-section. The three-part stage representations (see Table 15.2) are
+finally input to classifying stages as described subsequently.
+Hypertext Stage Classification
+The stage classifier is based on support vector machines [50], which are efficient
+in classifying texts [19] as well as web documents [20, 44]. The classification of
+stages operates in two phases. In the first phase, we train separate SVMs for each
+subgeneric stage of each targeted webgenre on the basis of manually annotated,
+pre-classified training data. In the case of personal academic homepages, we dis-
+tinguish, for example, the stages publications, contact, events, and objectives. This
+is described in Section 15.2.3, which includes an evaluation of the stage classi-
+fier. The second phase consists of disambiguating multiply categorized stages (see
+310 A. Mehler and U. Waltinger
+Section 15.2.2). Note that the stage classifier combines the three-part stage repre-
+sentation vectors into single vectors as input to the SVMs. Note also that the stage
+classifier does not provide information about the webgenre of the input page, but
+classifies its segments in terms of generic modules.
+15.2.2 Hypertext Stage Grammar and Type Classifier
+The stage classifier labels each segment of an input page by one or more stage la-
+bels. This classifier has access to any stage of the underlying set of webgenres to
+be learnt. Thus, it may assign the labels of stages of different webgenres to the
+same segment. It may also occur that ambiguous labels are assigned as, for exam-
+ple, publication that names the corresponding stage in project sites and in personal
+academic homepages. Thus, we need to resolve such ambiguities. This is done
+in two steps: in the training step, the transition probabilities of the stages are pre-
+dicted separately per targeted webgenre. In this sense, we calculate, for example,
+the probability by which a publication segment is followed by a contact segment in
+the context of personal academic homepages. Thus, stage sequences are explored
+subject to the underlying webgenre so that we arrive at a probabilistic grammar of
+stages. The disambiguation is performed by computing the accumulated transition
+probability of this first-order Markov model [6], where the stage labels are obtained
+from the stage classifier. Finally, the most probable sequence of stage labels is used
+to categorize the segments of the input page.
+The hypertext type classifier, that uses the output of the Disambiguation module,
+is implemented in two variants: on the one hand, we implement a classical bag-
+of-features model based on the tripartite feature vectors of the Preprocessor (see
+Figure 15.5) as input to three webgenre-related SVMs. Henceforth, we call this
+approach the bag-of-features-classifier. As an alternative, we build a classifier that
+explores the set of stage labels of input pages. In this sense, we speak of a bag-of-
+structures-classifier as it analyzes multisets of stage labels instead of the tripartite
+feature vectors to represent input pages. The bags-of-structures are once more input
+to SVMs that explore the frequencies of the stages as an additional feature. That
+is, while the bag-of-features-classifier is directly based on the HTML, structure-
+related and lexical features (see Table 15.2), the bag-of-structures-model is a two-
+level classifier, which uses the latter features to classify subgeneric stages that in the
+next step define the focal feature units of the webgenre-related classification. In this
+sense, we speak of a two-level approach.
+15.2.3 Experiments
+As explained above, we expect that differences between webgenres will correlate
+with differences in their staging on the subgenre level. That is, we expect that bags
+15 Integrating Content and Structure Learning 311
+of sub-generic modules of a page will reveal its genre. In this sense, we classify
+webgenres by segmenting and classifying their modules first.
+Previous studies [36, 44, 21] of webgenre learning focus on classifying webpages
+as a whole by disregarding the latter type of structuring. This is reflected by a
+focus on functionally as well as thematically well-separated genres such as web
+shops in contrast to FAQs or search pages. Obviously, such genres are separable
+on the level of lexical features. In contrast to this, we focus on a palette of rather
+closely related webgenres whose instances may intersect in terms of their content:
+conference websites, personal academic homepages, and academic project websites.
+Because of overlaps we expect that these webgenres are more difficult to learn than
+related palettes reflected in the literature.
+The evaluation of our two-level webgenre model is threefold: firstly, we evaluate
+the performance of the page segmenter in order to show how well it endows the
+subsequent classifiers with segmentations. Secondly, we analyze the stage classi-
+fier in order to measure how well we perform on the subgenre level. Finally, we
+comparatively evaluate the webgenre classifier based on the bag-of-features- and
+the bag-of-structures-model.
+Corpus
+Although there are few reference corpora [36, 44] for webgenre learning [41], a
+stage segmentation as needed in the present context has not been done so far. There-
+fore, we compiled a new reference corpus of instances of conference websites, per-
+sonal academic homepages, and academic project websites as typical webgenres in
+the academic domain. The preparation of this training corpus, which is henceforth
+called the WebgenreStageCorpus (WSC)2, has been done by selecting and down-
+loading 50 German websites for each of these webgenre. Each of the pages within
+the WSC has been segmented manually in terms of its genre-related staging (see
+Table 15.1). The aim of this annotation is to segment monomorphic stages within
+the pages regarding the stage labels of Table 15.1. The WSC includes 3 webgenres
+each of 50 websites for which 150 webpages were annotated so that we finally got
+1,339 annotations of subgeneric stages.
+Regarding the representation model of page segments, we evaluated our feature
+selection by means of the GSS coefficient [47]. Interestingly, with the GSS-based
+feature selection, the categorization neither improved nor deteriorated. In order to
+implement the SVM-based stage classifier, we used SVMlight [19]. For each stage,
+a separate SVM was trained in a one-against-all setting. Based on a leave-one-out
+cross-validation, we report the F1-measure, that is, the harmonic mean of preci-
+sion and recall. Regarding the evaluation of the page segmenter, we removed all
+manually annotated identifiers and used the entire page as an input to segmenta-
+tion. The evaluation is based on a correlation analysis that compares the manual
+annotation with its computed counterpart. Each segment identifier had to be set at
+exactly the same (character) position in a page in order to be counted as a true pos-
+itive. As a baseline scenario, we computed a segmentation based on tags of headers
+2 The WebgenreStageCorpus can be accessed at http://www.webgenrewiki.org/.
+312 A. Mehler and U. Waltinger
+Table 15.1 Overview of the WebgenreStageCor-
+pus by webgenre (type) and subgeneric stage
+(segment).
+Type Conference Personal Project
+Segment about contact contact
+accommodation personal events
+call publications framework
+committees research links
+contact teaching news
+disclaimer objectives
+organizer project
+program publications
+registration staff
+sightseeing
+sponsors
+#Pages 50 50 50
+Table 15.2 Overview of the num-
+ber of structure-related (STR), tag-
+related (HTM), and token-related
+(TOK) features by webgenre. The
+last column shows the number of
+stage-related features (SEG) that
+were used by the bag-of-features-
+and the bag-of-structures-model.
+Webgenre STR HTM TOK SEG
+Project 29 91 11,734 435
+Conference 29 91 56,994 292
+Personal 29 91 10,260 612
+(<h1>,<h2>,<h3>,<h4>,<h5>), paragraphs (<p>), divisions (<div>) and
+tables (<table>).
+Table 15.3 Results of evaluating the Seg-
+menter module (see Figure 15.5).
+Model Recall Precision F-score
+Segmenter .936 .625 .745
+Baseline .263 .446 .331
+Table 15.4 Results of evaluating the
+stage classifier for personal academic
+website.
+Classes Recall Precision F-score
+contact .947 .857 .899
+links .583 .636 .608
+personal .661 .709 .684
+publications .795 .720 .756
+research .485 .800 .604
+teaching .581 .643 .610
+Average .675 .728 .694
+Baseline .280
+15.2.3.1 Results
+Table 15.3 shows the results of evaluating the page segmenter. It can be observed
+that with an F1-score of .745 we clearly outperform the baseline scenario of .331.
+This is a promising result, since we used a very strict evaluation setup. Note that the
+computed identifiers of segment boundaries had to be placed at the same position as
+their counterparts tagged by the human annotators. In any event, the segmentation
+of pages into possibly monomorphic units is in about three-quarters of all cases
+successful.
+15 Integrating Content and Structure Learning 313
+Table 15.5 Results of evaluating the
+stage classifier for conference websites.
+Classes Recall Precision F-score
+about .578 .703 .634
+accommodation .680 .700 .690
+call .350 .389 .368
+committees .609 .609 .609
+contact .581 .720 .643
+disclaimer .706 .667 .686
+organizer .455 .417 .435
+program .692 .838 .758
+registration .729 .771 .749
+sightseeing .708 .739 .723
+sponsors .542 .650 .591
+Average .603 .655 .626
+Baseline .200
+Table 15.6 Results of evaluating the
+stage classifier for project websites.
+Classes Recall Precision F-score
+contact .823 .869 .849
+events .525 .636 .575
+framework .447 .568 .500
+links .471 .421 .444
+news .539 .560 .549
+objectives .603 .734 .662
+project .799 .789 .794
+publications .761 .761 .761
+staff .500 .807 .617
+Average .608 .683 .639
+Baseline .240
+Table 15.7 Results of evaluating the bag-
+of-features-model.
+Classes Recall Precision F-score
+conference .640 .640 .640
+personal .618 .627 .622
+project .620 .608 .614
+Average .626 .625 .625
+Baseline .428
+Table 15.8 Results of evaluating the bag-
+of-structures-model.
+Classes Recall Precision F-score
+conference .894 .919 .906
+personal .917 .941 .929
+project .930 .923 .927
+Average .914 .928 .920
+Baseline .428
+Tables 15.4–15.6 show the results of evaluating the stage classifier. Using the
+tripartite stage representation model (see Table 15.2) as input to the SVM-based
+classifier, we achieve an F1-score of .653 on average. As a baseline scenario, we
+computed a random clustering to get a lower-bound of evaluation. It randomly
+assigned each segment to one of the stage labels of Table 15.1. Although we clearly
+outperform this baseline, our results indicate that the classification of subgeneric
+stages is a challenge. The average F1-scores range between .626 and .694 for the
+webgenres. This is certainly not yet an efficient classifier. One reason may be the
+small number of training examples. In any event, we also observe several stages that
+are classified with an F1-score of more than 70%. For example, publication sections
+within personal academic homepages, program sections of conference websites or
+contact sections of project websites are segmented efficiently.
+Table 15.7 shows the results of evaluating the webgenre classifier based on
+the bag-of-features-model. With an F1-score of .625 we outperform once more
+the corresponding baseline, however to a minor degree. Obviously, by inferring the
+314 A. Mehler and U. Waltinger
+webgenre directly from classical feature vectors, the classifier does not perform very
+well. Now, look at Table 15.8, which shows the results of the bag-of-structures-
+model. It outperforms the baseline scenario with an average F1-score of .92 per
+webgenre. This is a very promising result in terms of our two-level model of we-
+bgenre learning. It shows that the threefold feature vectors do not reliably indicate
+genre membership – at least in the case of the genres considered here. What is more
+important for categorizing pages correctly is the kind of stages and their frequency
+as reflected by the bag-of-structures-model. In this sense, our findings support a
+structure-oriented approach. Note that our experiment considers overlapping web-
+genres and, therefore, goes beyond classical approaches to hypertext categorization
+with their focus on categories that hardly overlap.
+15.3 Thematic-Generic Sounding in the Web
+In this section we address the task of thematic-generic sounding by means of open
+topic models [52]. The basic idea of the algorithm is that hyperlinks can be char-
+acterized by the thematic and generic relatedness of the pages linked by them. We
+focus on a dynamic, content-related categorization and topic labeling of webpages
+by using a topic-oriented ontology as a reference point. This task is challenging for
+two reasons:
+1. The topic universe is in a state of permanent flux so we cannot presuppose a fixed
+set of topic labels as demanded by supervised learning. Thus, we need access to
+a dynamically growing ontology as a knowledge resource for topic labeling [30].
+2. Document-centered tasks such as topic labeling or text categorization suffer from
+the bottleneck of knowledge acquisition [7]. This means that documents that
+are thematically related may nevertheless differ in their vocabulary. Thus, over-
+lapping lexical features do not sufficiently indicate the thematic relatedness of
+documents.
+There are several approaches that try to overcome this problem by means of latent
+semantic analysis, SVM-based semantic spaces or WordNet and related resources
+[18, 22, 10]. In contrast to this, we utilize Explicit Semantic Analysis (ESA) [15]
+by mapping any input text onto a given concept hierarchy as an explicit knowl-
+edge resource [12, 16, cf.]. More specifically, we utilize the concept hierarchy to
+represent the content of input texts by categories that are not directly manifested
+within them, that is, categories as generalizations of concepts, which are directly
+manifested within the document.
+One resource that meets both requirements (hierarchical explicitness and concep-
+tual openness) is given by social ontologies as instantiated by Wikipedia’s category
+system [52]. Based on the collaboration of a multitude of users, who are constantly
+creating, editing and classifying Wikipedia’s article collection, this resource ensures
+the dynamic aspect in topic labeling in that it provides a category system in terms
+of a generalized tree [28].
+15 Integrating Content and Structure Learning 315
+Our algorithm of thematic sounding of web documents is based on two stages:
+each input document is mapped onto an article-based semantic space in order to as-
+sess the similarity of Wikipedia articles and input documents. Then we use the cat-
+egory information within articles that are similar to the input to access Wikipedia’s
+category system. This allows us to retrieve thematically related categories as topic
+labels for the input documents. Both stages are explained subsequently.
+Wikipedia-Based Semantic Spaces
+We utilize ESA [15] to explore Wikipedia as a knowledge resource. More specifi-
+cally, we explore Wikipedia’s article network in conjunction with its category sys-
+tem to map input documents onto two semantic spaces: the one being spanned
+by means of Wikipedia’s article network (network A), the other being spanned by
+means of Wikipedia’s category system (network C).
+We start from the link-content conjecture [35] according to which a web doc-
+ument shares content with those documents to which it is linked. In terms of
+Wikipedia, this means that if we link an input document x into network A, we can
+explore the categories c of the neighboring articles of x within A as entry points to
+network C (i.e., category system of Wikipedia). The idea is that the categories c
+would likely have been used to categorize x, if this text were part of Wikipedia’s
+article network. Obviously, this is a way to solve the knowledge bottleneck problem
+as, now, we have access to categories that are not necessarily manifested within x,
+but categorize its content. Because of this feature, we speak of network A and C as a
+two-level semantic space. Note that both concept spaces A and C are minimized in
+terms of their size. Basically, all articles are deleted with an in-degree of less than 5
+links, while all categories are deleted that categorize less than 10 articles.
+In order to introduce this model, we need several definitions: we define Cart as the
+set of all titles of Wikipedia articles (network A) and Ccat as the set of all category
+labels within network C. Each Wikipedia article x is represented by a vector cart(x)
+of all properly selected lexical features that occur in x and are additionally biased
+according to the tfidf scheme of [42]. Any input document y, whose content has to
+be computed, is represented the same way by a feature vector cart(y). Finally, each
+category c ∈ Ccat is represented by a vector ccat(c) ∈ {0,1}|Cart | whose dimensions
+define whether the corresponding article is categorized by c or not.
+Now, a given input document x is mapped onto the semantic space A by the
+function
+fart : {cart(x) |x ∈ }→ [Cart ]10 (15.1)
+which retrieves the top 10 titles of those articles y that by their vector representa-
+tions cart(y) are most similar (i.e., least distant) to cart(x) in terms of the cosine
+measure.3   is the (open) corpus of input documents. Next, x is mapped onto the
+semantic space C by the vector cresult(x) ∈ |Cart | whose dimensions accord to the
+cosine similarity of the vector representations of x and the corresponding article y,
+supposing that the title of y belongs to fart(cart(x)). Otherwise, if the corresponding
+3 Note that for any set X , [X ]k is the set of all subsets of X of exactly 10 elements.
+316 A. Mehler and U. Waltinger
+Table 15.9 Initial and generalized topic labels by means of the German Wikipedia taxonomy.
+Input Text: “Das Grösste Kursplus seit 1985 wurde an den acht hiesigen Börsen im
+vergangenen Jahr erzielt. Beispielsweise zog der Deutsche Aktienindex um 47 Prozent
+an (vgl. SZ Nr. 302). Trotz Rezession und Hiobsbotschaften von der Unternehmensfront
+hatten sich zunächst britische und amerikanische Fondsverwalter [...]”
+Output:
+Related Article: Anlageklasse / Bundesanleihe / Nebenwert / Bullen- und Bärenmarkt /
+Börsensegment
+Initial Topics: Unternehmen nach Wirtschaftszweig / Unternehmen / Unternehmensart /
+Deutscher Finanzmarkt / Investmentgesellschaft
+Generalized Topics: Finanzierung / Finanzmarkt / Ökonomischer Markt / Wirtschaft /
+Rechnungswesen
+article does not belong to fart (cart(x)), the dimension’s value is zero. This allows us
+to apply the function
+fcat : {cresult(x) |x ∈  }→ [Ccat ]10 (15.2)
+which retrieves the top 10 labels of those categories y that by their vector represen-
+tations ccat(y) are most similar (i.e., least distant) to cresult(x) – once more in terms
+of the cosine measure.4
+Category-Based Topic Labeling
+The next step is to process Wikipedia’s category system to retrieve node labels (of
+a certain scale of generalization) as topic labels for the input document x. We call
+this procedure concept generalization. Since Wikipedia’s category system spans a
+sort of generalized tree rather than a directed tree [28], it has to be preprocessed.
+That is, starting from the root category Category:Contents, we explore the category
+system by a breadth-first search to transform it into a directed tree. Next, we use the
+category labels of fresult(ccat(x)) as starting points of a hill-climbing search. That is,
+we move upwards through the tree structure of the taxonomy to enter more general
+categories. Since the category taxonomy is structured from general categories to
+specific ones, we derive a topic generalization on the way up. We use a threshold
+L, that is, the number of edges to be moved upwards, to restrict the scope of gen-
+eralization. The higher L, the more general the retrieved categories. In the present
+study, we set L = 4.
+See the tables 15.9–15.10 for a sample output of this algorithm. So called initial
+topics denote categories that are closely related to the content of the input document.
+This holds, for example, for olympic athlete or basketball player. In contrast to
+this, so called generalized topics label the topic of the input document in a more
+generalized manner. This holds, for example, for the categories sport, Germany,
+4 For more details on this approach and its evaluation see [51].
+15 Integrating Content and Structure Learning 317
+Table 15.10 Initial and generalized topic labels by means of the English Wikipedia
+taxonomy.
+Input Text: “Nowitzki’s performance this year has vaulted him past the late Petrovic as
+the NBA’s best-ever European import. But the Bavarian Bomber is fast becoming one of
+the NBA’s best players, period. [...]”
+Output:
+Related Article: Dirk Nowitzki / Dallas Mavericks / Avery Johnson / Jerry Stackhouse /
+Antawn Jamison
+Initial Topics: basketball player / basketball / athlete / olympic athlete / basketball league
+Generalized Topics: sport / United States / basketball / Germany / sport by country
+and sport by country, which are closer to the root node of Wikipedia’s category
+system (note that [Dirk] Nowitzki is a German basketball player).
+Thematic-Generic Sounding by Means of the ThematicGenericLinker
+Now we are in a position to utilize our Wikipedia-based semantic space together
+with our two-level model of webgenres to implement a thematic-generic sounder,
+the so called ThematicGenericLinker, for directly linked web pages. Based
+on the idea that hyperlinks target at pages that are likely related to their source
+in terms of genre or topic, we automatically process the target of a page in two
+ways: firstly, we map its content on the category system of Wikipedia in order to
+label its topic. This gives us information about whether the source of the link is
+thematically similar to its target (see Figure 15.3 and Section 15.1.2). Secondly, we
+segment and classify the target by means of our two-level model of webgenres. This
+gives us information about the subgeneric staging of the target page and about the
+genre manifested by it. Currently, the genre-related sounder is implemented only
+for German and here only for the webgenres analyzed above, while its topic-related
+counterpart works for German pages as well as for English pages. Figure 15.7
+exemplifies the ThematicGenericLinker by an explicitly entered URL. In its
+working mode, the ThematicGenericLinker uses a context menu to provide
+a look ahead on the genre and topic of the page targeted by the corresponding link.5
+The ThematicGenericLinker may be seen as a proof of concept of how
+to integrate genre with topic modeling. By this approach we pave a way to go
+beyond the narrow focus of webgenre modeling on the one side and text or web
+categorization on the other. The reason is that by the zoning and sounding of web
+documents, we establish new tasks in web mining.
+5 See http://api.hucompute.org/semantic-linker/ for a download of the
+ThematicGenericLinker.
+318 A. Mehler and U. Waltinger
+Fig. 15.7 Thematic-generic sounding by means of the ThematicGenericLinker by
+example of a project website.
+15.4 Bounds of Thematic Sounding in Wikipedia
+In the previous section, we presented an algorithm for thematic-generic sounding
+that focuses on directly linked pages. In this section, we overcome this limitation
+by studying the thematic sounding of immediately and mediately connected pages.
+More specifically, we ask for an upper bound of the depth and breadth of thematic
+sounding by starting from any randomly chosen start page. The reason to do this is
+that without such knowledge, algorithms of thematic sounding are doomed to fail
+when facing the sheer amount of interlinked pages in the web. Therefore, we need
+to know the number of pages that have to be processed “on average” by a sounding
+algorithm. Such a bound tells the application where to stop even in cases of complex
+document networks. In this section, we present an approach for calculating such a
+bound.
+Generally speaking, the web is a scale-free small world [1, 4, 54]. This also
+holds for embedded web networks such as Wikipedia and special wikis [55, 26].
+Formally speaking, from the point of view of thematic sounding, this characteristic
+results in too many vertices that belong to the cumulative j-sphere of the start vertex
+of sounding. By the j-sphere [13] S j(v) of a vertex v ∈ V of a digraph D = (V,A)
+we denote the set S j(v) = {w∈V |δ (v,w) = j} of all vertices w∈V whose geodesic
+distance δ (v,w) from v to w is j. By the cumulative j-sphere of a vertex v we denote
+the set
+Ŝ j(v) = ∪ ji=0Si(v) (15.3)
+15 Integrating Content and Structure Learning 319
+Fig. 15.8 Left: the article subgraph of the German Wikipedia that is induced by the set of 306
+articles that are directly linked by the article Barack Obama. Right: selection of 1,000 articles
+of the article subgraph of the German Wikipedia that is induced by the set of 32,244 articles
+that are either linked by one or two links to the entry article Barack Obama (downloaded by
+February, 2009).
+The problem with scale-free small worlds is that even for small values of j (e.g.,
+j = 3±1) Ŝ j gets too large such that |Ŝ j| ≈ |D|. In Wikipedia, for example, |Ŝ3| ≈ |D|
+if the article graph is represented as an undirected graph – there are just too many
+neighbors in the 3-sphere of a Wikipedia article (see Figure 15.8 for an example).
+This characteristic is a direct consequence of the short average geodesic distance
+in small-world networks. One reason for this distance is the existence of hubs that
+link to a multitude of vertices of the same network [4]. Obviously, it is bad advice
+to disregard such hubs with a high degree of centrality when computing thematic
+soundings, as the network gets disconnected by deleting them. Thus, we need to
+follow another approach when performing thematic sounding in scale-free docu-
+ment networks. That is, we need to focus on some appropriately selected subset
+of vertices that are connected with the chosen start vertex of sounding. In order to
+provide a model of subset selection that is well-founded in terms of semiotics, we
+utilize the notion of so-called 1-dominator sets of [46].
+Generally speaking, for a start vertex v ∈ V of a digraph (V,A), [46] selects a
+subset Dv ⊂ V of vertices w ∈ Dv that are solely reachable from vertices on some
+path between v and w. In terms of our application scenario, Dv subsumes all articles
+that are thematically related to v as the entry point of all paths by which these articles
+can be reached. It will be shown that this model is too restrictive to be used for
+thematic sounding. However, Saunders’ approach can be extended to get a first
+model of thematic sounding in document graphs. This can be done by restricting
+the process of sounding to those vertices that are triggered by v in a sense to be
+defined subsequently, while excluding thematically polymorphic vertices, which are
+reachable from vertices of different thematic provenance.
+320 A. Mehler and U. Waltinger
+In order to implement this concept, we complement Saunders’ model by the no-
+tion of successor sets. Thereafter, we introduce the notion of trigger sets as a sort
+of subset in a certain range, using Saunders’ 1-dominator sets as a lower bound and
+successor sets as an upper bound of subset selection. Finally, we compute statisti-
+cal moments of the distribution of trigger sets in Wikipedia to get insights into the
+bounds of thematic sounding in complex document networks.
+15.4.1 Dominator, Successor and Trigger Sets
+[46] defines the 1-dominator set D(D) of a digraph D = (V,A) as a family of sub-
+graphs of D:
+D(D)={Dv =(VDv ,ADv)|v∈V∧∀w∈V : Dv =Dw =(VDw ,ADw)⇒VDv ⊆VDw} (15.4)
+where for each v ∈V the subdigraph Dv of D is recursively computed as follows:
+D(0)v =
+(
+{v},A(0)v
+)
+, . . . , D(i+1)v =
+(
+V (i+1)v ,A
+(i+1)
+v
+)
+(15.5)
+such that for IN(v) = {w ∈V |∃a ∈ A : in(a) = w ∧ out(a) = v} we define:
+V (i+1)v = {w ∈V | IN(w)∩D(i)v = /0 ∧ IN(w)⊆ D(0,...,i)v = ∪ik=0D(k)v } (15.6)
+A(i+1)v ⊆ A is the arc set of the subgraph of D induced by V (i+1)v . Finally, we set
+Dv← D(|D|)v (15.7)
+Dv is called acyclic in the sense that the subdigraph Dv−v induced by VDv \{v} is
+acyclic [46]. Each vertex v for which there exists an acyclic structure Dv ∈ D(D) is
+called the trigger vertex of D as it is the root of a maximally acyclic component of D.
+In this sense, D(D) is a decomposition of D into acyclic components of the digraph
+D [46]. In this paper, we call any graph Dv defined according to Formula 15.7 the
+dominator graph induced by v and its vertex set the corresponding dominator set.
+Further, we compute this set for any vertex v ∈V , whether it is maximal in the latter
+sense or not. Finally, we compute the set
+D̂(D) = {Dv |v ∈V} ⊇ D(D) (15.8)
+and call it the dominator set of the digraph D.
+The vertex set of any dominator graph Dv is restricted to vertices w of the digraph
+D that are incident to arcs whose tail lies on a path from v to w. In this way, Dv
+excludes every other vertex even if it is reachable from v. In order to capture the set
+of all vertices that are reachable from the “trigger vertex” v, we introduce the notion
+of a successor set. Formally speaking,
+S(D)={Sv =(VSv ,ASv) |v∈V ∧ ∀w∈V : Sv = Sw =(VSw ,ASw)⇒VSv ⊆VSw} (15.9)
+15 Integrating Content and Structure Learning 321
+Fig. 15.9 A schematic example of a generalized tree triggered by vertex v1. By spanning a
+dominator graph starting from v1, vertices v2, . . . ,v9 are excluded though being (mediately)
+connected to v1. If we alternatively span a trigger graph, vertices v2, . . . ,v6 are included.
+Further, if we allow that vertices are linked from the outside of the successor set of v1 sup-
+posed that these outside vertices are directly connected to v1, then vertices v2, . . . ,v8 are also
+included. Thus, only vertex v9 is excluded since it is dominated by vertex y, which is con-
+nected by a path of length 2 to v1.
+is the set of all maximum successor graphs of vertices v ∈ V , where the successor
+set VSv is the set of all vertices that lie on a path starting from v, and ASv ⊆ A is the
+arc set of the subgraph of D induced by VSv . Finally, we define
+Ŝ(D) = {Sv = (VSv ,ASv) |v ∈V} (15.10)
+by analogy to D̂(D) as the successor set of the digraph D (whether it is maximal
+or not). Note that for any vertex v ∈ V , Dv is a subgraph of the successor graph
+Sv. Note also that Sv = CD(v) (the component of v in D, that is, the subgraph of D
+induced by the set of all vertices that are reachable from v).
+Based on these preliminaries we can now introduce the notion of (generalized)
+trigger sets of a digraph D that we use to estimate some bounds of thematic sounding
+in document networks. From the point of view of thematic sounding, successor sets
+induce oversized subgraphs, while dominator sets generate undersized component
+graphs. In the former case, vertices may be selected that are thematically dissimilar
+to the trigger vertex v, while in the latter case vertices may be excluded that actually
+fit the topic of v. Thus, we need a notion of a trigger set in the range of these extreme
+cases. This can be exemplified as follows.
+1. In Figure 15.9, v1 is used as a trigger vertex. In this scenario, vertex x is di-
+rectly connected to v1 from the outside of the successor graph Sv1 induced by
+v1. According to the link-content conjecture [35], which states that the content
+of a page is similar to the content of the pages that link to it, we can assume a
+thematic relation between x and v1. However, x may also link to v1 by serving
+an organizational function as in, for example, the main page of Wikipedia. Both
+cases (of a thematic and organizational tie) apply if x is the entry page of a portal
+322 A. Mehler and U. Waltinger
+to which v1 is thematically related. Note that a geodesic distance of 1 (as cov-
+ered by the link-content conjecture) is significantly below the average geodesic
+distance in Wikipedia, that is, 3 + x, 0 < x < 1, for the undirected case [55]. In
+any of these scenarios, a link from x to v7 does not interfere with the claim that
+v7 is thematically triggered by v1 independently from any vertex outside of Sv1 .
+Thus, we can disregard x when evaluating v7 as an element of the trigger graph
+induced by v1. This does not hold for vertex y, which is two arcs away from
+v1. A distance of 2 is close to the expected value of the geodesic distance in a
+scale-free graph so we assume that v9 is thematically more related to y than to
+v1. By this consideration, we get a rule to include vertices in the trigger set of a
+vertex even if they are triggered from outside its successor set.
+2. Now, look at vertex v2 in Figure 15.9. This vertex is excluded from the dominator
+graph Dv1 as it is incident to an arc that starts from v3. However, v3 belongs to the
+successor set Sv1 in a way that all tails of arcs that end in v2 also belong to Sv1 . In
+this case, v2 can be seen to be thematically triggered by v1 supposing that all tails
+of all arcs ending at v2 are triggered the same way (irrespective of whether they
+lie on a path from v1 to v2 or not). By this consideration, we get a rule to include
+vertices into the trigger set of a vertex v even if it is excluded from the dominator
+set Dv. Note that this rule is trivially met in part by Saunders as demonstrated by
+the arc from v3 to v1: by definition, v1 is an element of Dv.
+In order to implement a notion of trigger graphs that meet these two rules, we
+utilize the notion of a Directed Generalized Tree (DGT) [27]. Directed general-
+ized trees are digraphs with a kernel hierarchical structure that is superimposed by
+graph-inducing upward, downward and lateral arcs as exemplified in Figure 15.9.
+Obviously, these types of arcs do not interfere with evaluating whether vertices are
+being triggered or not. That is, a vertex does not lose its status as being triggered if
+it is, for example, incident with a lateral arc in the DGT spanned by the successor
+set Sv of the trigger vertex v. Based on these considerations, we can now define the
+set of all maximum trigger sets T(D) of a digraph D = (V,A) as
+T(D)={Tv =(VTv ,ATv) |v∈V∧∀w∈V : Tv =Tw =(VTv,ATv)⇒VTv ⊆VTw} (15.11)
+By analogy to maximum dominator sets, Tv is recursively defined as follows:
+T [0]v = ({v},A[0]v ), . . . , T [i+1]v = (V [i+1]v ,A[i+1]v ) (15.12)
+where
+V [i+1]v = {w ∈V | IN(w)∩V [i]v = /0 ∧ IN(w)⊆VSv ∪ IN(v)} (15.13)
+and A[i+1]v ⊆ A is the arc set of the subgraph of D induced by V [i+1]v . Finally, we set
+Tv← T [|D|]v (15.14)
+15 Integrating Content and Structure Learning 323
+Fig. 15.10 The range of dominator, trigger and successor graphs and their vertex sets, re-
+spectively.
+By analogy to D(D) and S(D), any Tv ∈ T(D) is maximal in the sense that there
+is no graph Tw ∈ T(D) such that Tv is a subgraph of Tw. As before, this view is too
+restrictive. In Wikipedia, for example, any article may be used as an entry point
+to compute thematic soundings. The reason is that users may directly access them
+from the outside, for example, via a search engine. In order to capture this scenario,
+we define the trigger set of a digraph as follows:
+T̂(D) = {Tv |v ∈V} ⊇ T(D) (15.15)
+It is easy to see that any Tv ∈ T̂(D) spans a directed generalized tree in the sense
+of [27]. In order to prove this we need to show two things:
+• Firstly, we need to show that for all vertices w ∈ V [|D|]v there exists at least one
+simple path from v to w in T [|D|]v .
+• Secondly, we need to show that there is no arc a ∈ A[|D|]v such that in(a) = u and
+out(a) = v for some u ∈VSv as the vertex set of the successor set Sv.
+This follows directly from the definition of Tv. Further, for any vertex v ∈ V it
+holds that
+VDv ⊆VTv ⊆VSv for Dv = (VDv ,ADv),Tv = (VTv ,ATv),Sv = (VSv ,ASv) (15.16)
+Thus, trigger sets as defined by Tv span subgraphs in the range of dominator
+and successor sets. This defines a range of selected subsets of vertices as input to
+thematic sounding as depicted by Figure 15.10: in cases where Dv ≈ Tv ≈ Sv, the
+trigger set of a vertex is restricted to its dominator set. That is, Tv mainly contains
+vertices that are strictly triggered by v as captured by Dv, while the remainder of
+its successor nodes are thematically triggered from outside of Sv. Conversely, if
+Dv ≈ Tv ≈ Sv, most vertices that are reachable from v are thematically triggered by
+v only. In this case, Sv is thematically unambiguously traversable from the point of
+view of v. This scenario is exemplified by an article in the periphery of Wikipedia
+that serves as an entry point to articles that further specify the topic of v and only
+of v.
+An algorithmic specification of trigger sets is provided by Algorithm 2. Its time
+complexity is estimated by the following corollary.
+Corollary 1. For an input digraph D = (V,A), the time complexity of Algorithm 1
+is in the order of O(|V |+ |A|).
+324 A. Mehler and U. Waltinger
+input : a digraph D = ({v1, . . . ,vm},A) together with a vertex v = v j ∈V
+output: the trigger graph Tv = (VTv ,ATv) induced by v over D
+compute Sv = (VSv ,ASv);1
+n← |Sv|; VY ←VSv = {vi1 , . . . ,vin}; AY ← ASv ; Yv← (VY ,AY );2
+ ←VSv ∪ IN(v);3
+for w = vi1 ..vin do4
+if IN(w) ⊆  then5
+Yv←Yv−w;6
+end7
+end8
+Tv←CYv (v);9
+Algorithm 2. An algorithm for computing trigger sets Tv. Note that for any digraph
+X , CX (v) is the component (subgraph) of v in X .
+Proof. Sv =CD(v) can be computed by a breadth-first search in the order of O(|V |+
+|A|). In the worst case, VSv = V . Thus, the for loop is in the same order. CYv(v)
+can be computed by a breadth-first search, too, so that, finally, O(3(|V |+ |A|)) =
+O(|V |+ |A|).
+15.4.2 Statistical Moments of Trigger and Dominator Sets
+D̂(D), T̂(D) and Ŝ(D) define three reference points for specifying candidate scopes
+of thematic sounding. Each of these sets defines a distribution of graphs that can
+be characterized by statistical moments. We describe any such distribution {Xv =
+(VXv ,AXv) |v ∈V} by the mean eccentricity of the vertices v in conjunction with the
+mean order of Xv. This gives estimates of the mean depth and breadth of thematic
+sounding in the underlying document network when starting from any vertex v.
+We compute the arithmetic mean of these distributions and consider the standard
+deviation as an dispersion parameter. Since ∀v ∈V : VDv ⊆VTv ⊆VSv , Dv and Sv can
+be used to compute lower and upper bounds of thematic sounding, while Tv focuses
+on the corresponding mean effort.
+Figure 15.11 shows the box and whisker plots of these indices computed by ex-
+ample of 66 Wikipedias of a size in the range of 10,000-150,000 articles. These 66
+networks (in 66 different languages) have been taken from a corpus of 263 releases
+of Wikipedia that were downloaded in November/December 2008 [28]. In this sub-
+corpus, the mean of the distribution of mean eccentricity values of trigger graphs is
+approximately 7, while the corresponding mean order is around 114. Analogously,
+the mean of the distribution of mean eccentricity values of successor sets is 24 and
+the corresponding mean order is 35,137 – obviously, the latter number is beyond
+what can be processed in the course of thematic sounding, while a bound of 114
+vertices gives a manageable number.
+15 Integrating Content and Structure Learning 325
+Fig. 15.11 Left: box plots of the distribution of mean eccentricity values in trigger sets (1)
+and successor sets (2). Right: box plots of the distribution of mean order values in trigger sets
+(1) and successor sets (2). All distributions are computed based on 66 releases of Wikipedia.
+By the results shown in Figure 15.11, we get estimators of the depth and breadth
+of thematic sounding in document networks as exemplified by Wikipedia. From
+the point of view of these results, we get first hints on how to restrict the scope of
+thematic sounding in Wikipedia in a meaningful way even if the start vertex is ran-
+domly chosen. More specifically, starting from Algorithm 2, we can use the mean
+depth and breadth as stop conditions: whenever Algorithm 2 has spanned a graph
+whose eccentricity exceeds the bound of 7 vertices or whose order exceeds the num-
+ber of 114 vertices, it stops. This twofold stop condition guarantees that Algorithm
+2 processes in a reasonable time without considering too many articles for thematic
+sounding. Further, this approach opens the door to extending the findings of Section
+15.3 beyond the scope of immediately linked web pages. The reason is that we can
+now prevent a complete expansion of vertices by restricting the set of documents
+to be considered in terms of the latter bounds. The present section is a first step to
+paving the way for making this task a manageable endeavor.
+15.5 Conclusion
+In this chapter, we tackled two related tasks in web mining: thematic-generic zon-
+ing, that is, delimitating websites as instances of webgenres, and thematic-generic
+sounding, that is, checking the continuity of interlinked pages in terms of topic or
+genre. In this way, we provided a framework for integrating content and structure
+modeling in web mining that goes beyond mono-level classification models with a
+focus on single pages. Further, we computed estimators for the expected depth and
+breadth of thematic sounding that can be used as stop conditions in corresponding
+sounding algorithms. Future work will deal with extending this approach to provide
+thematic-generic sounders as browser add-ons.
+326 A. Mehler and U. Waltinger
+Acknowledgement
+Financial support of the German Research Foundation (DFG) through the Research Group
+437 Text Technological Information Modeling via the Project A4 Induction of Document
+Grammars for the Representation of Logical Hypertext Document Structures is gratefully
+acknowledged.
+References
+[1] Adamic, L.A.: The small world of web. In: Abiteboul, S., Vercoustre, A.M. (eds.)
+Research and Advanced Technology for Digital Libraries, pp. 443–452. Springer, Hei-
+delberg (1999)
+[2] Allan, J. (ed.): Topic Detection and Tracking. Event-based Information Organization.
+Kluwer, Boston (2002)
+[3] Amitay, E., Carmel, D., Darlow, A., Lempel, R., Soffer, A.: The connectivity sonar:
+detecting site functionality by structural patterns. In: Proc. of the 14th ACM Conference
+on Hypertext and Hypermedia, pp. 38–47 (2003)
+[4] Barabási, A.L., Albert, R.: Emergence of scaling in random networks. Science 286,
+509–512 (1999)
+[5] Barnard, D.T., Burnard, L., DeRose, S.J., Durand, D.G., Sperberg-McQueen, C.M.:
+Lessons for the World Wide Web from the text encoding initiative. In: Proc. of the
+4th International World Wide Web Conference “The Web Revolution”, Boston, Mas-
+sachusetts (1995)
+[6] Baum, L.E., Petrie, T.: Statistical inference for probabilistic functions of finite state
+markov chains. The Annals of Mathematical Statistics 37(6), 1554–1563 (1966)
+[7] Berthold, M., Hand, D.J.: Intelligent data analysis. An Introduction. Springer, Heidel-
+berg (1999)
+[8] Biber, D.: Dimensions of Register Variation: A Cross-Linguistic Comparison. Cam-
+bridge University Press, Cambridge (1995)
+[9] Björneborn, L.: Genre connectivity and genre drift in a web of genres. In: [34] (2010)
+[10] Bloehdorn, S., Hotho, A.: Boosting for text classification with semantic features. In:
+Mobasher, B., Nasraoui, O., Liu, B., Masand, B. (eds.) WebKDD 2004. LNCS (LNAI),
+vol. 3932, pp. 149–166. Springer, Heidelberg (2006)
+[11] Chakrabarti, S., Joshi, M., Punera, K., Pennock, D.M.: The structure of broad topics
+on the web. In: Proc. of the 11th Internat. World Wide Web Conference, pp. 251–262.
+ACM Press, New York (2002)
+[12] Davidov, D., Gabrilovich, E., Markovitch, S.: Parameterized generation of labeled
+datasets for text categorization based on a hierarchical directory. In: Proceedings of
+the 27th Annual International ACM SIGIR Conference on Research and Development
+in Information Retrieval (SIGIR 2004), pp. 250–257. ACM, New York (2004)
+[13] Dehmer, M.: Information processing in complex networks: Graph entropy and infor-
+mation functionals. Applied Mathematics and Computation 201, 82–94 (2008)
+[14] Dehmer, M., Emmert-Streib, F., Mehler, A., Kilian, J.: Measuring the structural similar-
+ity of web-based documents: A novel approach. International Journal of Computational
+Intelligence 3(1), 1–7 (2006)
+15 Integrating Content and Structure Learning 327
+[15] Gabrilovich, E., Markovitch, S.: Computing semantic relatedness using Wikipedia-
+based explicit semantic analysis. In: Proceedings of the 20th International Joint Con-
+ference on Artificial Intelligence (IJCAI 2007), Hyderabad, India, January 6-12, pp.
+1606–1611 (2007)
+[16] Gupta, R., Ratinov, L.: Text categorization with knowledge transfer from heterogeneous
+data sources. In: AAAI 2008: Proceedings of the 23rd National Conference on Artificial
+Intelligence, pp. 842–847. AAAI Press, Menlo Park (2008)
+[17] Halliday, M.A.K., Hasan, R.: Language, Context, and Text: Aspects of Language in a
+Socialsemiotic Perspective. Oxford University Press, Oxford (1989)
+[18] Hotho, A., Nürnberger, A., Paaß, G.: A Brief Survey of Text Mining. Journal for Lan-
+guage Technology and Computational Linguistics (JLCL) 20(1), 19–62 (2005)
+[19] Joachims, T.: Learning to classify text using support vector machines. Kluwer, Boston
+(2002)
+[20] Joachims, T., Cristianini, N., Shawe-Taylor, J.: Composite kernels for hypertext cate-
+gorisation. In: Proceedings of the 11th International Conference on Machine Learning,
+pp. 250–257. Morgan Kaufmann, San Francisco (2001)
+[21] Kanaris, I., Stamatatos, E.: Webpage genre identification using variable-length charac-
+ter n-grams. In: Proc. of the 19th IEEE Int. Conf. on Tools with Artificial Intelligence
+(ICTAI 2007). IEEE Computer Society Press, Washington, DC, USA (2007)
+[22] Leopold, E.: Models of semantic spaces. In: Mehler, A., Köhler, R. (eds.) Aspects of
+Automatic Text Analysis. STUDFUZZ, vol. 209, pp. 117–137. Springer, Heidelberg
+(2007)
+[23] Lim, C.S., Lee, K.J., Kim, G.C.: Multiple sets of features for automatic genre classi-
+fication of web documents. Information Processing & Management 41(5), 1263–1276
+(2005), doi: http://proxy.bnl.lu:2193/10.1016/j.ipm.2004.06.004
+[24] Lindemann, C., Littig, L.: Classification of web sites at super-genre level. In: [34]
+(2010)
+[25] Martin, J.R.: English Text. System and Structure. John Benjamins, Philadelphia (1992)
+[26] Mehler, A.: Structural similarities of complex networks: A computational model by
+example of wiki graphs. Applied Artificial Intelligence 22(7&8), 619–683 (2008)
+[27] Mehler, A.: Generalized shortest paths trees: A novel graph class applied to semiotic
+networks. In: Dehmer, M., Emmert-Streib, F. (eds.) Analysis of Complex Networks:
+From Biology to Linguistics, pp. 175–220. Wiley-VCH, Weinheim (2009)
+[28] Mehler, A.: A quantitative graph model of social ontologies by example of Wikipedia.
+In: Dehmer, M., Emmert-Streib, F., Mehler, A. (eds.) Towards an Information Theory of
+Complex Networks: Statistical Methods and Applications. Birkhäuser, Boston (2010)
+[29] Mehler, A.: Structure formation in the web. A graph-theoretical model of hypertext
+types. In: Witt, A., Metzing, D. (eds.) Linguistic Modeling of Information and Markup
+Languages. Contributions to Language Technology, Text, Speech and Language Tech-
+nology, pp. 225–247. Springer, Dordrecht (2010)
+[30] Mehler, A., Waltinger, U.: Enhancing document modeling by means of open topic mod-
+els: Crossing the frontier of classification schemes in digital libraries by example of the
+DDC. Library Hi Tech 27(4) (2009)
+[31] Mehler, A., Geibel, P., Pustylnikov, O.: Structural classifiers of text types: Towards
+a novel model of text representation. Journal for Language Technology and Computa-
+tional Linguistics (JLCL) 22(2), 51–66 (2007)
+328 A. Mehler and U. Waltinger
+[32] Mehler, A., Gleim, R., Wegner, A.: Structural uncertainty of hypertext types. An empir-
+ical study. In: Proceedings of the Workshop “Towards Genre-Enabled Search Engines:
+The Impact of NLP”, in conjunction with RANLP 2007, Borovets, Bulgaria, September
+30, pp. 13–19 (2007)
+[33] Mehler, A., Gleim, R., Ernst, A., Waltinger, U.: WikiDB: Building interoperable wiki-
+based knowledge resources for semantic databases. Sprache und Datenverarbeitung In-
+ternational Journal for Language Data Processing 32(1), 47–70 (2008)
+[34] Mehler, A., Sharoff, S., Santini, M. (eds.): Genres on the Web: Computational Models
+and Empirical Studies. Springer, Dordrecht (2010)
+[35] Menczer, F.: Lexical and semantic clustering by web links. Journal of the American
+Society for Information Science and Technology 55(14), 1261–1269 (2004)
+[36] Meyer zu Eißen, S., Stein, B.: Genre Classification of Web Pages: User Study and
+Feasibility Analysis. In: Biundo, S., Frühwirth, T., Palm, G. (eds.) KI 2004. LNCS
+(LNAI), vol. 3228, pp. 256–269. Springer, Heidelberg (2004)
+[37] Mukherjea, S.: Organizing topic-specific web information. In: Proc. of the 11th ACM
+Conference on Hypertext and Hypermedia, pp. 133–141. ACM, New York (2000)
+[38] Power, R., Scott, D., Bouayad-Agha, N.: Document structure. Computational Linguis-
+tics 29(2), 211–260 (2003)
+[39] Rehm, G.: Language-independent text parsing of arbitrary html-documents. towards a
+foundation for web genre identification. Journal for Language Technology and Compu-
+tational Linguistics, JLCL (2005)
+[40] Rehm, G.: Hypertextsorten: Definition, Struktur, Klassifikation. Phd thesis, Ange-
+wandte Sprachwissenschaft und Computerlinguistik, Justus-Liebig-Universität Gießen,
+JLU (2007)
+[41] Rehm, G., Santini, M., Mehler, A., Braslavski, P., Gleim, R., Stubbe, A., Symonenko,
+S., Tavosanis, M., Vidulin, V.: Towards a reference corpus of web genres for the eval-
+uation of genre identification systems. In: Proceedings of the 6th Language Resources
+and Evaluation Conference (LREC 2008), Marrakech, Morocco (2008)
+[42] Salton, G.: Automatic Text Processing: The Transformation, Analysis, and Retrieval of
+Information by Computer. Addison Wesley, Reading (1989)
+[43] Santini, M.: Cross-testing a genre classification model for the web. In: [34] (2010)
+[44] Santini, M., Power, R., Evans, R.: Implementing a characterization of genre for auto-
+matic genre identification of web pages. In: Proceedings of the COLING/ACL on Main
+Conference Poster Sessions, Association for Computational Linguistics, Morristown,
+NJ, USA, pp. 699–706 (2006)
+[45] Santini, M., Mehler, A., Sharoff, S.: Riding the rough waves of genre on the web:
+Concepts and research questions. In: [34], pp. 3–32 (2010)
+[46] Saunders, S.: Improved shortest path algorithms for nearly acyclic graphs. PhD thesis,
+University of Canterbury, Computer Science (2004)
+[47] Sebastiani, F.: Machine learning in automated text categorization. ACM Computing
+Surveys 34(1), 1–47 (2002)
+[48] Sharoff, S.: In the garden and in the jungle. Comparing genres in the BNC and Internet.
+In: [34] (2010)
+[49] Thelwall, M., Vaughan, L., Björneborn, L.: Webometrics. Annual Review of Informa-
+tion Science Technology 6(8) (2006)
+[50] Vapnik, V.: The Nature of Statistical Learning Theory. Springer, New York (1995)
+[51] Waltinger, U.: On social semantics in information retrieval. PhD thesis, Bielfeld Uni-
+versity, Germany (2010)
+15 Integrating Content and Structure Learning 329
+[52] Waltinger, U., Mehler, A.: Social semantics and its evaluation by means of semantic
+relatedness and open topic models. In: IEEE/WIC/ACM International Conference on
+Web Intelligence, Milano, September 15–18 (2009)
+[53] Waltinger, U., Mehler, A., Wegner, A.: A two-level approach to web genre classifica-
+tion. In: Proceedings of the 5th International Conference on Web Information Systems
+and Technologies (WEBIST 2009), pp. 689–692. INSTICC Press, Lisboa (2009)
+[54] Watts, D.J., Strogatz, S.H.: Collective dynamics of ‘small-world’ networks. Nature 393,
+440–442 (1998)
+[55] Zlatic, V., Bozicevic, M., Stefancic, H., Domazet, M.: Wikipedias: Collaborative web-
+based encyclopedias as complex networks. Physical Review E 74, 016,115 (2006)

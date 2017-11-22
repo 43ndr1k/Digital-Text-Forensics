@@ -1,0 +1,787 @@
+Character-level and Multi-channel Convolutional Neural Networks for
+Large-scale Authorship Attribution
+Sebastian Ruder1,2, Parsa Ghaffari2, and John G. Breslin1
+1Insight Centre for Data Analytics
+National University of Ireland, Galway
+{sebastian.ruder,john.breslin}@insight-centre.org
+2Aylien Ltd.
+Dublin, Ireland
+{sebastian,parsa}@aylien.com
+Abstract
+Convolutional neural networks (CNNs)
+have demonstrated superior capability for
+extracting information from raw signals
+in computer vision. Recently, character-
+level and multi-channel CNNs have ex-
+hibited excellent performance for sentence
+classification tasks. We apply CNNs to
+large-scale authorship attribution, which
+aims to determine an unknown text’s au-
+thor among many candidate authors, moti-
+vated by their ability to process character-
+level signals and to differentiate between
+a large number of classes, while making
+fast predictions in comparison to state-of-
+the-art approaches. We extensively eval-
+uate CNN-based approaches that leverage
+word and character channels and compare
+them against state-of-the-art methods for
+a large range of author numbers, shedding
+new light on traditional approaches. We
+show that character-level CNNs outper-
+form the state-of-the-art on four out of five
+datasets in different domains. Addition-
+ally, we present the first application of au-
+thorship attribution to reddit. Finally, we
+release our new reddit and Twitter datasets
+for further research.
+1 Introduction
+State-of-the-art methods in authorship attribution,
+which aims to determine an unknown text’s au-
+thor among a set of candidate authors, rely on
+low-level information such as character n-grams
+(Frantzeskou and Stamatatos, 2007). Recent ap-
+proaches (Koppel et al., 2011) focus on large-
+scale authorship attribution for thousands of au-
+thors, but are expensive during prediction, which
+is a deficit in on-line scenarios for purposes of tar-
+geted marketing, copyright enforcement, writing
+support, and search relevance, among others (Pot-
+thast et al., 2016). Furthermore, besides stylis-
+tic information, word-level topical information has
+been shown to be relevant for authorship attribu-
+tion (Seroussi et al., 2011).
+Simultaneously, convolutional neural networks
+(CNNs) have achieved remarkable successes in
+computer vision (Krizhevsky et al., 2012) and
+speech recognition (Abdel-Hamid et al., 2012) and
+have been found particularly suitable for extract-
+ing information from just such low-level signals.
+They have also been shown to be effective for var-
+ious NLP tasks (Collobert et al., 2011) and have
+achieved state-of-the-art in several sentence clas-
+sification tasks (Kim, 2014). Most neural net-
+works and CNNs in NLP perform convolutions on
+the word level using pre-trained word embeddings
+(Mikolov et al., 2013). Recent approaches employ
+convolutions over characters (Zhang et al., 2015).
+We apply CNNs to the task of authorship attri-
+bution for four reasons: a) They have been shown
+to be excellent at leveraging character-level sig-
+nals, which have been found to be indicative of au-
+thorial style (Stamatatos, 2009); b) they have ex-
+celled at differentiating between a large number of
+classes (Krizhevsky et al., 2012), which is key for
+large-scale authorship attribution; c) prediction is
+fast; and d) a combination of word and character
+input channels enables them to take topical infor-
+mation into account.
+Our main contributions are the following:
+• We present state-of-the-art results for large-
+scale authorship attribution for four out
+of five datasets in different domains us-
+ing character-level convolutional neural net-
+works.
+• We evaluate combinations of different CNN
+input channels and propose a novel model
+ar
+X
+iv
+:1
+60
+9.
+06
+68
+6v
+1 
+ [
+cs
+.C
+L
+] 
+ 2
+1 
+Se
+p 
+20
+16
+that combines character and word channels.
+• We compare CNN approaches against tradi-
+tional approaches for a large range of author
+numbers and discuss merits and improve-
+ments.
+• We present the first application of authorship
+attribution to reddit comments and introduce
+two new Twitter and reddit datasets that we
+make available for further research.
+2 Related work
+Our work is inspired by two neural network archi-
+tectures: multi-channel CNNs and character-level
+CNNs.
+Multi-channel CNNs are pervasive in domains
+where the input can naturally be separated into
+different channels, e.g. color channels in com-
+puter vision, wave lengths in speech recognition
+(Hoshen et al., 2014). Natural language input is
+typically single-channel in the form of tokens or
+characters. Kim (2014) observe that a static word
+channel is able to encode general semantic similar-
+ities, while a non-static channel can be fine-tuned
+to the task at hand and improves performance on
+some datasets.
+Character-level CNNs have been shown to
+outperform traditional classification methods on
+large-scale datasets (Zhang et al., 2015). Their
+CNNs, however, require tens of thousands of per-
+class examples and thousands of training epochs,
+while our datasets only contain a few hundred ex-
+amples per class.
+The use of most other character-level CNNs is
+motivated by the desire to leverage sub-word in-
+formation (e.g. morphemes) to which word-level
+CNNs are blind: Kim et al. (2016) feed the out-
+put of a character-level CNN to a recurrent neural
+language model and improve performance partic-
+ularly for morphologically rich languages.
+Santos and Zadrozny (2014) use a CNN that
+associates a character embedding produced by a
+CNN for each word with its word representation to
+improve POS tagging performance for English and
+Portuguese, while Santos and Guimarães (2015)
+use the same network to boost results for named
+entity recognition. In contrast to their approach,
+we do not aim to detect morphological informa-
+tion because inter-word features such as punctua-
+tion and white space are very relevant to author-
+ship. Rather, we treat characters as a distinct input
+channel as our goal is to learn to identify discrete
+word and character patterns and to associate them
+with each other.
+Authorship attribution is the task of identify-
+ing an unknown text’s author among a set of can-
+didate authors with applications ranging from pla-
+giarism detection to Forensic Linguistics. The key
+notion behind statistical authorship attribution is
+that measuring textual features enables distinction
+between texts written by different authors (Sta-
+matatos, 2009). These features range from indica-
+tors of content divergence between authors such as
+bag-of-words to stylometric features that reflect an
+author’s unique writing patterns, e.g. use of punc-
+tuation marks, emoticons, whitespace, etc. (Sap-
+kota et al., 2015), and character and word n-grams
+(Schwartz et al., 2013).
+Deep learning research has largely neglected
+authorship attribution; related work has instead fo-
+cused on modeling an author’s style: Kiros et al.
+(2014) condition word embeddings on attributes
+such as style and predict an author’s age, gen-
+der, and industry. Zhu et al. (2015) transform
+image captions into book sentences by subtract-
+ing the ’style’. State-of-the-art authorship attri-
+bution algorithms have to handle possibly thou-
+sands of candidate authors and a limited number
+of examples per author in real-world applications
+but require CPU-days for prediction as they cal-
+culate pairwise distances between feature subsets
+(Koppel et al., 2011). Simultaneously, character n-
+grams have proven to be the single most successful
+feature (Frantzeskou and Stamatatos, 2007). Fi-
+nally, Potthast et al. (2016) compare traditional
+approaches on small datasets, while we evaluate
+state-of-the-art as well as CNN-based methods for
+thousands of authors, thereby moving a step closer
+to the goal of authorship attribution at web-scale.
+3 Model
+The model architecture we use is an extension of
+the CNN structure used by Collobert et al. (2011).
+Its variant with two word embedding channels
+used by Kim (2014) is depicted in Figure 1.
+The model takes as input a text, which is padded
+to length n. For the character embedding chan-
+nel, we represent the text as a concatenation of its
+character embeddings z1:m where zi ∈ Rk is the
+k-dimensional vector of the i-th character in the
+text andm is the character length of the text, while
+for the word embedding channel, we represent the
+Figure 1: Multi-channel CNN with two word channels from Kim et al. (2014)
+text as a concatentation of its word embeddings
+x1:n where xi ∈ Rk is the k-dimensional vector of
+the i-th word in the text. The convolutional layer
+slides filters of different window sizes over each
+input channel. Each filter with weights w ∈ Rhk
+generates a new feature ci for a window of h char-
+acters or words according to the following opera-
+tion:
+ci = f(w · xi:i+h−1 + b) (1)
+Note that b ∈ R is a bias term and f is a non-
+linear function, ReLU (Nair and Hinton, 2010) in
+our case. The application of the filter over each
+possible window of h words or characters in the
+sentence produces the following feature map:
+c = [c1, c2, ..., cn−h+1] (2)
+Max-over-time pooling (Collobert et al., 2011)
+in turn condenses this feature vector to its most im-
+portant feature by taking its maximum value and
+naturally deals with variable input lengths. A final
+softmax layer takes the concatenation of the max-
+imum values of the feature maps produced by all
+filters and outputs a probability distribution over
+all candidate authors.
+For the standard single-channel character-level
+CNN, we represent characters as one-hot vectors.1
+In the multi-channel architecture, we apply each
+filter to both channels and sum the results2 to cal-
+culate ci in equation 1. Note that in order to com-
+1Using low-dimensional character embeddings as in Kim
+et al. (2016) decreased performance.
+2We have also experimented with concatenation, which
+produces slightly worse results.
+bine a word and character channel, both spaces
+must have the same dimensionality. We thus em-
+bed characters in a space with the same number of
+dimensions as the word embedding space and pad
+the word sequence to have the same length as the
+character sequence.3
+4 Datasets
+We benchmark our models on the following
+datasets that cover a large spectrum of styles and
+domains:
+The Enron email dataset contains about 0.5M
+emails from mostly senior managers at Enron4 or-
+ganized in different folders. We extract emails
+from the SENT and SENT ITEMS folders as these
+include outgoing traffic. We remove all but the
+email body, discarding emails that contain less
+than 10 tokens. This leaves us with 80,852 emails
+from 144 authors.
+The IMDb62 dataset contains 62,000 movie
+reviews by 62 prolific users of the Internet Movie
+database. The dataset is made available by
+Seroussi et al. (2011) on request.
+The Blog authorship dataset contains 681,288
+blog posts of 19,320 bloggers gathered by Schler
+et al. (2005) from blogger.com in August 20045.
+We create the Twitter influencer dataset in or-
+der to establish and share benchmark train and
+test splits for authorship attribution on a dedicated
+3We found that truncating the character sequence yielded
+worse performance.
+4https://www.cs.cmu.edu/˜./enron/
+5http://u.cs.biu.ac.il/˜koppel/
+BlogCorpus.htm
+Twitter corpus6. We created the dataset by gath-
+ering a list of 4,391 celebrity and power-user in-
+fluencers in 68 domains ranging from politics and
+tech to arts and writing and collected just over 1M
+tweets for these users in October and November
+2015 using the AYLIEN API7.
+The reddit gaming dataset is a subset of the
+massive dataset of around 1.7 billion reddit com-
+ments from 2007 to 2015 collected via reddit’s
+API8. We control for topic by selecting comments
+only from the /r/Gaming subreddit and download
+2 million comments of the subreddit’s most pro-
+lific users from January 2014 to May 2015 us-
+ing Google BigQuery9. We show statistics for the
+datasets in table 1.
+5 Experimental setup
+5.1 Model variations
+We test variations of our model that use differ-
+ent combinations of input channels together with
+a one-layer CNN.10
+• CNN-word: a CNN with a non-static
+word embedding channel where the vec-
+tors are modified during training using back-
+propagation. This is the classic word em-
+bedding CNN used e.g. by Collobert et al.
+(2011).
+• CNN-char: a CNN with a non-static charac-
+ter channel. A variant with more than one
+convolutional layer is used by Zhang et al.
+(2015).
+• CNN-word-word: a CNN with a static and
+a non-static word embedding channel. This
+is the multi-channel CNN proposed by Kim
+(2014).
+• CNN-word-char: a hybrid-channel CNN
+with a non-static word and a non-static char-
+acter channel.
+• CNN-word-word-char: a hybrid-channel
+CNN with a static word, a non-static word
+and a non-static character channel.
+6The dataset collected by Layton et al. (2010) is no longer
+available.
+7http://aylien.com/
+8https://www.reddit.com/dev/api
+9https://cloud.google.com/bigquery/
+10We have compared against character- and word-level re-
+current neural networks, but do not include them in the eval-
+uation as their performance was not competitive.
+Data c D µ σ d
+Emails 144 80,852 561 889 175
+IMDb 62 62,000 1,000 0 347
+Blogs 19,320 681,288 35 105 440
+Twitter 4,391 1,004,399 229 730 19
+reddit 9,266 2,000,000 216 223 31
+Table 1: Statistics of datasets. c: Number of au-
+thors. D: Number of documents. µ: Median num-
+ber of documents per author. σ: Standard devia-
+tion of document number. d: Median document
+size (tokens).
+All word embedding channels are initialized
+with 300-dimensional GloVe vectors (Pennington
+et al., 2014) trained on 840B tokens of the Com-
+mon Crawl corpus11. Character embedding chan-
+nels and words not present in the set of pre-trained
+words are initialized randomly.
+5.2 Comparison methods
+We compare against four state-of-the-art author-
+ship attribution methods:
+• SVM+Stems: an SVM classifier, which
+distinguishes authors based on word stems
+rather than bag-of-words (Allison and
+Guthrie, 2008). Features are additionally
+weighted with tf-idf and scaled to have unit
+variance.
+• SCAP: the Source Code Author Pro-
+file (SCAP) method (Frantzeskou and Sta-
+matatos, 2007) determines authorship based
+on the intersection of the most frequent char-
+acter n-grams of an unknown text and an au-
+thor’s profile, i.e. the concatentation of an au-
+thor’s known texts.
+• Imposters: the Imposters Method (Koppel et
+al., 2011) is based on the intuition that the
+profile of an unknown text’s author is likely
+to be most similar to the unknown text most
+often as the feature set varies. For each it-
+eration, it calculates the cosine similarity of
+a random fraction of a feature set of space-
+free character n-grams between an unknown
+text and an author’s profile. It then chooses
+the author who exhibited the maximum co-
+sine similarity most frequently.
+11For the Twitter dataset 200-dimensional GloVe vectors
+trained on 27B tokens of Twitter data are used.
+Model Parameter Emails IMDb Blogs Twitter reddit
+SCAP ngram size 9 7 4 6 5
+Imposters ngram size 9 4 4 4 4
+LDAH-S
+# topics 300 300 100 300 300
+vocabulary size 40,000 30,000 30,000 30,000 50,000
+Table 2: Hyperparameters for SCAP, Imposters, and LDAH-S for all datasets. SCAP and Imposters
+with profile size 14,000. Imposters with feature proportion 0.3, vocabulary size 30,000, 500 iterations.
+LDAH-S with 2,000 iterations.
+• LDAH-S: LDA Hellinger Single-Document,
+the top-performing method of Seroussi et al.
+(2011) uses Hellinger distance between the
+LDA topic distributions for an unknown text
+and an author’s profile as a measure for au-
+thorship.
+Results for SVM+Stems have been reported on
+the Email dataset (Allison and Guthrie, 2008) and
+results for Imposters and LDAH-S have been re-
+ported on the IMDb62 and Blog dataset (Seroussi
+et al., 2011). However, as there are no pre-
+defined train-test splits for these datasets, we re-
+implement the above algorithms to guarantee iden-
+tical conditions and objective comparison.
+5.3 Hyperparameters and training
+As authorship attribution algorithms must be able
+to deal with a large number of authors, we conduct
+experiments for a large range of author numbers.
+For each number of authors n, we select the sub-
+set of texts belonging to the n most authors with
+the most documents in the dataset. Note that as
+we scale the number of authors, the number of
+documents per author diminishes and identifying
+prominent authors transforms into the scenario of
+detecting authors with only few samples. We do
+not equalize the number of training documents to
+maintain the imbalanced distribution common in
+real-world applications.
+As the per-fold run time of most of the state-of-
+the-art authorship attribution methods renders 10-
+fold cross-validation prohibitively expensive, we
+randomly split off 10% as a stratified test set. We
+keep the test set constant and use a seed to reduce
+randomness in the comparison. We furthermore
+use 10% of each training set as a stratified devel-
+opment set. We optimize hyperparameters for all
+comparison algorithms for each dataset on the de-
+velopment set of its 10-author subset using ran-
+dom search and keep them constant each dataset.
+For SVM+Stems, we use a linear kernel, unigram
+stems, and a vocabulary size of 10,000. The pa-
+rameters for the other algorithms can be seen in
+Table 2.
+CNN parameters. We optimize hyperparam-
+eters for our CNN configurations on the devel-
+opment set of the 10-authors emails subset with-
+out any task-specific fine-tuning. These are: vo-
+cabulary size of 10,000 words, 98 characters12,
+maximum sequence length of 500 for word-based
+CNNs and of 3000 for CNN-char and hybrid-
+channel CNNs, l2 constraint of 0, dropout rate
+of 0.5, filter windows of 6, 7, 8 with 100 feature
+maps each, and mini-batch size of 50. We train
+for 15 epochs using mini-batch stochastic gradient
+descent and early stopping. We use the Adadelta
+update rule (Zeiler, 2012) as it allows us to pay
+special attention to infrequent features that can be,
+however, highly indicative of certain authors.
+6 Results and discussion
+We evaluate all algorithms on all 62 authors for
+the IMDb dataset and on 10 and 50 authors re-
+spectively for all other datasets. Results of our
+CNN models against the comparison methods are
+listed in Table 3. Additionally, we evaluate the
+best CNNs against the best comparison method in
+Table 3, SCAP on larger numbers of authors. We
+show results up to all 144 authors for the Emails
+dataset in Figure 2 and results up to 1,000 authors
+for the Blogs, Twitter, and reddit datasets in Fig-
+ures 3, 4, and 5 respectively.
+6.1 Domain
+The corpus domain has a big impact on a model’s
+performance and often requires domain-specific
+feature engineering (Stamatatos, 2009). Word-
+based methods such as SVM+Stems, LDAH-S,
+12We use the same vocabulary as Zhang et al. (2015),
+but distinguish between lower-case and upper-case characters
+and convolve all numbers into one as both measures increase
+performance.
+Model Emails IMDb Blogs Twitter reddit Ave
+Number of authors 10 50 62 10 50 10 50 10 50 -
+SVM+Stems 83.0 72.9 88.3 36.5 29.7 91.7 81.3 35.1 21.2 60.0
+SCAP 83.1 69.0 94.8 48.6 41.6 91.3 82.5 46.5 30.3 65.3
+Imposters 52.0 32.9 76.9 35.4 22.6 71.4 52.5 32.1 16.3 43.6
+LDAH-S 82.0 39.1 72.0 52.5 18.3 90.0 38.3 43.0 14.2 49.9
+CNN-word 89.7 82.5 84.3 59.0 43.0 96.2 80.5 36.2 20.1 65.7
+CNN-word-word 90.3 81.0 82.0 58.8 41.4 95.7 79.3 39.6 18.3 65.2
+CNN-char 93.1 88.1 91.7 59.7 48.1 97.5 86.8 58.8 37.2 73.4
+CNN-word-char 90.3 84.9 90.2 61.2 49.4 97.2 84.9 53.1 27.7 70.1
+CNN-word-word-char 90.1 83.8 88.4 61.2 47.0 95.9 84.0 56.1 27.0 70.4
+Table 3: Micro-averaged F1 scores of our CNN variants and state-of-the-art authorship attribution meth-
+ods for 10 and 50 authors (except for IMDb) in the chosen domains. We also show a model’s average
+performance (Ave) across all scores to give an estimate of how well a model generalizes across domains
+and consequently might perform in a new domain.
+CNN-word, CNN-word-word perform well in do-
+mains in which topical information is discrimina-
+tory, such as emails, movie reviews, and blogs.
+They, however, achieve comparatively worse per-
+formance for short-message domains such as Twit-
+ter and reddit. On these, character-enhanced meth-
+ods provide a considerable performance boost.
+Past studies (Stamatatos, 2009; Schwartz et al.,
+2013) highlighted challenges for short text author-
+ship attribution, such as the number of authors, the
+training set size, and the size of the test document.
+Twitter. The generally impressive scores in
+the Twitter domain reveal a bias that is two-fold:
+a) As we have not pre-processed the data (other
+than lower-casing) to reflect real-world use cases,
+models are able to leverage mentions and hashtags
+to achieve high F1 scores; replacing these low-
+ers scores for all models as observed by Layton
+(2010); b) celebrities and power-users that are the
+subject of this dataset use language differently in
+comparison to regular users, with the goal of en-
+hancing their brand by frequently tweeting simi-
+lar key messages. This behavior, however, makes
+it easier for models to pick up on their individual
+style or preferred content. We intend to investigate
+the stylistic differences between regular users and
+celebrities and their impact on authorship attribu-
+tion in future work.
+Reddit. Most models perform poorly on the
+reddit domain. We suspect that authorship attri-
+bution on reddit is challenging for two reasons: a)
+Comments are either very long (tirades / explana-
+tions) or very short (short replies / puns); b) in con-
+trast to Twitter, reddit is less about broadcasting
+oneself to the world and more about interacting
+with the community; posts thus often reflect the
+character of the thread rather than the character of
+the user and often contain stylistically conspicu-
+ous features such as irony (Wallace et al., 2015).
+Further research may thus reveal how users shift
+their style and if this behavior differs across dif-
+ferent subreddits.
+6.2 CNNs
+All of our CNN variants consistently outperform
+most traditional authorship attribution methods.
+Even CNN-word that only uses word embeddings
+performs significantly better than most compari-
+son methods. Moreover, CNNs show aptitude to
+handle the class imbalance problem (Stamatatos,
+2007) inherent in real-world applications by sig-
+nificantly outperforming the comparison methods
+on all datasets with imbalanced numbers of docu-
+ments per author (see Table 1) in line with findings
+by Potthast et al. (2016).
+In the emails domain, CNNs outperform the
+comparison methods by more than 6 %. for 10
+authors and SCAP by more than 16 %. for 144
+authors. We suppose that these large performance
+differences lie in the fact that CNNs are able to
+pay special attention to structural measures such as
+greetings, farewells, and signatures (de Vel et al.,
+2001). Differences for the IMDb domain are less
+pronounced, as authors would generally review
+similar movies, rendering specific words or char-
+acter sequences discriminatory. Fine-tuned word
+embeddings that are sensitive to topical divergence
+between authors boost CNN performance in the
+Figure 2: F1 scores on Emails dataset Figure 3: F1 scores on Blogs dataset
+blogs domain. They are, however, less helpful in
+the Twitter and reddit domains, where hashtags or
+emoticons are the most characteristic features.
+Character-level CNNs outperform traditional
+methods and CNN variants on 4 out of 5 datasets
+in Table 3, on most of them quite significantly.
+They outperform comparison methods in domains
+such as Reddit where certain character sequences
+such as smileys and emoticons are discriminatory
+by more than 12 %. for 10 authors. They perform
+well even with fewer per-class examples scaling
+better than all other methods (except for SCAP on
+Twitter in Figure 4) to large numbers of authors.
+The reason for the success of character-level
+CNNs clearly is their superior ability to capture
+stylistic information encoded on the character-
+level. In contrast to traditional approaches such
+as SCAP and Imposters, character-level CNNs
+are able to model more complex interactions be-
+tween different stylistic features by leveraging
+non-linearities.
+Given the availability of a GPU, they only take a
+few hours to train – even for large-scale authorship
+attribution scenarios as the author number only af-
+fects the number of parameters in the final soft-
+max layer, which scales linearly. More impor-
+tantly, they are able to form a prediction instan-
+taneously compared to the CPU-hours or CPU-
+days required by SCAP or the Imposters method
+respectively. For this reason, they are particularly
+suited for conducting a large or recurring num-
+ber of predictions in on-line scenarios such as at-
+tributing messages to known terrorists (Abbasi and
+Chen, 2005).
+Hybrid-channel CNNs outperform CNNs that
+rely solely on word embeddings, as character-level
+information is important for the task of author-
+ship attribution. In the blogs domain, where top-
+ical information is a distinguishing feature, they
+outperform character-level CNNs in Table 3. Us-
+ing a static and a non-static word channel together
+with the character channel had similar effects as
+using a multi-channel architecture over a regular
+word-based CNN, i.e. it increased scores on some
+datasets.
+6.3 Traditional methods
+Similarly to Frantzeskou and Stamatatos (2007),
+we find that increasing the profile size of an au-
+thor’s concatenated known texts consistently in-
+creases performance for n-gram based similarity
+methods, i.e. SCAP and Imposters. The optimal
+profile size for our datasets, 14,000, however, is
+considerably higher than past values reported for
+this hyperparameter (Layton et al., 2010) (Layton
+et al., 2012), suggesting that larger ranges should
+be considered in future research.
+We have found that restricting the vocabulary
+size by selecting only the 30,000 most frequent
+space-free character n-grams for the Imposters
+method generally increased performance as fre-
+quency is the most important criterion for select-
+ing features in authorship attribution (Stamatatos,
+2009).13 Even though we improve performance
+for Imposters on the IMDb dataset in compari-
+son to Seroussi et al. (2011) by selecting appro-
+priate hyperparameters, we are unable to achieve
+competitive scores using the more recently pro-
+posed authorship attribution methods, Imposters
+13Koppel et al. (2011) use more than 250,000 unique char-
+acter n-grams.
+Figure 4: F1 scores on Twitter dataset Figure 5: F1 scores on Reddit dataset
+and LDAH-S.14 In contrast, the SCAP method
+proves to be easy and fast to train and outperforms
+CNNs on the IMDb dataset in Table 3.
+Impressively, SCAP scales better than CNNs on
+Twitter in Figure 4. Recall that for Twitter influ-
+encers, certain n-grams such as user mentions or
+hashtags are highly indicative. We suspect that
+as SCAP stores discrete n-grams for each author,
+it is better able to assign them to the correct au-
+thor, while the continuous function used by CNNs
+might blur the boundaries in the case of many
+authors. To mitigate this deficit, CNNs can a)
+be made more expressive by adding more layers
+(Zhang et al., 2015); or b) can be interpolated with
+n-grams that capture clear n-gram-author corre-
+spondences as in the Twitter domain.
+7 Conclusion
+In this work, we have applied character-level
+CNNs to large-scale authorship attribution. We
+have extensively evaluated combinations of differ-
+ent CNN input channels and introduced a novel
+model that combines character and word channels
+to leverage both stylistic and topical information.
+We have compared CNNs against state-of-the-art
+methods for a large range of author numbers, shed-
+ding new light on traditional approaches. We have
+presented state-of-the-art results for four out of
+five datasets in different domains and have intro-
+duced two new Twitter and reddit datasets that we
+make available for further research.
+14We apply them to larger numbers of authors and obtain
+similar results. Note that we evaluate – in contrast to Koppel
+et al. (2011) and Seroussi et al. (2011) – using F1, which
+penalizes low recall.
+Acknowledgments
+This publication has emanated from research sup-
+ported by Grant Number EBPPG/2014/30 from
+the Irish Research Council with Aylien Ltd.
+as Enterprise Partner and by Grant Number
+SFI/12/RC/2289 from Science Foundation Ireland
+(SFI).
+References
+Ahmed Abbasi and Hsinchun Chen. 2005. Applying
+Authorship Analysis to Extremist-Group Web Fo-
+rum Messages. Intelligent Systems, IEEE, 20(5):67–
+75.
+Ossama Abdel-Hamid, Abdel Rahman Mohamed, Hui
+Jiang, and Gerald Penn. 2012. Applying convolu-
+tional neural networks concepts to hybrid NN-HMM
+model for speech recognition. IEEE International
+Conference on Acoustics, Speech and Signal Pro-
+cessing - Proceedings, pages 4277–4280.
+B Allison and L Guthrie. 2008. Authorship Attribu-
+tion of E-Mail: Comparing Classifiers over a New
+Corpus for Evaluation. LREC.
+Ronan Collobert, Jason Weston, Leon Bottou, Michael
+Karlen, Koray Kavukcuoglu, and Pavel Kuksa.
+2011. Natural Language Processing (almost) from
+Scratch. Journal of Machine Learning Research,
+12(Aug):2493–2537.
+O. de Vel, a. Anderson, M. Corney, and G. Mohay.
+2001. Mining e-mail content for author identifica-
+tion forensics. ACM SIGMOD Record, 30(4):55.
+G Frantzeskou and E Stamatatos. 2007. Identifying
+authorship by byte-level n-grams: The source code
+author profile (scap) method. International Journal
+of Digital Evidence, 6(1):1–18.
+Yedid Hoshen, Ron J Weiss, and Kevin W Wilson.
+2014. Speech Acoustic Modeling From Raw Mul-
+tichannel Waveforms. pages 2–6.
+Yoon Kim, Yacine Jernite, David Sontag, and Alexan-
+der M. Rush. 2016. Character-Aware Neural Lan-
+guage Models. AAAI.
+Yoon Kim. 2014. Convolutional Neural Networks for
+Sentence Classification. Proceedings of the Con-
+ference on Empirical Methods in Natural Language
+Processing, pages 1746–1751.
+Ryan Kiros, Rs Zemel, and Ruslan Salakhutdi-
+nov. 2014. A Multiplicative Model for Learning
+Distributed Text-Based Attribute Representations.
+NIPS.
+Moshe Koppel, Jonathan Schler, and Shlomo Arga-
+mon. 2011. Authorship attribution in the wild. Lan-
+guage Resources and Evaluation, 45(1):83–94.
+Alex Krizhevsky, Ilya Sutskever, and Geoffrey E Hin-
+ton. 2012. ImageNet Classification with Deep Con-
+volutional Neural Networks. Advances In Neural In-
+formation Processing Systems, pages 1–9.
+Robert Layton, Paul Watters, and Richard Dazeley.
+2010. Authorship attribution for twitter in 140 char-
+acters or less. Cybercrime and Trustworthy Comput-
+ing Workshop (CTC), IEEE, pages 1–8.
+Robert Layton, Paul Watters, and Richard Dazeley.
+2012. Unsupervised authorship analysis of phishing
+webpages. 2012 International Symposium on Com-
+munications and Information Technologies, ISCIT
+2012, (October):1104–1109.
+Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey
+Dean. 2013. Distributed Representations of Words
+and Phrases and their Compositionality. NIPS,
+pages 1–9.
+Vinod Nair and Geoffrey E Hinton. 2010. Rectified
+Linear Units Improve Restricted Boltzmann Ma-
+chines. Proceedings of the 27th International Con-
+ference on Machine Learning, (3):807–814.
+Jeffrey Pennington, Richard Socher, and Christo-
+pher D. Manning. 2014. Glove: Global Vectors for
+Word Representation. Proceedings of the 2014 Con-
+ference on Empirical Methods in Natural Language
+Processing, pages 1532–1543.
+Martin Potthast, Sarah Braun, Tolga Buz, Fabian
+Duffhauss, Florian Friedrich, Jörg Marvin Gülzow,
+Jakob Köhler, Winfried Lötzsch, Fabian Müller,
+Maike Elisa Müller, Robert Paßmann, Bernhard
+Reinke, Lucas Rettenmeier, Thomas Rometsch,
+Timo Sommer, Michael Träger, Sebastian Wilhelm,
+Benno Stein, Efstathios Stamatatos, and Matthias
+Hagen. 2016. Who wrote the Web? Revisiting in-
+fluential author identification research applicable to
+information retrieval.
+Cicero Nogueira Dos Santos and Victor Guimarães.
+2015. Boosting Named Entity Recognition with
+Neural Character Embeddings. Proceedings of
+NEWS 2015 The Fifth Named Entities Workshop.
+CD Santos and B Zadrozny. 2014. Learn-
+ing Character-level Representations for Part-of-
+Speech Tagging. Proceedings of the 31st Inter-
+national Conference on Machine Learning, ICML-
+14(2011):1818–1826.
+Upendra Sapkota, Steven Bethard, and Thamar
+Solorio. 2015. Not All Character N -grams Are
+Created Equal: A Study in Authorship Attribution.
+Human Language Technologies: The 2015 Annual
+Conference of the North American Chapter of the
+ACL.
+Jonathan Schler, Moshe Koppel, Shlomo Argamon,
+and James Pennebaker. 2005. Effects of Age and
+Gender on Blogging. AAAI Spring Symposium:
+Computational Approaches to Analyzing Weblogs,
+pages 199–205.
+Roy Schwartz, Oren Tsur, Ari Rappoport, and Moshe
+Koppel. 2013. Authorship Attribution of Micro-
+Messages. Empirical Methods in Natural Language
+Processing, pages 1880–1891.
+Yanir Seroussi, Ingrid Zukerman, and Fabian Bohnert.
+2011. Authorship Attribution with Latent Dirich-
+let Allocation. Proceedings of the Fifteenth Confer-
+ence on Computational Natural Language Learning,
+(June):181–189.
+Efstathios Stamatatos. 2007. Author identification us-
+ing imbalanced and limited training texts. Proceed-
+ings - International Workshop on Database and Ex-
+pert Systems Applications, DEXA, pages 237–241.
+Efstathios Stamatatos. 2009. A Survey of Modern Au-
+thorship Attribution Methods. Journal of the Ameri-
+can Society for Information Science and Technology,
+60(3):538–556.
+Byron C. Wallace, Do Kook Choe, and Eugene Char-
+niak. 2015. Sparse, Contextually Informed Models
+for Irony Detection: Exploiting User Communities,
+Entities and Sentiment. Proceedings of the 53rd An-
+nual Meeting of the Association for Computational
+Linguistics and the 7th International Joint Confer-
+ence on Natural Language Processing (Volume 1:
+Long Papers), pages 1035–1044.
+Matthew D. Zeiler. 2012. ADADELTA: An
+Adaptive Learning Rate Method. arXiv preprint
+arXiv:1212.5701.
+Xiang Zhang, Junbo Zhao, and Yann LeCun. 2015.
+Character-level Convolutional Networks for Text
+Classification. Advances in Neural Information Pro-
+cessing Systems, pages 649–657.
+Yukun Zhu, Ryan Kiros, Richard Zemel, Ruslan
+Salakhutdinov, Raquel Urtasun, Antonio Torralba,
+and Sanja Fidler. 2015. Aligning Books and
+Movies: Towards Story-like Visual Explanations by
+Watching Movies and Reading Books. Proceedings
+of the IEEE International Conference on Computer
+Vision.

@@ -1,0 +1,565 @@
+Pixel Level Handwritten and Printed Content Discrimination in Scanned Documents
+Mathias Seuret∗, Marcus Liwicki∗†, and Rolf Ingold∗
+∗University of Fribourg, Department of Informatics
+Bd. de Perolles 90, 1700 Fribourg, Switzerland
+Email: firstname.lastname@unifr.ch
+†DFKI - German Research Center for Artificial Intelligence
+Email: liwicki@dfki.uni-kl.de
+Abstract—Classification of the content of a scanned doc-
+ument as either printed or handwritten is typically tackled
+as a segmentation problem of pages into text lines or words.
+However these methods are not applicable on documents where
+handwritten annotations overlay printed text. In this paper we
+propose to treat the task as a pixel classification task, i.e.,
+to classify individual foreground pixels into either printed or
+handwritten pixels. Our method uses various features of diverse
+nature taking the surrounding window into account. The
+influence of the features and their parameters are investigated
+and optimized on a validation set. Each foreground pixel is
+then classified by a multilayer perceptron using feature vectors
+based on a pixel neighborhood. Finally, a post-processing step
+corrects typical misclassifications, i.e., it removes outliers based
+on several heuristics. We evaluated our method on printed
+documents with real handwritten annotations and reached an
+accuracy of 96.10% on the test set. This is significantly higher
+than a previously published methods based on local features.
+I. INTRODUCTION
+While digital documents offer many advantages compared
+to printed documents, the latter are still often used. As
+printed documents can also be scanned they may then gain
+some advantages of the digital documents. Several process-
+ing steps are required in order to extract information from
+these document images. An important step is to separate
+the printed content from eventual handwritten annotations
+so that they can be handled separately at later stages.
+When working with color document images, handwritten
+annotations can often be filtered out by color clustering.
+Micenkova et al. in [1] have presented a stamps detection
+method based on color clustering achieving a high accuracy.
+However, in many practical cases, color information has
+been discarded and only grey levels are available.
+Figure 1: Document sample.
+We developped a method which works at pixel-level on
+gray level documents images. The dataset which we made
+for this project consists of 102 color documents annotated
+by 15 persons. A document sample is given in Figure 1.
+Our classification method first detects the foreground pixels
+by generating a binary version of the image with Sauvola’s
+thresholding method [2]. Next, it computes features for each
+pixels and uses a multilayer perceptron (MLP) to classify
+them. We have also implemented a post-processing step
+based on recurrent classification errors. As performances
+measurement criterion, we use the accuracy, which corre-
+sponds to the percentage of correctly classified foreground
+pixels.
+The content of this paper is organized as follow. First,
+Section II summarizes some related work. Then, Section III
+describes the proposed methodology, particularly the feature
+extraction, the MLP, and the post-processing. After that,
+Section IV presents our dataset and how it was created.
+Then, Section V gives an overview of how the method was
+optimized. Experimental results and a comparison with a
+state-of-the-art method are then presented in Section VI. The
+conclusion of this paper is given in Section VII.
+II. RELATED WORK
+Most of the research done in the field of printed vs.
+handwritten content separation focuses on the classification
+of areas of the documents larger than single pixels, i.e., text
+lines, words, characters, and more rarely smaller parts.
+The classification of whole text lines as printed or hand-
+written has been done by analyzing the distribution of the
+pixels corresponding to the text by Kuo-Chin Fan et al. [3]
+and by Kavallieratou et al. [4]. In case of machine printed
+text, the height and the alignment of the characters are
+constant and much different than in case of handwritten
+text. Histograms of the vertical pixels distribution can be
+used for discriminating both classes. Individual words can
+also be classified and several methods to do so exist. The
+projection profile of words given to a Hidden Markov Model
+made Guo et al. [5] reach a recall of 90.4%. The invariance
+of the shape of printed characters, for example, has been
+used by Zemouri et al. [6] for the discrimination of printed
+and handwritten words with a recognition rate higher than
+98%. Also, Hangarge et al. [7] used the texture of words to
+discriminate printed from handwritten ones with an accuracy
+2014 14th International Conference on Frontiers in Handwriting Recognition
+2167-6445/14 $31.00 © 2014 IEEE
+DOI 10.1109/ICFHR.2014.77
+423
+of more than 99%. The classification of single characters is
+also possible. An interesting approach is proposed by Pinson
+et al. [8], i.e., the use of “eigenfaces” adapted to text, which
+lead to a mean recall of 91.5%. Koyama et al. [9] presented
+a method based on frequency domain analysis can reach a
+precision of 97% on different kinds of characters.
+The closest method to ours, presented by Sarkar et
+al. [10], splits the documents into fragments of connected
+components which are then classified as handwriting, printed
+graphics, printed text, scanner noise, and dark regions due to
+scanning problems. Features extracted from the fragment’s
+geometrical properties are used for doing an initial clas-
+sification of the fragments in order to attribute scores for
+each of the possible categories. These scores are then used
+as features in a second and final classification. The recalls
+reached are 85.7% for handwritings, 96.0% for printed
+content (graphics and text together), and 92.3% for both
+kind of noise together.
+III. METHODOLOGY
+We use our classifier only on the foreground pixels. Fore-
+ground and background pixels are separated with Sauvola’s
+text binarization. When documents with clean backgrounds
+are used, a simple thresholding method should be sufficient.
+Using machine learning methods for this step would have
+little advantages but require higher computation time.
+A. Feature Extraction
+The features for a given pixel are extracted from its square
+neighborhood. We call this neighborhood the sliding win-
+dow. The radius of the sliding window is written Rw and the
+size of the window as Sw = (2Rw + 1)× (2Rw + 1). Each
+feature can have its own sliding window size, independently
+of the other features. The edge detector features are an
+exception: their window size is fixed to 3×3 pixels, as these
+are the standard parameters of the used filters.
+Our features are either scalar or vectors. The mean lumi-
+nosity, for example, consists of a single value. Others are
+vectors of either fixed size, or of a size depending on Rw.
+For instance, most arithmetic operators, for example, are
+vectors of 2·Rw values. A large sliding window may provide
+more information than a smaller one, but it also contains
+pixels which are far from the feature’s central pixel. When
+the handwritten and printed content are strongly mixed, too
+distant pixels can be of little significance.
+Let Z (p) be the luminosity of a pixel p and N (p) its
+neighborhood of radius Rw, Np = ‖N (p)‖, then we choose
+and tested the following features types:
+Mean Luminosity:
+ML (p) =
+1
+Np
+·
+∑
+pi∈N(p)
+Z (pi)
+Luminosity Variance:
+LV (p) =
+1
+Np
+·
+∑
+pi∈N(p)
+‖Z (pi)−ML (p)‖2
+Smoothness: is a transformation of the variance [7].
+SM (p) =
+1
+1 + LV (p)
+Gradient Density:
+GD (p) =
+1
+Np
+∑
+(x,y)∈N(p)
+( |Z (x+ 1, y)− Z (x, y)|
+|Z (x, y + 1)− Z (x, y)|
+)
+Arithmetic Operators: applied on symetrical pixels: the
+first kind of such operators is
+AO⊕ (p) =
+⎛
+⎜⎜⎜⎜⎜⎜⎜⎜⎝
+Z (x+ 1, y)⊕ Z (x− 1, y)
+Z (x, y + 1)⊕ Z (x, y − 1)
+Z (x+ 2, y)⊕ Z (x− 2, y)
+Z (x, y + 2)⊕ Z (x, y − 2)
+...
+Z (x+Rw, y)⊕ Z (x−Rw, y)
+Z (x, y +Rw)⊕ Z (x, y −Rw)
+⎞
+⎟⎟⎟⎟⎟⎟⎟⎟⎠
+with ⊕ being one of the following operators: +, −,
+∗ or absolute difference (). The second kind of similar
+operators is based on the Laplacian. It is computed as follow:
+AO4 (p) =
+⎛
+⎜⎜⎜⎜⎜⎜⎜⎜⎝
+4Z (x, y) −Z (x− 1, y) −Z (x+ 1, y)
+−Z (x, y − 1) −Z (x, y + 1)
+4Z (x, y) −Z (x− 2, y) −Z (x+ 2, y)
+−Z (x, y − 2) −Z (x, y + 2)
+...
+4Z (x, y) −Z (x−Rw, y) −Z (x+Rw, y)
+−Z (x, y −Rw) −Z (x, y +Rw)
+⎞
+⎟⎟⎟⎟⎟⎟⎟⎟⎠
+Shannon’s entropy: normalized as
+SH (p) =
+1
+1− ∑
+y∈Z(N(p))
+(P (y) ln (P (y)))
+where P (y) is the probability that a pixel in N (p) has
+the value y, and Z (N (p)) is the set of all different pixel
+values in the neighborhood of p.
+Histogram Moments: the n-th moment of a list of values
+X is given by
+Mn = E
+[(
+X − X̄
+σX
+)n]
+The histogram of the sliding window is a list of values
+so we can compute its moments. We have studied the 3rd,
+4th, 5th and 6th moments of the histograms of N (p).
+Edge Detectors: we tested the Sobel filter and the Prewitt
+operator on 3×3 pixels [11].
+Co-Occurence Matrices: for describing textures [12]. We
+computed horizontal and vertical co-occurence matrices with
+the content of the sliding window. First, we multiply the
+424
+(a) Annotated docu-
+ment
+(b) Ground truth
+Figure 2: Colors encode the classes in the ground truth.
+values of the pixels by 32 and floor them and we prepare a
+32×32 matrix which cells are equal to zero. Then, we use
+the values of all couples of horizontal or vertical neighbors
+pixels as indices. The cells corresponding to these indices
+are incremented. Finally, we compute the center of gravity
+of the matrix and divide it by 32.
+Side histogram: the side histogram is the vector of the
+sums of the rows (or columns) of N (p) normalized in [0; 1].
+Run Length: corresponds to the width of a stroke
+in a given direction. We compute it in four directions:{
+0, π4 ,
+π
+2 ,
+3·π
+4
+}
+.
+B. Classifier
+The pixels are classified as printed or handwritten by a
+standard MLP. It has two fully connected hidden layers. The
+first hidden layer is connected to the input layer. The layers
+are fully connected and each perceptron has a bias input. The
+MLP uses backpropagation and gradient descent to adapt
+its weights. The activation functions of the perceptrons are
+randomly choosen between sigmoids, hyperbolic tangents
+and Gaussians, excepted for the output layer which contains
+only sigmoids.
+The MLP takes as input the concatenation of the feature
+vectors of the square neighborhood of the pixel to be
+classified. The dimensions of this neighborhood is a free
+parameter. We call input range ρi the distance between the
+pixel and the border of its neighborhood. The neighborhood
+contains σi = (2ρi + 1) × (2ρi + 1) pixels. If ρi = 0,
+then the MLP receives as input only the feature vector of
+the pixel to be classified. Giving the concatenation of the
+feature vectors of more than one pixel to the MLP allows
+it to compute derivatives of existing features automatically.
+This removes the need of creating manually “super features”
+out of the derivatives of existing features, for example the
+gradient of Shannon’s entropy.
+C. Post-processing
+Experimental results have shown that errors tend to repeat
+some patterns. There are two kind of such errors which can
+be easily corrected. First, single pixels touching only either
+background pixels or pixels attributed to the other class are
+mainly misclassified. Second, horizontal or vertical straight
+lines one-pixel wide are misclassified. If such a line touches
+Table I: Thousands foreground pixels in the different subsets,
+indicated for both classes.
+# 103 pixels
+Training % Validation % Test %
+# documents P H P H P H
+Initial 38 24654 3992 20440 2753 0 0
+Standard 38 0 0 0 0 2470 384
+Arabic 4 0 0 0 0 2120 123
+Chinese 8 0 0 0 0 9694 573
+Comics 4 0 0 0 0 2072 353
+Cyrillic 8 0 0 0 0 5413 704
+only pixels belonging to the other class, then it is probably
+a misclassification error.
+IV. DATASET
+For our experiments, we have created a dataset consisting
+of 102 documents scanned at 300 DPI. The documents
+contain printed text, schemas and mathematical formulas,
+and handwritten annotations, graphics, and formulas. They
+were annotated by 15 different people using their own
+pens and pencils. The annotaters were asked to do the
+annotations anywhere on the documents, but with at least
+some handwritten content in the area of the printed content.
+While many of the annotations are in the margins, roughly
+two thirds of them are directly overlapping with text or are
+situated between text lines, such as the example seen in
+Figure 2.
+The ground truth is created automatically by subtracting
+the original documents from the annotated documents. Pixels
+cannot have both printed and handwritten labels. For doing
+the subtraction, all documents were scanned twice. The orig-
+inal version is then aligned on the annotated one so that they
+can be compared pixel by pixel. To find a transformation
+which aligns both documents, first SIFT feature points are
+computed and matched. Then, it uses a RANSAC method to
+find many transformation candidates. A new transformation
+minimizing the square error is then created with the largest
+inliers set. Note that due to this automatic ground-truthing
+process pixels consisting of handwritten content overlaying
+printed content are still classified as printed content.
+V. EXPERIMENTS
+For our experiments, we separated our dataset into two
+subsets. The first subset composed of most of the documents
+which are used for training and validation during the opti-
+mization of our method. It is composed of 78 documents.
+All of its text uses Latin characters and were written in
+French and English. The second subset was used for finally
+testing our method. It is composed of three different types of
+annotated documents. First, it has four “standard” document
+with the same kind of content as the training and valida-
+tion documents. Second, it has some documents containing
+foreign characters: Arabic, Chinese and Cyrillic. There are
+425
+Figure 4: Error rate of different MLP topologies.
+no such characters in the training and validation documents.
+Finally, it contains some comics. The number of pixels for
+each type of documents is given in Table I. This table also
+indicates the percentage of pixels belonging to the printed
+(P) and handwritten (H) classes, and how they were divided
+into training, validation and testing samples.
+We optimized our method to maximize the accuracy, that
+is the fraction of correctly classified pixels. To optimize our
+method, we extract random samples from the ≈52 millions
+foreground pixels of the training and testing sets. We select
+as many training samples as testing samples. The training
+and testing sample sets we used contained both 1’000’000
+random samples, with half of them coming from handwritten
+pixels. We select new random samples for each test. Our
+MLP has random initial weights, so the gradient descents
+make its results also slightly random. The initial weights of
+each layer is set to random values in
+[− 1N ; 1N ], where N is
+the number of inputs of the layer. The learning speed is set
+to 10−3. Because of the variability of the accuracy of MLP,
+which is due to the initial random weights, each experiment
+result presented in this section is the average of several test
+runs, while the number of runs is given at the respective
+position.
+A. Optimization of the MLP
+We used MLP with one or two hidden layers. We trained
+approximately 5’500 MLP having random numbers of per-
+ceptrons in their hidden layers, i.e., 10 to 100 perceptrons
+in the first hidden layer and 0 to 50 in the second one.
+Figure 4 shows the results for the ≈5000 runs of the
+topology test. The results of topologies which were tried
+several times due to the random number of perceptrons
+have been averaged. Missing results for topologies which
+were not tried for the same reason have been interpolated.
+The color encodes the error rate. Having few perceptrons
+in the first hidden layer leads to a high error rate. The
+second hidden layer is less important, but there is a gain
+of accuracy until ≈15 perceptrons. We selected a topology
+with 80 perceptrons in the first layer and 25 in the second.
+B. Optimization of the MLP input size Sw
+As mentioned in Section III-B, the MLP takes as input the
+concatenation of the feature vectors of the neighborhood of
+the pixel to be classified. We have tried different neighbor-
+hood sizes. The size σi = 1×1 corresponds to using only the
+feature vector of the pixel to be classified. As it can be seen
+in Figure 5a, there is a significant accuracy improvement for
+σi > 1×1. We believe it is due to the ability of the network
+find useful derivatives of features.
+However, increasing σi to more than 3×3 = 9 pixels has
+little effect but requires much more computation time. With
+the most accurate size 7× 7 = 49 pixels, there is 499 ≈ 5.5
+times more data for the MLP to process, but for a small
+improvement only. For this reason, σi = 3 × 3 seems the
+best compromise between computation time and accuracy.
+C. Optimization of sliding window size
+The size of the sliding window is an important parameter.
+There are two options for selecting it: all features can share
+the same sliding window size, or an optimal sliding window
+size can be selected for each feature.
+When all features have the same window size, then this
+size depends on the subset of selected features. This implies
+that during feature selection, the optimal size should be
+searched for every tested subset of features and it would
+require a time much longer than a simple feature selection.
+Selecting the optimal sliding window size for all features
+is equivalent to selecting a size which is good in average, but
+not necessarily good for all features. Figure 5b shows the
+error rate of tests done with a single window size for a subset
+of features. The optimal value seems to be at approximately
+(a) Printed Arabic text (b) Printed comic (c) Drawings on text
+Figure 3: Different types of content of the dataset.
+426
+(a) Different σi. Result of 47 runs. (b) Different Sw . (391 runs using a sub-
+set of features sharing the same sliding
+window size Sw .)
+(c) Different Sw . (400 MLP trainings
+using only one feature.)
+Figure 5: Error rates.
+15×15 pixels. However, as it can be seen in Figure 5c, this
+window size is far from the optimum for all features.
+Using a different window size for each feature type and
+optimizing it solves his problem. It can be done in two
+ways. The first way is to test the features individually, as
+in Figure 5c, and to select their optimal window size. It
+has the advantage to be fast and easy to implement, but it
+has two disadvantages. It does not work if a single feature
+is not sufficient for doing a classification with at least a
+little accuracy, for example in a XOR-like problem. Second,
+it does not take the eventual effects of the combination
+with other features. The second way, which we used, is to
+consider a single feature with two different window sizes to
+be two different features. For example, the mean luminosity
+on 3×3 pixels is not the same feature as the mean luminosity
+on 5×5 pixels. Then, any feature selection method will also
+select the optimal window size for each feature type.
+The window sizes obtained with the second method may
+differ from the ones obtained by studying the features
+individually. The optimal size for a feature can be different
+when this feature is combined with another one. Moreover,
+the feature selection method might select the same feature
+several times with different ranges if it is optimal.
+D. Features selection
+We used a greedy forward algorithm for selecting the fea-
+tures. In order to have a good starting point for the selection,
+we first trained a different MLP with every combinations of
+two different features. As initial feature, we selected the one
+with the highest accuracy mean. Then, we added features to
+this set until we reached a stable accuracy. The final selection
+of features is entropy on 5 × 5 pixels, gradient density on
+3× 3 pixels, luminosity variance on 7× 7 pixels, AO+ on
+11× 11 pixels, AO‖ on 7× 7 pixels, AO4 on 5× 5 pixels,
+and AO∗ on 11× 11 pixels.
+Table II: Test results
+Documents Correctly classified pixels (%)
+Printed content Handwritten content Mean
+Standard 95.84 97.66 96.10
+Chinese 98.65 98.07 98.67
+Cyrillic 98.21 99.64 98.92
+Arabic 70.04 98.94 71.47
+Comic 66.16 96.18 81.17
+The sliding window size of these features do not corre-
+spond to their optimal ones when they are used separately.
+For example, we saw in Figure 5c that the optimal window
+size for the Shannon’s entropy (see section III-A) is 7 × 7
+when it is not combined with another feature.
+VI. RESULTS
+We reached a mean accuracy of 97.70% on random
+samples extracted in the validation documents. As it can
+be seen in Table II, we also reached an accuracy of 96.10%
+for all pixels of the standard test documents. We got even
+higher accuracies on the Chinese and Cyrillic documents.
+The accuracy for the handwritten content in the Arabic and
+comic documents are also good, although they are much
+lower than for the printed content.
+The low accuracy for printed pixels of the Arabic docu-
+ments and of the comics can be explained by the difference
+of quality between these documents and the training and
+testing documents. Arabic documents were printed at low
+quality, as it can be seen in Figure 3a. This made an uneven
+texture which is not found anywhere else in our dataset. The
+comics were pixelated and this also made a very special
+stroke texture, as shown in Figure 3b.
+These results show that for a pixel-level classification,
+high quality documents are required. However, they also
+indicate that classifiers trained on Latin characters only can
+427
+(a) European (b) Chinese
+Figure 6: Misclassification may depend on the script.
+Table III: Surf & K-NN
+K Printed accuracy Handwritten accuracy Global accuracy
+1 83.6 41.7 77.9
+3 72.6 65.8 71.8
+7 87.2 45.3 81.5
+15 94.2 32.5 85.8
+23 96.6 27.2 87.1
+also be used on other characters without significant accuracy
+differences. However, we still can notice that the Chinese
+printed characters have different kinds of errors than printed
+Latin characters. In Latin characters, the misclassified pixels
+are often localized at extremities of strokes, but in Chinese
+characters they tend to be concentrated in the center, as
+shown in Figure 6.
+A. Comparison with an existing method
+We have adapted the method presented by Ahmed et
+al. [13] whichwas originally developed in order to dis-
+tinguish characters touching drawings on plans. They use
+SURF features and the nearest neighbor method.
+We first extract SURF interest points from a half of the
+documents of our dataset. We discard all interest points
+which not located on a foreground pixel. To classify the
+pixels of the other documents, we used the k nearest
+neighbor, for k ∈ {1, 3, 7, 15, 23}. As the interest points
+may be anywhere on the documents, we assign for each
+forground pixel the value of their closest interest point.
+With this method, we have an accuracy of only 72.6% for
+the printed content and 65.8% for the handwritten content,
+which is significantly lower than the 95.84% and 97.66%
+reached by our proposead method. Test results with different
+values of k are given in Table III.
+VII. CONCLUSION
+In this paper, a method for discriminating printed content
+from handwritten annotations at pixel level is presented.
+Features extracted from pixels and their neighbors are clas-
+sified by a MLP. The area used for computing the features
+is specific for each feature. An optimization of different
+parameters has been presented. A method for selecting the
+optimal window size for each feature was also introduced.
+A mean accuracy of 96.10% has been reached on our test
+documents. Equivalent accuracies have been obtained with
+documents containing foreign characters, proving the ro-
+bustness of this method. We also showed that performances
+drop significantly when the ink quality is lower for the test
+documents than for the training and validation documents.
+These results show that classifying the content of doc-
+uments as printed or handwritten is possible even at pixel-
+level, provided that the quality of the documents is sufficient.
+We intend to test our method on more documents. For
+this, we will add more documents to our dataset. We are
+also going to make our dataset available.
+REFERENCES
+[1] B. Micenková, J. van Beusekom, and F. Shafait, “Stamp
+verification for automated document authentication,” 2012.
+[2] J. Sauvola and M. Pietikäinen, “Adaptive document image
+binarization,” Pattern Recognition, vol. 33, no. 2, 2000.
+[3] K.-C. Fan, L.-S. Wang, and Y.-T. Tu, “Classification of
+Machine-Printed and Handwritten Texts Using Character
+Block Layout Variance,” Pattern Recognition, vol. 31, no. 9,
+pp. 1275–1284, 1998.
+[4] E. Kavallieratou, S. Stamatatos, and H. Antonopoulou,
+“Machine-printed from handwritten text discrimination,” in
+Int. Workshop on Frontiers in Handwriting Recognition, 2004,
+pp. 312–316.
+[5] Guo, J.K. and Ma, M.Y., “Separating handwritten material
+from machine printed text using hidden Markov models,” in
+Int. Conf. on Document Analysis and Recognition, 2001, pp.
+439–443.
+[6] Zemouri, E. and Chibani, Y., “Machine printed handwrit-
+ten text discrimination using Radon transform and SVM
+classifier,” in Int. Conf. on Intelligent Systems Design and
+Applications, 2011, pp. 1306–1310.
+[7] M. Hangarge, K. Santosh, S. Doddamani, and R. Pardeshi,
+“Statistical Texture Features based Handwritten and Printed
+Text Classification in South Indian Documents,” CoRR, vol.
+abs/1303.3087, 2013.
+[8] S. Pinson and W. Barrett, “Connected Component Level
+Discrimination of Handwritten and Machine-Printed Text
+Using Eigenfaces,” in Int. Conf. on Document Analysis and
+Recognition, 2011, pp. 1394–1398.
+[9] J. Koyama, A. Hirose, and M. Kato, “Local-spectrum-based
+distinction between handwritten and machine-printed charac-
+ters,” in Int. Conf. on Image Processing, 2008, pp. 1021–1024.
+[10] P. Sarkar, E. Saund, and J. Lin, “Classifying Foreground
+Pixels in Document Images,” in Int. Conf. on Document
+Analysis and Recognition, 2009, pp. 641–645.
+[11] R. Maini and H. Aggarwal, “Study and Comparison of
+Various Image Edge Detection Techniques,” Int. Journal of
+Image Processing), vol. 3, no. 1, pp. 1–11, 2009.
+[12] M. Partio, B. Cramariuc, M. Gabbouj, and A. Visa, “Rock
+texture retrieval using gray level co-occurrence matrix,” in
+Nordic Signal Processing Symposium, vol. 75, 2002.
+[13] S. Ahmed, M. Liwicki, and A. Dengel, “Extraction of Text
+Touching Graphics Using SURF,” in Int. Workshop on Doc-
+ument Analysis Systems, March 2012, pp. 349–353.
+428

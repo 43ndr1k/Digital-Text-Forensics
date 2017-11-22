@@ -1,0 +1,1317 @@
+A testing-based approach to the discovery of
+differentially correlated variable sets.
+Kelly Bodwin, Kai Zhang, and Andrew Nobel
+September 29, 2015
+Abstract
+Given data obtained under two sampling conditions, it is often of inter-
+est to identify variables that behave differently in one condition than in the
+other. We introduce a method for differential analysis of second-order behavior
+called Mining for Differential Correlation (MDC). The MDC method identifies
+differentially correlated sets of variables, with the property that the average
+pairwise correlation between variables in a set is higher under one sample con-
+dition than the other. MDC is based on an iterative search procedure that
+adaptively updates the size and elements of a variable set. Updates are per-
+formed via hypothesis testing of individual variables, based on the asymptotic
+distribution of their average differential correlation. We investigate the perfor-
+mance of MDC by applying it to simulated data as well as recent experimental
+datasets in genomics and brain imaging.
+Keywords: correlation mining, association mining, biostatistics, genomics, high di-
+mensional data
+Address for correspondence: Kelly Bodwin, kbodwin@email.unc.edu
+1
+ar
+X
+iv
+:1
+50
+9.
+08
+12
+4v
+1 
+ [
+st
+at
+.M
+E
+] 
+ 2
+7 
+Se
+p 
+20
+15
+1 Introduction
+A problem that commonly arises in data analysis is how to compare two different datasets
+that measure the same variables under different conditions. In statistical analysis of such
+data, samples in the two datasets are assumed to be generated from two underlying dis-
+tributions. Even when the data is high dimensional, differences between the distributions
+may only be present for a small number of variables, and it is often of interest to identify
+these key variables. In this paper, we present a new method of second order comparative
+analysis, called Mining for Differential Correlation (MDC), which identifies sets of variables
+whose average pairwise correlation is higher in one sample condition than in another. The
+method does not make use of auxilary information, apart from the separation of samples
+into pre-determined groups (e.g. treatment vs control). MDC is applicable to both low
+and high dimensional datasets.
+Most often, differential behavior between sample groups is measured by first-order
+statistics, which are functions of a single variable. Familiar first-order statistics include
+the sample mean and the sample variance. A common example of first-order differential
+analysis is the study of differential gene expression in microarrays (see Cui and Churchill
+(2003) for a canonical example, or Soneson and Delorenzi (2013) and the references therein
+for an overview of several methods). Other applications of first-order differential analysis
+include: text analysis for authorship identification (Stamatatos, 2009), studies of brain
+funcitonality based on regional activation (Phan et al., 2002), and investigation of cultural
+bias in standardized testing (Wainer and Braun, 2013).
+The use of first-order statistics only allows for analysis of a single variable at a time. To
+study relationships between pairs of variables, one requires functions of two variables, which
+specify second-order statistics. Examples of second-order statistics include correlation,
+covariance, and distance. Second-order statistics are useful when one wishes to understand
+interactions between variables, e.g., in clustering problems. Relationships between many
+variables may be summarized in matrix form, where each entry in the matrix represents
+the observed value of a second-order statistic. It is common to look within a matrix of
+relational data for groups of variables that have high pairwise association, and methods
+of second-order analysis have applications in a variety of fields. Interconnected variable
+sets may represent, e.g., social groups in a communication network (Lewis et al., 2008),
+genes in common protein pathways (Jiang et al., 2004), functionally similar brain regions
+(Greicius et al., 2002).
+While there is a large literature on clustering and networks, to the best of our knowl-
+edge, there is relatively little work comparing second-order behavior across two sample
+conditions. The many insights obtained from ordinary second-order variable set selection
+leads us to believe that a second-order differential approach will be of scientific interest.
+The methods introduced in this paper fall under the broader heading of differential as-
+sociation mining. As in ordinary association mining, we are interested in the pairwise
+behavior of variables; however, in the differential setting, we must consider two different
+2
+relational matrices. In some cases, simply taking the difference of the matrices of second-
+order statistics and applying ordinary clustering methods would suffice. However, most
+statistics - including the focus of this paper, the linear correlation coefficient - require a
+more careful treatment. For instance, two sample correlation matrices will exhibit vastly
+different random behavior based on the sample sizes of the corresponding datasets, and
+will have a complex dependency structure when the population correlation matrix is not
+identity.
+The MDC method proposed here addresses correlation-based differential mining in a
+direct way. (Section 1.2 considers possible alternatives based on existing work.) MDC
+seeks variable sets that form differentially correlated (DC) cliques. In a graph, a clique is a
+set of nodes that is fully connected, in the sense that there is an edge between every pair of
+nodes in the set. Informally, a DC clique is a set of variables such that each variable in the
+set has a positive (usually large) average differential correlation with the other variables in
+the set.
+More formally, let R1,R2 be the p× p population correlation matrices of the distribu-
+tions underlying sampling conditions 1 and 2, respectively. Let J ⊂ [p], where [p] is the
+index set {1, ..., p}, and define
+∆(i, J) =
+∑
+j∈J
+(R1 −R2)ij (1)
+to be the average difference of correlations between variable i and variables in index set
+J . (Here the subscript ij denotes the element in the i-th row and j-th column of the
+corresponding matrix.) We define DC cliques as follows.
+Definition 1.1. Let R1,R2 be given and let ∆(·, ·) be defined as in (1). An index set
+A ⊆ [p] with at least two elements is a DC clique for R1 −R2 if
+1. ∆(i, A) > 0 iff i ∈ A,
+2. The set A cannot be written as a disjoint union of nonempty index sets A1, A2 ⊂ [p]
+such that A1 and A2 satisfy conditions 1 and 2 above.
+Condition 1 ensures that no relevant variables are omitted: every variable that is
+positively differentially correlated relative to the set A is included in A. Condition 1 also
+ensures that the DC clique does not contain any extraneous elements. Note that condition
+1 naturally implies that the DC clique has larger total average pairwise correlation under
+the first distribution than under the second. Condition 2 guarantees that the DC clique
+cannot be subdivided into two smaller DC cliques. Note that the definition places no
+conditions on R1 and R2; in particular, R1 and R2 need not be sparse, and need not
+satisfy any structural constraints such as bandedness. For a given pair R1,R2, it may
+happen that no DC cliques exist, or that the entire variable set forms a DC clique. Note
+3
+that the definition of DC cliques is not symmetric: in general, the DC cliques for R1−R2
+will be different from those for R2 −R1.
+As defined above, DC cliques are features of the underlying population distributions
+of the data. The broad objective of MDC is to use observed data to identify DC cliques,
+or approximations of these, without prior knowledge of the identity, number, or size of the
+DC cliques present in the population.
+Remark. Some bioinformatics literature uses the phrase “Differential Co-Expression”,
+sometimes abbreviated “DC”, as an umbrella term for all differential second-order gene
+expression behavior. In this paper, “DC” will refer specifically to differential correlation;
+when a distinction must be made with co-expression or covariance, this will be made explicit.
+1.1 An example
+To motivate our definition of DC cliques, we provide an illustrative real-world example.
+Figure 1 shows an empirical DC clique identified by MDC in real data from The Cancer
+Genome Atlas (TCGA) Research Network (http://cancergenome.nih.gov/). The two sam-
+ple conditions under consideration are Her-2 type breast cancer tumors and Luminal B
+type tumors, as classified by Perou et al. (2000). (Further results for the TCGA dataset
+are provided in Section 5.)
+Figure 1 shows the sample correlation matrices within each tumor type, restricted to a
+set of 365 variables consisting of an empirical DC clique of size 165 selected by MDC (A),
+and 200 randomly chosen variables (B). The variables B are included for contrast, and
+to show that the differential correlation observed in A is not present in the entire dataset.
+The figure illustrates the second-order behavior and the differential nature of the identified
+DC clique A. The block pattern in the upper left corner of the Her-2 plot shows that every
+entry in the correlation matrix of A is large, suggesting that all the variables of A are
+strongly pairwise correlated. The Luminal B sample correlation shows a similar pattern,
+but it is much less pronounced. No such pattern is seen in the variables B.
+In general, the results of MDC are found to be distinct from those found by first-order
+analysis (e.g. differential expression). For example, Figure 2 shows the relative differential
+expression, overall expression level, and differential variation for the above estimated DC
+clique A. For this plot, we ranked all genes in the study (p = 15, 785) by (a) significance of
+t-test for differential mean expression between Her-2 and Luminal B samples, (b) overall
+expression in Her-2 samples, and (c) difference of sample variation for Her-2 versus Luminal
+B samples. Figure 2 provides histograms of the ranking, out of almost 16, 000, for only
+the genes in A. The even spread in each histogram indicates that no first-order tendencies
+are present in the observed DC clique A. Similar results were observed for all other data
+studied in this paper.
+By specifically targeting DC cliques, MDC is able to capture variables whose mutual
+behavior is different across sample conditions. The results are readily interpretable as sets
+4
+Figure 1: Sample correlation matrices for each of two breast cancer tumor subtypes,
+showing observed DC clique (A) and random genes (B) .
+of variables that interact strongly under one sample condition but only weakly (or not at
+all) under another. In this paper, we will demonstrate MDC is an effective and efficient
+way to identify differentially correlated variable sets from observed data.
+1.2 Related work
+There is a substantial body of recent work concerning estimation and testing of covariance
+and correlation matrices in high-dimensional settings. However, to the best of our knowl-
+edge no existing work addresses the search for DC cliques or related differential structures
+in a direct way. Below we provide an overview of work that is related to MDC. In what
+follows, let R1,R2 denote the population correlation matrices of two data distributions,
+and let R̂1, R̂2 denote the corresponding sample correlation matrices.
+Mining from single correlation matrices. Non-differential correlation mining, in which
+one searches for highly associated variables from a single dataset, has been well-studied,
+typically in the context of clustering. Kriegel et al. (2009) provides a survey of clustering
+methods for high-dimensional data based on correlation distance. Datta and Datta (2002)
+and Jiang et al. (2004) and the references therein give an overview of methods developed
+specifically for clustering of gene expression. In general, typical clustering or community
+detection methods must be adapted for application to correlation distances to correct for
+bias (see e.g. MacMahon and Garlaschelli (2015) for an illustrative example).
+Estimation and hypothesis testing. There has been much theoretical work devoted to
+5
+Figure 2: Ranks of genes in observed DC clique (A) out of 15,785 total genes.
+(Ranked by: Differential expression, as measured by p-values of 2-sample t-tests; mean overall
+expression among Her-2 samples; and difference of sample variance between Her-2 and Luminal B.)
+testing equality of high-dimensional covariance or correlation matrices. When the sample
+size n is smaller than the dimension p, classical results are applicable, e.g., likelihood ratio
+tests as discussed in Anderson (1959) and Muirhead (1982), or results like those of (Steiger,
+1980) for testing individual sample correlation. In the high-dimensional (p > n) setting,
+(Cai et al., 2010; Cai and Jiang, 2011; Cai et al., 2014) have developed minimax rate
+optimal tests for the equality of covariance matrices under sparsity assumptions. Results
+for correlation (rather than covariance) are less prevalent; recent work includes tests for sets
+of sample correlation coefficients (Donner and Zou, 2014), tests for rank-based correlation
+matrices (Zhou et al., 2015), and tests for detecting overall dependence (Bassi and Hero,
+2012).
+In some cases, optimal testing procedures inform methods for estimation of high-
+dimensional covariance and correlation matrices. Particularly relevant is the work of Cai
+and Zhang (2014), which yields an estimator for the difference matrix D = R1 − R2.
+This estimator is implemented and discussed further in Section 4. Other approaches to
+high-dimensional estimation include the work of Bickel and Levina (2008), who discuss a
+thresholding estimator for covariance matrices; Peng et al. (2008), who estimate partial
+correlations in sparse regression models; and Rajaratnam et al. (2008), who make use of
+graphical model techniques for covariance matrix estimation.
+Detection of changes in correlation structure. Existing approaches to differential cor-
+relation mining are based on examining individual variables for changes in second-order
+structure across two sample conditions. For example, one may treat R̂1 and R̂2 as the adja-
+cency matrices of two fully connected, weighted networks, and then look for variables whose
+connectivity pattern is very different across the two networks (Xia et al., 2014; Gill et al.,
+2010). Most methods approach differential correlation mining by developing a statistic to
+measure the change in pairwise correlations of an individual variable. Hu et al. (2010) uses
+the covariance distance (total difference of covariances); Choi and Kendziorski (2009) uses
+6
+a direct difference of sample correlations; Fukushima (2013) uses the difference of Fisher
+transformed sample correlations; and Liu et al. (2010) use a filtration (or thresholding)
+step before summing square correlation differences. These methods then permute samples
+across the two classes, recalculating the statistic each time, to measure the significance
+of the original differential correlation. Significant variables may then be selected by an
+appropriate multiple testing procedure.
+1.3 Outline
+This paper is organized as follows. In the next section, we describe in detail the three
+main steps of the MDC procedure. Section 3 provides a closer examination of the test
+statistic used in the procedure, including a discusson of its asymptotic distribution. We
+apply MDC to simulated data in Section 4, and compare the results to possible alternative
+procedures based upon existing work. Finally, in Section 5 we present the results of two
+applications of MDC, to the aforementioned TCGA dataset and to brain activity data from
+the multi-institutional Human Connectome Project.
+2 The MDC Procedure
+In this section, we present details of the three components of the proposed MDC procedure:
+initialization, set update, and residualization. The initialization step employs a simple
+greedy algorithm to select an initial variable set A. Once the initial set is determined, it is
+passed to an update algorithm that iteratively refines the set, making use of a hypothesis
+testing framework to test variables for differential correlation. When an estimated DC
+clique is found, the residualization step prepares the data for further search by removing
+the differential correlation of the discovered set.
+The MDC procedure is summarized below. For detailed pseudocode, see Appendix B.
+7
+The MDC Procedure
+B Initialization: Provide a reasonable initial variable set A.
+B Maximize a score function, using a greedy algorithm.
+B Iteration: Refine A. At each iterative step, repeat the following until termina-
+tion.
+B Test the differential correlation of each variable i with respect to A. Set A′
+to be the index set of all significant variables, controlling FDR.
+B Terminate if A′ = A or a cycle is observed.
+B Update: Set A to be A′.
+B Return: Output variable set A.
+B Residualization: Remove the effect of the DC clique A and repeat search with
+new initial set.
+We now provide a more in-depth discussion of each step of the procedure.
+2.1 Notation
+We assume that the data under condition 1 constitutes n1 independent samples drawn from
+a distribution F1 with correlation matrix R1, and that the data under condition 2 consti-
+tutes n2 independent samples drawn from a distribution F2 with correlation matrix R2.
+Let X1 = (U1, ...,Up) ∈ Rn1×p and X2 = (V1, ...,Vp) ∈ Rn2×p denote the resulting data
+matrices in standard sample-by-variable form. Thus Uj ∈ Rn1 denotes the measurements
+of variable j under condition 1, while Vj ∈ Rn2 denotes the measurements of variable j
+under condition 2. Let X1,A = (Uj)j∈A and X2,A = (Vj)j∈A denote the restriction of X1
+and X2, respectively, to a variable set A ⊂ [p]. Similarly, let R1,A and R2,A denote the
+correlation matrices of the restricted datsets.
+Let Ũj and Ṽj be the standardized versions of Uj and Vj , respectively, and define
+X̃1 = (Ũ1, ..., Ũp) and X̃2 = (Ṽ1, ..., Ṽp). Finally, let R̂1 and R̂2 denote the usual sample
+correlation matrices of X1 and X2, respectively (and R̂1,A and R̂2,A those of the appropriate
+restricted datasets). Thus
+(
+R̂1
+)
+ij
+= ĉorn (Ui,Uj) =
+(
+X̃T1 X̃1
+)
+ij
+and a similar relation holds
+for R̂2.
+8
+2.2 Initialization
+The set update procedure in the second step of MDC readily identifies variables that are
+significantly differentially correlated relative to a given variable set A, and is most effective
+when the initial set of variables exhibits at least low levels of differential correlation. (When
+applied to a randomly chosen set of variables, the set update procedure typically returns
+an empty set.) The core search procedure could be run exhaustively, beginning with
+every variable set A ⊂ [p], but this is not computationally feasible for data sets of high
+or moderate dimension. As an alternative, we identify initial variable sets exhibiting a
+moderate degree of differential expression using a greedy search procedure. We then can
+pass this initial skeleton clique to the set update process to be fleshed out into a final
+estimated DC clique.
+The initialization procedure seeks to maximize the score function
+S(A) =
+∑
+i,j∈A
+{
+(n1 − 3)1/2 ϕ
+(
+R̂1
+)
+− (n2 − 3)1/2 ϕ
+(
+R̂2
+)}
+ij
+where ϕ is the element-wise Fisher transformation of sample correlations, namely
+ϕ(r) =
+1
+2
+log
+(
+1− r
+1 + r
+)
+.
+We designed score function S(·) to stabilize the variance of the random elements. The
+Fisher transformation and subsequent weighting by degrees of freedom ensures that the
+first and second terms in the sum have approximately equal variances for each i, j. In this
+way, we account for the natural variance of the individual elements of R̂1 and R̂2 as well
+as possible imbalance in sample sizes across the two datasets.
+To find a local maximer of S(·), we begin with a random seed A. We consider only
+pairwise swaps, replacing an element of A with one from Ac, and the set A is then updated
+by making the swap that produced the largest increase in the score. Since exactly one
+element is added and removed at each stage, the size of the variable set remains constant.
+The cardinality of A is user-specified (with a default of 50). Due to the subsequent set
+update procedure, we find that a wide range of initial cardinalities result in the same
+final outcome.1 Because of the random seeding, the algorithm is not purely deterministic;
+however, in practice the same local maximum is reached from most seeds.
+Further discussion of the initializing algorithm is available as supplemental material,
+and pseudocode for its implementation may be found in Appendix B. A closely related
+method is implemented in Section 4 for comparison with MDC.
+1As a rule, erring on the side of initial cardinalities that are smaller than the expected output
+set size is advisable, to avoid drowning out signal with too much noise.
+9
+2.3 Core set update procedure
+The heart of the MDC procedure is the set update algorithm, which makes use of multiple
+testing principles to iteratively refine a variable set A. Recall that the goal of MDC is to
+estimate DC cliques from the data. To this end, the set update procedure is designed to
+identify variable sets exhibiting the properties of a true DC clique up to a level of statistical
+significance.
+Consider a single iterative step, at which we update a given variable set A. We wish to
+determine whether each variable i (including those in A itself) ought to be included in the
+updated set A′. Since our eventual goal is to discover a DC clique, we perform hypothesis
+tests based upon the principles of Definition 1.1. For fixed A, the tests for variable i may
+be written as
+H0(i) : ∆(i, A) = 0 vs. Ha(i) : ∆(i, A) > 0 . (2)
+Recall that ∆(i, A), as definied in (1), is a difference of average pairwise correlations be-
+tween i and elements of A from R1 and R2, so this amounts to a test of differential
+correlation relative to a fixed set A. Our updated set is then given by
+A′ = {i : H0(i) was rejected by simultaneous multiple hypothesis testing}.
+In order to test the hypotheses in (2), we require a test statistic. A natural choice is the
+corresponding sample quantity,
+∆̂(i, A) =
+1
+|A|
+∑
+j∈A
+(R̂1 − R̂2)ij . (3)
+In addition to being a straightforward choice, this test statistic exhibits several desirable
+properties discussed in Section 3.
+Let δ(i, A) denote the realized value of the test statistic for a particular dataset. It is
+clear that large positive values of δ(i, A) provide support for the alternate hypothesis in
+(2), while values that are negative or close to zero provide evidence in favor of the null.
+Thus, to test the hypothesis for a particular variable i, it makes sense to calculate p-values
+from the tail probability of the observed value under the null. That is, we would like to
+know, for each i,
+p(i : A) = P0
+(
+∆̂(i, A) > δ(i, A)
+)
+.
+Here the probability P0 alludes to the unknown distribution of the random quantity ∆̂(i, A)
+under the null hypothesis ∆(i, A) = 0. Since we make no assumptions about the distribu-
+tions of data (F1 and F2), we instead make use of asymptotic results to approximate the
+above probability. The asymptotic distribution discussed in Section 3.2 suggests that for
+large enough sample sizes n1, n2,
+p(i : A) ≈ 1− Φ
+ δ(i, A)√
+τ̂21i/n1 + τ̂
+2
+2i/n2
+ . (4)
+10
+Approximation of the variances τ̂21i, τ̂
+2
+2i is discussed in Section 3, derived from existing
+results about the population variance.
+The collection of p-values {p(i : A)}pi=1 therefore measure the significance of the dif-
+ferential correlation of each variable relative to A. In order to select a set of signficant
+variables A′, we apply the modified FDR procedure of Benjamini and Yekutieli to the
+p-values. Specifically, we carry out the following steps
+1. Order p-values {p(i : A)}pi=1 to {p(1), ...,p(p)}.
+2. Define cutoff index k∗ by
+k∗ = max
+k : p(k) <
+(
+k∑
+i=1
+1/i
+)−1(
+kα
+p
+) .
+3. Let A′ = {i : p(i : A) ≤ p(k∗)}.
+Recall that we impose no assumptions on the structure of correlation matrices R1 and
+R2. In particular, it is possible (and indeed, common in real data) that two variables i
+and j are negatively correlated in sample condition 1. Then, the corresponding p-values
+p(i : A) and p(j : A) may be negatively correlated. Most common multiple testing methods
+assume independence or positive dependency between p-values; the possibility of negative
+dependency of p-values necessitates the more conservative multiple testing method of Ben-
+jamini and Yekutieli (2001). This approach controls the expected False Discovery Rate at
+level α.
+Remark. The idea of iteratively updating a set using multiple testing was applied by
+Wilson et al. (2014), in the context of community detection in binary networks. MDC
+employs this basic search structure in the setting of comparative study based on corre-
+lation. Whereas Wilson et al. rely upon a null network distribution based on observed
+node degrees, we require no null distribution; instead, the p-values are calculated from an
+asymptotic distributional result under mild assumptions.
+2.3.1 Termination
+Since the variable set being searched is finite, the set update procedure will necessarily
+reach one of three outcomes: a degeneration (A = ∅), a true convergence (A = A′ 6= ∅), or
+a multi-set cycle. In the first case, the interpretation is simple: the initial set (chosen in
+the first step of the MDC procedure) was not sufficiently differentially correlated to yield
+an interesting result.
+The second case is the most desirable outcome; by design, convergence to a fixed point
+A guarantees that A meets all the requirements of a DC clique in Definition 1.1 up to
+11
+a level of statistical significance. Specifically, if A′ = A, this implies that for the testing
+procedure described in Section 2.3, the hypotheses H0(i) : ∆(i, A) = 0 are rejected iff
+i ∈ A. This ensures, analogously to Definition 1.1, that A contains all relevant variables
+and no extraneous variables (up to a particular confidence level), and that the variable
+set has larger average pairwise sample correlation under the first distribution than under
+the second. (Note that this condition could concievably be met for a different p-value
+calculation or FDR controlling procedure than the one in Section 2.3.) Condition 2 in
+Definition 1.1, which states that a DC clique cannot be subdivided, is not guaranteed in
+general; however, it can be shown that if the initial set passed to the update procedure
+cannot be subdivided, neither can the final set chosen by MDC.
+The third possible outcome of the set update, nonconvergence, is rarely observed in real
+or simulated data. To protect against infinite loops, the algorithm is built with a maximum
+iteration limit. However, we make a special allowance in the case of two-phase cycles. (In
+fact, in practice we never observe more than two phases, and it can be shown that such
+cycles are impossible between disjoint sets.) When the set update procedure oscillates
+between two sets A1 and A2, we restart the search on the intersection A = A1 ∩ A2.
+Usually, this results in true convergence in the vicinity of the intersection. On occasion,
+the same oscillation (A1 to A2) re-emerges, in which case the overlap A1 ∩ A2 is selected
+as the final output. For this overlap set, H0(i) will be rejected for all i ∈ A1, A2. It is not
+quite a fixed point; nevertheless, it shares many properties of a true DC clique, and we
+consider it worthy of attention.
+2.4 Residualization
+In general, we expect multiple DC cliques to be present in data. The residualization
+step allows the MDC procedure to search the same dataset many times, avoiding repeat
+identification of prior results. This is accomplished by generating new residualized data
+matrices X′1,X′2 after each (non-degenerate) termination of the set update algorithm.
+For clarity, let us restrict our attention to X1 (the same process is applied, separately, to
+X2). Suppose the set update procedure converges on a set A, with |A| = k > 0. We model
+the correlation matrix of the variables in A as the combination of a rank-one shared group
+correlation characterized by Λ ∈ Rk and an underlying residual structure Ω ∈ Rk×k, so that
+R1,A = Λ
+tΛ + Ω . The problem of “factor analysis”, or representing correlation matrices
+by the best lower-rank approximation, is well studied (Harman, 1960), so efficient methods
+for estimating Λ are readily available. (In the MDC software, we use the implementation
+of Friguet et al. (2012) for the R Statistical Software version and the method of Bishop
+(2006) for the Matlab version.) Given an estimate Λ̂, we can generate a new submatrix
+X′1,A such that
+ĉorn
+(
+X′1,A
+)
+= R̂1,A − Λ̂tΛ̂ = Ω̂.
+Thus, the sample correlation structure of the residualized data is a good estimate of the
+12
+residual correlation Ω. We then build X′1 by replacing X1,A by the estimated residualized
+data X′1,A and leaving the rest of the dataset unaltered. In this way, neither X′1 nor X′2
+contain the groupwise structure of A captured by Λ. We then are free to apply the MDC
+procedure to X′1 and X′2 and search for secondary empirical DC cliques.
+3 Properties of the Test Statistic
+We now discuss some properties of the test statistic ∆̂(i, A) used in the calculation of
+p-values for the set update procedure.
+3.1 Geometric Interpretation
+The equation for ∆̂(i, A) given in (3) expresses the test statistic directly in terms of average
+differential correlation. However, we may also write ∆̂(i, A) in an alternate form that yields
+an informative geometric interpretation. By an application of Lemma 1.1 of Appendix A,
+∆̂(i, A) = ‖m1‖ ĉorn
+(
+m1, Ũi
+)
+− ‖m2‖ ĉorn
+(
+m2, Ṽi
+)
+.
+Here Ũi ∈ Rn1 and Ṽi ∈ Rn2 are the standardized measurements of variable i under sample
+conditions 1 and 2, respectively, and
+m1 :=
+1
+|A|
+∑
+j∈A
+Ũj and m2 :=
+1
+|A|
+∑
+j∈A
+Ṽj (5)
+are the vector means of the standardized measurements of the variables in A under each
+condition. Note that the vector Ũi and the vectors {Ũj : j ∈ A} lie on the surface of
+an (n1 − 2)-dimensional sphere in Rn1 , and that m1 is the geometric center (centroid) of
+the latter collection. The norm ||m1|| is between 0 and 1; large values of ||m1|| place the
+centroid closer to the surface of the sphere, indicating that the vectors {Ũj : j ∈ A} are
+tightly clustered, or equivalently, that the vectors are highly intercorrelated. Thus the
+quantity ‖m1‖ ĉorn
+(
+m1, Ũi
+)
+weights the similarity of Ui and the centroid m1 according
+to the overall similarity of the vectors {Ũj : j ∈ A}. Similar remarks apply to {Ṽj : j ∈ A}
+and m2; the statistic ∆̂(i, A) is the difference of the summary measures in conditions 1 and
+2.
+Figure 3 gives a simple two-dimensional representation of the geometric picture dis-
+cussed above. In condition 1, Ui is not strongly correlated with m1, but ‖m1‖ is large
+because the vectors indexed by A are tightly clustered. In condition 2, Vi is strongly
+correlated with m2, but ‖m2‖ is small because the vectors indexed by A are not tightly
+clustered. In this example, ∆̂(i, A) is close to zero, and we would likely conclude no differ-
+ential correlation is present.
+13
+Figure 3: Geometric representation of data in two dimensions. Unlabelled points
+represent the standardized data in group A.
+3.2 Asymptotic distribution of ∆̂(i, A)
+We now discuss the asymptotic distribution of ∆̂(i, A), from which the p-values used in
+Section 2.3 are derived. First, we make note of a classical result concerning sample corre-
+lations.
+Theorem 1. (Steiger and Hakstian, 1982) Let R be a p×p correlation matrix, and R̂
+the corresponding sample correlation matrix based on n i.i.d. samples of p-variate data with
+finite 4th moment. Let P and P̂ be the vectorized versions of the matrices, of dimension
+p2 × 1. Then, as n tends to infinity
+√
+n
+(
+P̂−P
+)
+⇒ Np2 (0,Σ)
+where Σ is a p2 × p2 covariance matrix for which a general form is given in Browne and
+Shapiro (1986).
+Using Theorem 1 one may evaluate the asymptotic distribution of ∆̂(i, A), which is a
+function of P and P̂.
+Corollary 1.1. Let A be a fixed index set and let ∆̂(i, A) be defined as in (3), with sample
+correlation matrices R̂1 and R̂2 based on n1 and n2 independent samples from distributions
+F1 and F2 respectively. Then there is a sequence of positive numbers σn(i, A) such that
+14
+under the null hypothesis in (2),
+∆̂(i, A)
+σn(i, A)
+⇒ N (0, 1) (6)
+as min(n1, n2)→∞.
+Proof: For clarity, we first examine only one “half” of ∆̂(i, A). Let
+H1(i, A) =
+1
+|A|
+∑
+j∈A
+(
+R̂1
+)
+ij
+and ρ̄1(i, A) =
+1
+|A|
+∑
+j∈A
+(R1)ij . (7)
+Note that H1(i, A) is a linear function of R̂1 and that ρ̄1(i, A) is the same function applied
+to the population correlation matrix R1. It follows from Theorem 1 that
+√
+n1
+(
+H1(i, A)− ρ̄1(i, A)
+τ1(i, A)
+)
+⇒ N (0, 1) .
+where τ21 (i, A) can be expressed as the mean of appropriate elements of the covariance
+matrix Σ in the theorem. To apply this result for the full test statistic, we note that
+∆̂(i, A) = H1(i, A)−H2(i, A). Then since samples from F1 are independent of those from
+F2, we may simply add the two half-variances (appropriately weighted) to get the full
+variance of ∆̂(i, A), which we denote by
+σ2n(i, A) =
+τ21 (i, A)
+n1
++
+τ22 (i, A)
+n2
+. (8)
+Finally, we note that under the null hypothesis in (2), ρ̄1(i, A) = ρ̄2(i, A). This fact
+follows directly from the definition of ∆(i, A) given by (1). Then, the limiting distribution
+of ∆̂(i, A) is immediate.
+3.3 Approximations
+Practical considerations lead us to make some approximations when applying Corollary 1.1
+to real data. The results of the corollary apply to variable sets of fixed cardinality as n1 and
+n2 tend to infinity. In practice, one may encounter variables sets for which |A| > n1, n2.
+Simulations suggest that the MDC algorithm still identifies DC cliques with high success
+and controls Type I error in such settings even when the cardinality of |A| greatly exceeds
+the sample size. We believe the asymptotic normality of ∆̂(i, A) continues to hold in these
+regimes; efforts are ongoing to establish such results.
+The exact expression for the covariance matrix Σ in Theorem 1, from which we derive
+σn(i, A), is very complex, and necessarily depends on population quantities whose true
+15
+values are unknown. In order to address these issues, we make use of a closed form expres-
+sion for the asymptotic covariance of sample correlations from elliptical data (Nel, 1985),
+namely,
+lim
+n→∞
+[
+var
+(
+R̂ij
+)]
+=
+(
+1− ρ2ij
+)
+lim
+n→∞
+[
+cov
+(
+R̂ij , R̂ik
+)]
+= ρjk(1− ρ2ij − ρ2ik)−
+1
+2
+ρijρik(1− ρ2ij − ρ2ik − ρ2jk) .,
+where ρij = Rij is the population correlation, which we estimate by the corresponding
+sample quantity R̂ij . For further algorithmic speed, we also make the substitution ρij ≈ ρ̄A
+for i, j ∈ A, i.e., we assume that all off-diagonal correlations in A are identical. Simulations
+have shown that this substitution causes minimal error and is nearly always conservative.
+4 Simulation Study
+To test the MDC method against possible alternatives, we implemented a simple study of
+performance on simulated data. We created artificial datasets containing a single DC clique
+and compared the results of several methods to the known truth. Although the simulated
+setting is not a perfect representation of real data situations, it readily illustrates the
+advantages of MDC as opposed to adaptations of existing methods.
+4.1 Methods implemented
+In the absence of directly comparable methods, we instead endeavored to adapt related
+existing work to search for DC cliques. We implemented representative examples for the
+related work discussed in Section 1.2.
+Mining a single correlation matrix (WGCNA). We implemented the Weighted Gene
+Co-Expression Network Analysis (WGCNA) method of Langfelder and Horvath (2008) for
+clustering correlation matrices of gene expression data. This method is a hybrid analysis,
+which mines for clusters (or “modules”) in a single correlation matrix, then tests each
+module for differential expression. To instead adapt WCGNA to the problem of finding
+DC cliques, we took the following approach:
+1. Apply the WGNCA module mining algorithm individually to the data from sample
+class 1, to find highly correlated set A.
+2. Find the collection of pairwise sample correlations among elements in A from sample
+classes 1 and 2 respectively. Call these ω1 and ω2.
+3. Perform a standard t-test for ω̄1 > ω̄2.
+4. Return A if the t-test is significant. Else, return the empty set.
+16
+The purpose of steps 2 and 3 was to test the WGCNA modules for differential correlation,
+even though they were chosen non-differentially. In cases where multiple sets were iden-
+tified by WGCNA, we used only the “best” (most differentially correlated) set, since the
+simulated data included only one seeded DC set.
+Estimation of correlation matrices (D-EST and FISH). We implemented the method of
+Cai and Zhang (2014) to estimate D = R1 −R2 by the suggested estimator D̂. To search
+for the seeded DC clique, we extracted a cluster by applying k-means clustering (Mac-
+Queen, 1967) with 2 centers, converting D̂ to a distance matrix. (We found most cluster
+identification methods returned essentially equivalent variable sets, so we used k-means
+for computational efficiency.) For our simulated data, 2-means clustering either found two
+garbage clusters of equal size, or one “correct” cluster and meaningless background. Since
+the size k of the true seeded DC clique was known, we returned only k-means output clus-
+ters with size less than 1.05 k. This approach roughly controlled the overselection (Type
+I) error.
+We also consider extracting a cluster, in the same manner, from the matrix
+D̂Fisher = (n1 − 3)1/2 ϕ
+(
+R̂1
+)
+− (n2 − 3)1/2 ϕ
+(
+R̂2
+)
+where ϕ is the (element-wise) Fisher transformation of sample correlations. We included
+this tranformation because it is a key component of the initialization procedure; its advan-
+tages are discussed further in Section 2.2. Note that D̂Fisher is not, in fact, an estimator
+of R̂1 − R̂2, but it is analogous to D̂ in that large entries in general correspond to large
+correlation differences.
+Detection of changes in correlation structure (DCP). We applied the Differential Cor-
+relation Profile (DCP) method of Liu et al. (2010). This method takes a permutation
+approach to variable selection. Each variable i ∈ [p] is assigned a measure Ψi of over-
+all differential correlation. The samples are then randomly permuted many times, each
+time calculating new measures Ψ′i, and significant variables are chosen by comparing Ψi
+to the permutated values. This approach identifies a list of individual differentially corre-
+lated variables, rather than a united set; for the purposes of this study, we considered the
+collection of selected variables to be the estimated DC clique.
+4.2 Simulated Data
+We simulated data with a single embedded DC clique A, consistent with Definition 1.1.
+Our study varied the following parameters: size of the DC clique (k), total number of
+variables (p), strength of the correlations (ρ1 and ρ2), samples sizes of the two datasets
+(n1 and n2), and background data. We considered three background types: uncorrelated,
+positive, and real data. To elaborate, let S1 and S2 be matrices that are 1 on the diagonal,
+ρ1 or ρ2 (respectively) on the off-diagonal for indices in a fixed set A, and 0 otherwise.
+Then, the three types of data simulations were:
+17
+Uncorrelated Gaussian, where the data was generated from multivariate Normal
+distributions with correlations R1 = S1,R2 = S2.
+Positively correlated Gaussian, so that the correlation matrices of the data were
+R1 = S1 + ρ1/3, R2 = S2 + ρ1/3. That is, the correlation was boosted everywhere
+(except on the diagonals) in equal part for both datasets.
+Real data, where the dataset was derived from a real-world data source2 with samples
+randomly assigned one of two sample classes. By adding a common vector to variables
+in A, we induced further correlation ρ1 and ρ2 in the DC clique.
+We found that all methods reacted similarly to changes in sample sizes n1, n2 and
+clique size k (relative to p). Here, we present only the results regarding ρ1 vs. ρ2 and
+different background types, to illustrate key differences in performance between methods.
+By default, the other parameters were set to be n1 = n2 = 100, k = 100, and p = 1000.
+4.3 Results
+The success of the methods was measured by Type I and Type II error. We considered
+Type I error to be false discovery, or the percentage of variables in a selected set that were
+not in the seeded DC clique. Type II error was defined as the percentage of undetected
+variables from the true DC clique. Specifically, if B is the output variable set of a procedure
+and A is the embedded DC clique, we define
+Type I Error =
+|B \A|
+|A|
+and Type II Error =
+|A \B|
+|B|
+.
+We applied the five proposed methods (MDC, D-EST, FISH, DCP, and WGCNA) to
+a variety of values of ρ1 and ρ2 for each of the three background data types. For each
+(ρ1, ρ2), we ran 100 random trials and averaged the results. Figure 4 shows the resulting
+average Type I errors for each method as the seeded differential correlation gets stronger
+(ρ1 − ρ2 grows), with other parameters fixed at default values. Figure 5 shows the same
+for the Type II error.
+2The Cancer Genome Atlas; Luminal A tumor subtype
+18
+0.2 0.4 0.6 0.8
+0.
+0
+0.
+1
+0.
+2
+0.
+3
+0.
+4
+0.
+5
+Uncorrelated background
+Difference of seeded correlations
+Ty
+pe
+ I 
+E
+rr
+or
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+0.1 0.2 0.3 0.4 0.5 0.6 0.7
+0.
+0
+0.
+1
+0.
+2
+0.
+3
+0.
+4
+0.
+5
+Positively correlated background
+Difference of seeded correlations
+Ty
+pe
+ I 
+E
+rr
+or
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+0.2 0.4 0.6 0.8
+0.
+0
+0.
+1
+0.
+2
+0.
+3
+0.
+4
+0.
+5
+Real data background
+Difference of seeded correlations
+Ty
+pe
+ I 
+E
+rr
+or
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+Figure 4: Average Type I errors by difference of correlations for each data type.
+(n1 = n2 = 100, k = 100, p = 1000).
+0.0 0.2 0.4 0.6 0.8 1.0
+0.
+0
+0.
+2
+0.
+4
+0.
+6
+0.
+8
+1.
+0
+Uncorrelated background
+Difference of seeded correlations
+Ty
+pe
+ II
+ E
+rr
+or
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+0.0 0.2 0.4 0.6 0.8 1.0
+0.
+0
+0.
+2
+0.
+4
+0.
+6
+0.
+8
+1.
+0
+Positively correlated background
+Difference of seeded correlations
+Ty
+pe
+ II
+ E
+rr
+or
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+0.2 0.4 0.6 0.8
+0.
+0
+0.
+2
+0.
+4
+0.
+6
+0.
+8
+1.
+0
+Real data background
+Difference of seeded correlations
+Ty
+pe
+ II
+ E
+rr
+or
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+Figure 5: Average Type II errors by difference of correlations for each data type.
+(n1 = n2 = 100, k = 100, p = 1000).
+All methods tested generally control the Type I error at the desired rate (0.05) in
+most cases. There are a few notable exceptions. First, the only setting in which MDC
+does not control Type I error is the real data setting with very low seeded differential
+correlation. This is simply due to the complex structure of the real data - some sample
+permutations will, by chance, create small DC cliques in the data. Second, WGCNA
+does not control Type I error when the background is not uncorrelated. This is because
+WGCNA is designed to be a single-dataset mining method, not a differential one. When the
+background data shows strong correlation, WGCNA (correctly) identifies a large correlated
+19
+cluster in the first dataset. This cluster will occasionally appear slightly differential, and
+so the adapted WGCNA method will misidentify it as a DC clique. Finally, the DCP
+method vastly overselects variables in the uncorrelated background case. This is likely
+because the mutual behavior of the variables in A induces some correlation structure in
+the background variables; see e.g. Figure 1 for an illustration, where there is some pattern
+in the cross correlation between variables in B and A. This result emphasizes the danger of
+the common approach of looking for changes correlation structure in individual variables,
+rather than searching for DC cliques: vestigal correlation changes may be misleading.
+(When the background has its own structure, as in positively correlated or real data, the
+induced pattern is overshadowed, so the high Type I error of DCP does not occur.)
+In Figure 5, we see a consistent pattern: all methods fail to detect the DC clique until
+a certain threshold, and then almost perfectly detect it after. MDC begins to detect the
+DC cliques earlier than all other methods for every background type. (Although WGCNA
+appears to have lower Type II error for positively correlated data, the aforementioned
+problems with Type I error control indicate that this is due to extreme overselection, not
+higher sensitivity.)
+Note that in Figures 4 and 5, the case ρ1 = ρ2 = 0 is omitted. This is because
+when the correlation is not differential - even if ρ1 and ρ2 are nonzero - no DC cliques
+are present. We expect such structure to arise commonly in real data, where groups of
+variables may be universally correlated without regard to the particular sample conditions
+being studied. It is important that a search procedure does not identify nonexistent DC
+cliques in these situations. Figure 6 shows the average sizes (over 100 trials) of the selected
+sets for each method over various values of ρ (= ρ1 = ρ2). A set size of zero, where the
+method did not identify a false DC clique, represents the ideal outcome. It is clear that
+all methods except MDC are prone to error when non-differential correlation is present.
+(We once again see MDC finding very small DC cliques in the real data case, due to the
+sample permutations.) This striking difference in performance illustrates the ways in which
+existing methods are simply not designed for the specific case of DC cliques. Only MDC
+includes a testing-based element, which allows it to dismiss observed correlation for which
+there is not enough evidence of differential behavior.
+20
+0.2 0.4 0.6 0.8
+0
+20
+40
+60
+80
+10
+0
+Uncorrelated background
+Rho
+S
+iz
+e 
+Fo
+un
+d
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+0.1 0.2 0.3 0.4 0.5 0.6 0.7
+0
+20
+40
+60
+80
+10
+0
+Positively correlated background
+Rho
+S
+iz
+e 
+Fo
+un
+d
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+0.2 0.4 0.6 0.8
+0
+20
+40
+60
+80
+10
+0
+Real data background
+Rho
+S
+iz
+e 
+Fo
+un
+d
+MDC
+D-EST
+WGCNA
+DCP
+FISH
+Figure 6: Average set size found when no differential correlation is present for each
+data type. (n1 = n2 = 100, k = 100, p = 1000).
+4.4 A note about computation
+Of the methods tested, only MDC and WGCNA are computationally reasonable for large p
+(∼ 105 or more). It is clear that permutation-based methods such as DCP quickly become
+impractical as p grows, since they require the computation of a p by p correlation matrix
+for each of many permuations. The methods FISH and D-EST also have memory demands
+on the order of p2, as they are based upon the estimation of the full p by p difference of
+correlation matrices, D̂Fisher and D̂.
+5 Data Analyses
+5.1 TCGA
+We now expand upon the real data application referenced in Figure 1. Recall that we
+applied the MDC procedure to samples from two pre-determined breast cancer subtypes:
+Her-2 and Luminal B. A total of 18 empirical DC cliques (more correlated in Her-2 than
+in Luminal B) were discovered, ranging in size from 13 to 165 genes. To illustrate how this
+information may be useful to genomic research, we briefly discuss one of the discovered gene
+sets. The set of interest contained 46 genes, listed alphabetically in Tabel 1. These genes
+are found to be highly associated with immune response, particularly the HLA (Human
+Leukocyte Antigen) gene class, represented by six of the genes in the set. Researchers are
+interested in understanding how and why some cancer subtypes trigger immune response
+while others do not. For example, Iglesia et al. (2014) showed that prognosis was improved
+for patients with Her-2 and basal-like subtypes showing higher immunoreactive response.
+21
+Further exploration of DC cliques such as the one in Table 1 may further understanding
+of the gene interactions that drive immune response.
+Table 1: Genes selected in empirical DC Clique for Her2 vs. Luminal B samples.
+AGER amt APOL1 ARPC4 B2M BATF2 BTN3A2
+BTN3A3 C19orf38 calml4 CCDC146 CHKB-CPT1B echdc1 ETV7
+EXOSC10 FBXO6 GBP1 GBP4 GJD3 gnb3 HLA-A
+HLA-B HLA-C HLA-E HLA-F HLA-H HSH2D IDO1
+IL15 Irf1 LOC115110 LOC400759 LOC91316 micB Myo15b
+OASL PILRB Rec8 Rufy4 SAMD9L SEC31B STAT1
+tap1 Tapbp TTLL3 TXNDC6 Ube2l6 Zbp1
+5.2 The Human Connectome Project
+The Human Connectome Project is a multi-institutional venture aimed at mapping func-
+tional connections between parts of the human brain. The project has collected vast
+amounts of brain scan data, all of which is publicly available to researchers at www.humanconnectome.org.
+In this analysis, we made use of a dataset from the “500 Subjects MR” data release, which
+consists of functional magnetic resonsance imaging (fMRI) brain scans for 542 healthy
+adult subjects. Participants performed a variety of tasks during the MR scan, designed to
+isolate certain types of brain functionality. Activation levels were recorded over time for
+∼30,000 voxels (3D coordinate locations in the brain’s white matter interior) and ∼60,000
+greyordinates (indexed locations over the grey matter brain surface).
+In this paper, we applied MDC to data from a single subject. 3 We compared two task
+categories:
+Language-based tasks: During the scan, subjects were told brief stories and asked to
+answer questions after each one about what they were told.
+Motor-based tasks: Subjects were attached to motion sensors at the hands, feet,
+and tongue. They were then asked to move one appendage at a time, in blocks of
+repetitions.
+MDC to searched amongst 91,282 brain locations (or nodes) for DC cliques that exhibit
+more correlation over time during language tasks than during motor tasks.
+The first empirical DC clique selected by MDC contained 1218 nodes, of which 1031/1218
+(85%) were located on the cortical surface. These nodes, or “greyordinates”, are visualized
+as points on the smoothed exterior of the brain in Figure 7. We also include two other arti-
+facts of the data for comparison. First, we include the 1200 nodes exhibiting the strongest
+3Subject #101006, a 35-year-old female.
+22
+differential first-order behavior in Figure 8a. These show higher mean activation during the
+language tasks than during the motor tasks, as measured by standard two-sample t-tests.
+Second, we include 1200 nodes found to be highly correlated over time for the language task
+data, irrespective of their behavior in the motor task data, in Figure 8b.4 All three variable
+sets of interest - the DC clique, the differential activation set, and the high correlation set -
+show striking regional configurations, even though none of the analyses incorporate spatial
+information in their variable selection process. However, these variables are not only in
+separate brain areas, but show different types of locational patterns.
+Figure 7: Brain locations of DC clique for languages tasks versus motor tasks.
+4 In Figures 7 and 8, certain views of the brain (e.g. an underside view) or even full cortices
+(e.g. the left cortex in 8a) are omitted. This is because a very small portion of the relevant nodes
+(< 5%) are located in these regions.
+23
+(a) High differential mean activation.
+(Right cortex, exterior view.)
+(b) High correlation during language tasks.
+(Left cortex, interior view.)
+Figure 8: Brain locations showing high first-order differences and high non-
+differential correlation.
+For the first-order differential analysis (Figure 8a), we see a clear grouping in the right
+frontal lobe. This pattern is unsurprising and appears in many studies of brain functionality
+that examine differential activation for language processing (Voets et al., 2006). We include
+this basic first-order analysis to illustrate that differential correlation is not redundant.
+None of the empirical DC cliques selected by MDC show high frontal lobe concentration;
+instead, they exhibit “trail-like” patterns such as the ones shown in Figure 7.
+The nodes that are highly correlated in the language tasks alone (Figure 8b) are ex-
+tremely tightly grouped. This is likely due to the nature of data measurement: fMRI
+brain scans measure oxygen flow in the brain, so measurements for adjacent regions tend
+to “blur” and show high artificial correlation (Derado et al., 2010). In this case, the same
+node set is also highly correlated during motor tasks, suggesting that it is likely a byprod-
+uct of data collection. Even if this node set does represent a meaningful result - regions,
+perhaps, that are universally correlated regardless of task - it is not differential.
+This example illustrates the advantage of taking a differential approach like MDC.
+Effects due to fMRI-driven spatial correlation or strong universal correlation can drown out
+signal that is truly specific to a particular sample condition. By comparing language tasks
+to the similar but distinct condition of motor tasks, we are able to isolate signals that are
+unique to language processing. For example, the empirical DC clique in Figure 7 includes
+a concentrated group in the rear of the left cortex. This general brain region is known to
+be specifically associated with language processing and auditory input (Wernicke’s Area,
+see Wang et al. (2015)).
+The fact that the identified DC cliques show emergent locational patterns suggests that
+24
+MDC is capturing a true facet of the data rather than arbitrary correlation. Since this out-
+put is unique in form, while maintaining some consistency with known brain functionality,
+we believe it merits further scientific investigation.
+6 Conclusion
+In this paper, we have introduced a new statistical method, MDC, to identify differentially
+correlated variable sets from observed data. The MDC algorithm has been shown to be built
+on statistical principles with a theoretical basis, and to perform accurately and efficiently
+in a variety of settings. Unlike existing methods, MDC is specifically built to discover DC
+cliques, and its underlying testing process controls error. Additionally, the MDC software
+can be run on extremely high dimensional data without large memory demands or long
+runtimes. Preliminary data analysis results in the application areas of both gene expression
+data and brain activation are encouraging.
+Code for public use of MDC is freely available at http://kbodwin.web.unc.edu/software/.
+7 Acknowledgements
+Kelly Bodwin was partially supported by NSF Graduate Research Fellowship grant DGE-
+1144081. Kai Zhang was partially supported by NSF grant DMS-1309619. Andrew Nobel
+was partially supported by NSF grant DMS-1310002 and NIH (National Insitute of Mental
+Health) grant R01MH10181901. This material was also based upon work partially sup-
+ported by the NSF under Grant DMS-1127914 to the Statistical and Applied Mathematical
+Sciences Institute. The content is solely the responsibility of the authors and does not nec-
+essarily represent the official views of the National Institutes of Health or the National
+Science Foundation.
+The authors wish to thank Yin Xia, Andrey Shabalin, Katherine Hoadley, and Kimberly
+D.T. Stachenfeld for their contributions.
+25
+A Algebraic Fact
+Lemma 1.1. Let Ui be vectors of n i.i.d. samples and Ũi their standardizations, as in
+Section 2.1. Let m1 be the vector mean of an index set A, as in (5). Then,
+1
+|A|
+∑
+j∈A
+ĉorn (Ui,Uj) = ‖m1‖ ĉorn
+(
+Ũi,m1
+)
+.
+Proof of Lemma 1.1 By a straightforward calculation and the definition of m1,
+1
+|A|
+∑
+j∈A
+ĉorn (Ui,Uj) =
+1
+|A|
+∑
+j∈A
+(
+Ũ tj Ũi
+)
+=
+ 1
+|A|
+∑
+j∈A
+Ũj
+ t Ũi
+= m t1Ũi
+= ‖m1‖ ĉorn (m1,Ui) .
+Lemma 1.1
+26
+B Detailed Pseudocode
+B.1 Initializing Algorithm
+Algorithm 1 Initial Search Procedure
+1: procedure InitMDC(X1,X2, k) . Target output size k.
+2: F1,F2 ← Fisher transformed correlation matrices of X1,X2.
+3: B ← index set of size k chosen uniformly at random
+4: repeat
+5: S =
+∑
+i,j∈B
+(F1 − F2)ij
+6: for a in B, r in BC do . Possible swaps
+7: Sar =
+∑
+i,j∈B∪{r}{a}
+(F1 − F2)ij
+8: end for
+9: a∗, r∗ ← maximizers of Sar subject to Sa∗r∗ > S.
+10: B ← B ∪ {r∗}{a∗} . Best swap
+11: until no such a∗, r∗ exist
+12: return B
+13: end procedure
+27
+B.2 Core Search Algorithm
+Algorithm 2 Mining of Differential Correlation (MDC)
+1: procedure MDC(X1,X2, A) . Initial index set A
+2: Aprev ← ∅
+3: cycle← 0
+4: repeat
+5: t = 1 or 2 . Sample class label
+6: mt ← mean ({Xt}A)
+7: for i in 1, · · · , p do
+8: rti ← ĉor (Xti ,mt)
+9: T̂i ← m1r1i −m2r2i . Sample test statistic.
+10: H0,i : Ti = 0
+11: pi ← P
+(
+Ti ≥ T̂i |H0,i
+)
+. DC variable p-values
+12: end for
+13: Anext = {i : H0,i rejected by FDR controlled multiple testing}
+14: if Aprev = Anext then . Check for cycles.
+15: Aprev ← A
+16: A← A ∩ Anext
+17: cycle+ = 1
+18: else . Update sets.
+19: Aprev ← A
+20: A← Anext
+21: end if
+22: until Anext = Aprev or Anext = ∅ or cycle = 2
+23: return A
+24: end procedure
+28
+References
+Anderson, T. (1959). An Introduction to Multivariate Statistical Analysis. Wiley-
+Interscience.
+Bassi, F. and Hero, A. (2012). Large scale correlation detection. Proc. of the IEEE
+International Symposium on Information Theory, pages 2591–2595.
+Benjamini, Y. and Yekutieli, D. (2001). The control of the false discovery rate in multiple
+testing under dependency. Ann. Stat., 29(4):1165–1188.
+Bickel, P. and Levina, E. (2008). Covariance regularization via thresholding. Ann. Statist.,
+34(6):2577–2604.
+Bishop, C. M. (2006). Pattern Recognition and Machine Learning. Springer Science and
+Business Media, LLC., Oxford, England.
+Browne, M. and Shapiro, A. (1986). The asymptotic covariance matrix of sample correlation
+coefficients under general conditions. Linear Algebra and its Applications, 82:169–176.
+Cai, T. T. and Jiang, T. (2011). Limiting laws of coherence of random matrices with
+applications to testing covariance structure and constructions of compressed sensing
+materials. Ann. Statist., 39(3):1496–1525.
+Cai, T. T., Liu, W., and Xia, Y. (2014). Two-sample covariance matrix testing and support
+recovery in high-dimensional and sparse settings. Journ. of the Am. Stat. Ass., 108:265–
+277.
+Cai, T. T. and Zhang, A. (2014). Inference on high-dimensional differential correlation
+matrix. Technical Report.
+Cai, T. T., Zhang, C.-H., and Zhou, H. H. (2010). Optimal rates of convergence for
+covariance matrix estimation. Ann. Statist., 38(4):2118–2144.
+Choi, Y. and Kendziorski, C. (2009). Statistical methods for gene set co-expression analysis.
+Bioinformatics, 25(21):2780–2786.
+Cui, X. and Churchill, G. A. (2003). Statistical tests for differential expression in cdna
+microarray experiments. Genome Biology, 4(4):210.
+Datta, S. and Datta, S. (2002). Comparisons and validation of statistical clustering tech-
+niques for microarray gene expression data. Bioinformatics, 19(4).
+Derado, G., Bowman, F. D., and Kilts, C. D. (2010). Modeling the spatial and temporal
+dependence in fmri data. Biometrics, 66(3):949–957.
+29
+Donner, A. and Zou, G. (2014). Testing the equality of dependent intraclass correlation
+coefficients. J. R. Statist. Soc. D, 51(3):367–379.
+Friguet, C., Kloareg, M., and Causeur, D. (2012). A factor model approach to multiple
+testing under dependence. J. Am. Statist. Ass., 104(488):1406–1415.
+Fukushima, A. (2013). Diffcorr: An r package to analyze and visualize differential correla-
+tions in biological networks. Gene 518, pages 209–214.
+Gill, R., Datta, S., and Datta, S. (2010). A statistical framework for differential network
+analysis from microarray data. BMC Bioinformatics, 11(95):1471–2105.
+Greicius, M. D., Krasnow, B., Reiss, A. L., and Menon, V. (2002). Functional connectivity
+in the resting brain: A network analysis of the default mode hypothesis. P.N.A.S,
+100(1):253–258.
+Harman, H. H. (1960). Modern factor analysis. Univ. of Chicago Press, New York.
+Hu, R., Qiu, X., and Glazko, G. (2010). A new gene selection procedure based on the
+covariance distance. Bioinformatics, 26(3):348–354.
+Iglesia, M. D., Vincent, B. G., Parker, J. S., Hoadley, K. A., Carey, L. A., Perou, C. M.,
+and Serody, J. S. (2014). Prognostic b-cell signatures using mrna-seq in patients with
+subtype-specific breast and ovarian cancer. Clinical Cancer Research, 20(14):3818–3829.
+Jiang, D., Tang, C., and Zhang, A. (2004). Cluster analysis for gene expression data: A
+survey. Knowledge and Data Engineering, IEEE Transactions, 16.11:1370–1386.
+Kriegel, H.-P., Krger, P., and Zimek, A. (2009). Clustering high-dimensional data: A survey
+on subspace clustering, pattern-based clustering, and correlation clustering. ACM Trans.
+on Knowledge Disc. from Data (TKDD), 3(1).
+Langfelder, P. and Horvath, S. (2008). Wgcna: an r package for weighted correlation
+network analysis. BMC bioinformatics, 9(1):559.
+Lewis, K., Kaufman, J., Gonzalez, M., Wimmer, A., and Christakis, N. (2008). Tastes,
+ties, and time: A new social network dataset using facebook.com. Social Networks,
+30(4):330–342.
+Liu, B.-H., Yu, H., Tu, K., Li, C., Li, Y.-X., and Li, Y.-Y. (2010). Dcgl: an r package for
+identifying differentially coexpressed genes and links from gene expression microarray
+data. Bioinformatics, 26(20):2637–2638.
+MacMahon, M. and Garlaschelli, D. (2015). Community detection for correlation matrices.
+Physical Review X, 5(2).
+30
+MacQueen, J. (1967). Some methods for classification and analysis of multivariate obser-
+vations. Proc. of the fifth Berkeley Symp. on math. stat. and prob., 1(14).
+Muirhead, R. J. (1982). Aspects of Multivariate Statistical Theory. John Wiley and Sons,
+Inc.
+Nel, D. (1985). A matrix derivation of the asymptotic covariance matrix of sample corre-
+lation coefficients. Linear Algebra and its Applications, 67:137–145.
+Peng, J., Wang, P., Zhou, N., and Zhu, J. (2008). Partial correlation estimation by joint
+sparse regression models. J. Am. Statist. Ass., 104(486).
+Perou, C. M., Srlie, T., Eisen, M. B., van de Rijn, M., Jeffrey, S. S., Rees, C. A., Pollack,
+J. R., Ross, D. T., Johnsen, H., Akslen, L. A., Fluge, O., Pergamenschikov, A., Williams,
+C., Zhu, S. X., Lonning, P. E., Borresen-Dale, A.-L., Brown, P. O., and Botstein, D.
+(2000). Molecular portraits of human breast tumours. Nature, 406:747–752.
+Phan, K. L., Wager, T., Taylor, S. F., and Liberzon, I. (2002). Functional neuroanatomy
+of emotion: A meta-analysis of emotion activation studies in pet and fmri. NeuroImage,
+16:331–348.
+Rajaratnam, B., Massam, H., and Carvalho, C. (2008). Flexible covariance estimation in
+graphical models. Ann. Statist., 36:2818–2849.
+Soneson, C. and Delorenzi, M. (2013). A comparison of methods for differential expression
+analysis of rna-seq data. BMC Bioinformatics, 14(91).
+Stamatatos, E. (2009). A comparison of methods for differential expression analysis of
+rna-seq data. Journ. of the Am. Soc. for Info. Science and Tech., 60(3):538–556.
+Steiger, J. H. (1980). Tests for comparing elements of a correlation matrix. Psych. Bulletin,
+87(2):245–251.
+Steiger, J. H. and Hakstian, A. R. (1982). The asymptotic distribution of elements of a
+correlation matrix: Theory and application. Brit. Journ. of Math. and Stat. Psych.,
+35:208–215.
+Voets, N., Adcock, J., Flitney, D., Behrens, T., Hart, Y., Stacey, R., Carpenter, K.,
+and Matthews, P. (2006). Distinct right frontal lobe activation in language processing
+following left hemisphere injury. Brain, 129(3):754–766.
+Wainer, H. and Braun, H. I. (2013). Test Validity. Routledge.
+31
+Wang, J., Fan, L., Wang, Y., Xu, W., Jiang, T., Fox, P. T., Eickhoff, S. B., Yu, C., and
+Jiang, T. (2015). Determination of the posterior boundary of wernicke’s area based on
+multimodal connectivity profiles. Human Brain Mapping, 36:1908–1924.
+Wilson, J. D., Wang, S., Mucha, P. J., Bhamidi, S., and Nobel, A. B. (2014). A testing based
+extraction algorithm for identifying signicant communities in networks. The Annals of
+Applied Statistics, 8(3):1853–1891.
+Xia, Y., Cai, T., and Cai, T. T. (2014). Testing differential networks with applications to
+detecting gene-by-gene interactions. Biometrika (to appear).
+Zhou, C., Han, F., Zhang, X., and Liu, H. (2015). An extreme-value approach for testing
+the equality of large u-statistic based correlation matrices. arXiv:1502.03211.
+32

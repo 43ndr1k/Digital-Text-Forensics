@@ -1,0 +1,781 @@
+Service-orientierte Architekturen für Information Retrieval
+Sven Meyer zu Eissen and Benno Stein
+Fakultät Medien, Mediensysteme
+Bauhaus-Universität Weimar, 99421 Weimar
+sven.meyer-zu-eissen@medien.uni-weimar.de
+benno.stein@medien.uni-weimar.de
+Abstract
+Dieses Papier gibt eine Einführung in TIRA1, ei-
+ner Software-Architektur für die Erstellung maß-
+geschneiderter Information-Retrieval-Werkzeu-
+ge. TIRA ermöglicht Anwendern, den Verarbei-
+tungsprozess eines gewünschten IR-Werkzeugs
+interaktiv als Graph zu spezifizieren: die Kno-
+ten des Graphen bezeichnen so genannte „IR-
+Basisdienste“, Kanten modellieren Kontroll- und
+Datenflüsse. TIRA bietet die Funktionalität eines
+Laufzeit-Containers, um die spezifizierten Verar-
+beitungsprozesse in einer verteilten Umgebung
+auszuführen.
+Motivation für unsere Forschung ist u. a. die Her-
+ausforderung der Personalisierung: Es gibt eine
+Diskrepanz zwischen der IR-Theorie und ihren
+Algorithmen und der – an persönlichen Wün-
+schen angepassten – Implementierung, Vertei-
+lung und Ausführung entsprechender Program-
+me. Diese Kluft kann mit adäquater Software-
+technik verkleinert werden.
+1 Einleitung
+Information-Retrieval (IR) ist eine Schlüsseltechnologie im
+Umgang mit der Informationsüberflutung, die wiederum
+aus ubiquitärer Verfügbarkeit von Informationen und ei-
+ner schnell wachsenden Zahl an Informationsquellen und
+-erzeugern entsteht. Dabei steht IR nicht als universelle Lö-
+sung für ein generisches Problem – vielmehr ist IR ein
+Sammelbegriff für unzählige Lösungen individueller In-
+formationsbedürfnisse. Um wirksam und nützlich zu sein,
+muss IR-Technologie an persönliche Fragestellungen, an
+persönliche Vorlieben, an persönliche Fähigkeiten und an
+persönliche Daten angepasst werden. Diese Forderung wird
+von existierender IR-Technologie erst ansatzweise erfüllt:
+beispielsweise werden generische Suchmaschinen bei der
+Suche im World Wide Web benutzt, die nicht über problem-
+spezifisches Wissen verfügen und den Erfolg einer Suche
+der Kreativität des Anwenders und seiner Erfahrung und
+Zeit überlassen.
+Aus der Sicht der Softwaretechnik steht hinter jedem
+IR-Werkzeug ein bestimmter IR-Prozess. Die Implemen-
+tierung eines IR-Prozesses sollte nicht monolithisch ge-
+schehen, sondern dem Paradigma der Service-Komposition
+folgen: Ein maßgeschneidertes IR-Werkzeug für einen in-
+dividuellen IR-Prozess könnte durch die Kombination von
+1Akronym für „Text-based Information Retrieval Architec-
+ture“.
+IR-Basisdiensten spezifiziert und operationalisiert werden.
+Für eine Architektur, die so etwas ermöglicht, wünscht man
+sich folgende Eigenschaften:
+• Flexibilität. Die Spezifikation von IR-Prozessen, ihre
+Anpassung an geänderte Informationsbedürfnisse und
+ihre Evaluation kann ad-hoc geschehen.
+• Offenheit. Die Entwicklung und Integration neuer IR-
+Dienste ist unterstützt.
+• Modularität. Das Speichern und die Wiederbenutzung
+von Prozessen als eigene Basisdienste ist möglich.
+• Skalierbarkeit. Mehr Rechenleistung führt zu schnel-
+lerer Ausführung.
+Das vorliegende Papier beschäftigt sich mit diesen Her-
+ausforderungen und stellt entsprechende Lösungen vor. Ka-
+pitel 2 beschreibt den Zusammenhang zwischen Retrieval-
+Theorie und IR-Software und motiviert einen Service-
+orientierten Lösungsansatz zur Implementierung von IR-
+Prozessen. Kapitel 3 diskutiert Formalismen, mit denen IR-
+Prozesse modelliert werden können, und Kapitel 4 erläutert
+die Konzepte von TIRA.
+2 Von IR-Theorie zu IR-Software
+Abhängig von einer gegebenen Retrieval-Aufgabe können
+verschiedene Aspekte eines Dokuments d wichtig sein,
+z. B. sein Layout, sein struktureller oder logischer Aufbau,
+oder seine Semantik. Eine Computerrepräsentation d von
+d muss die für die Retrieval-Aufgabe relevanten Aspekte
+widerspiegeln; bei der Konzipierung einer Repräsentation
+spielen linguistische Theorien, Algorithmen zur Textana-
+lyse, Datenstrukturen zur Verwaltung großer Datenmengen
+und statistische Erkenntnisse eine Rolle. Eine optimale Re-
+präsentation d ist sowohl auf die formalisierte Anfrage q
+gemäß der Retrieval-Aufgabe als auch auf das Retrieval-
+Modell R abgestimmt. Dabei umfasst R die linguistische
+Theorie, auf der die Abbildung d → d basiert, sowie die
+Funktion ρ(q,d), welche die Relevanz einer Abfrage q zu
+der Computerrepräsentation d eines Dokuments quantifi-
+ziert.
+Abbildung 1 (unterhalb der gestrichelten Linie) illu-
+striert diese Zusammenhänge; darüber ist die abstrakte
+Softwaretechniksicht dargestellt: der individuelle Informa-
+tionsbedarf eines Anwenders wird durch einen IR-Prozess
+erfüllt.
+Tatsächlich ist die gegenwärtige Praxis bei der Imple-
+mentierung von IR-Prozessen bibliotheksbasiert: Funktio-
+nen, die mehr oder weniger komplexe Aufgaben lösen,
+werden mit generischen Schnittstellen versehen und in an-
+deren Projekten wiederverwendet. Diese Praxis hat sich
+77
+FGIR 2006
+Dokument-
+modell
+formalisierte
+Anfrage
+persönlicher
+Information-
+bedarf
+q ∈Q
+Computer-
+repräsentation
+von Dokument
+d ∈D
+q ∈Q
+Relevanz-
+berechnung
+Retrieval-
+Modell R
+ρ(q,d)
+linguistische
+Theorie
+IR-Prozess
+Abstrakte SWT-Sicht
+IR-Theorie und Algorithmen
+reales
+Dokument
+Layout-
+sicht
+konzeptuelles
+Dokumentmodell
+semantische
+Sicht
+strukturelle/
+logische Sicht
+d ∈D
+Abbildung 1: Als Ergebnis eines IR-Prozesses wird zu ei-
+nem Informationsbedarf q ein passendes Dokument d ge-
+liefert (oberhalb der gestrichelten Linie). Die Realisierung
+dieses Prozesses bedingt die Abstraktion von q und d zu
+Computerrepräsentationen q bzw. d (unterhalb der gestri-
+chelten Linie). Dieser Abstraktion liegt eine linguistische
+Theorie zugrunde, die in einem Retrieval-Modell R opera-
+tionalisiert ist.
+teilweise bewährt, sie berücksichtigt jedoch kaum die IR-
+spezifische Entwurfssituation:
+• IR-Prozesse bestehen aus autonomen Software-
+Bausteinen, im folgenden als Module bezeichnet.
+Grundsätzlich stellt jedes Modul einen Dienst zur Ver-
+fügung, der eine Eingabedatenstruktur in eine Ausga-
+bedatenstruktur überführt. Beispiele für solche Mo-
+dule sind Importfilter, Cluster-Algorithmen, Validi-
+tätsmaße, Ranking-Funktionen, Klassifizierer, POS-
+Tagger oder Visualisierungsalgorithmen.
+• Typisch im Information Retrieval ist die Existenz al-
+ternativer Lösungen sowohl für ein und dieselbe Auf-
+gabe als auch für verwandte Probleme.2 Beispielswei-
+se gibt es statistische und regelbasierte Stemming-Al-
+gorithmen [Porter 1980; Stein und Potthast 2006] oder
+interne, externe und korpusbasierte Schlüsselwortex-
+traktionsverfahren.
+• Unterschiedliche Aufgaben innerhalb eines IR-
+Prozesses können mit unterschiedlichen Parame-
+trisierungen eines generischen Algorithmus gelöst
+werden.3 Beispiele hierfür sind Stemming-Algorith-
+men oder Stopwort-Filter [Porter 2001], die abhängig
+von der gewünschten Sprache Regeln oder Wortlisten
+als Eingabeparameter erhalten.
+• IR-Prozesse werden häufig modifiziert: sie werden op-
+timiert, mit neuen Ideen erweitert und an sich ändern-
+de Informationsbedürfnisse angepasst.
+2Man beachte die Anwendbarkeit des in [Gamma et al. 1998]
+beschriebenen Strategy-Design-Patterns.
+3Man beachte den Zusammenhang zum Factory-Design-Pat-
+tern und zum Decorator-Pattern aus [Gamma et al. 1998].
+• Häufig lassen sich Teile von IR-Prozessen paral-
+lel ausführen, insbesondere wenn Dokumente bezüg-
+lich unterschiedlicher Fragestellung analysiert wer-
+den. Ein Beispiel hierfür ist die intrinsische Ähnlich-
+keitsanalyse einer Dokumentkollektion bzgl. Thema,
+Genre, oder Schreibstil [Ifrim et al. 2005; Stamatatos
+et al. 2000; Meyer zu Eissen und Stein 2006].
+• Es gibt Standardmodule, die für fast jeden IR-Prozess
+von Nutzen sind. Hierzu zählen Module für das Stem-
+ming, Module für die Stopwortentfernung oder Kon-
+verter für Binärformate wie Adobe Acrobat (PDF)
+oder Microsoft Word.
+Die dargestellten Punkte zeigen die modulare Natur von
+IR-Prozessen; dieser sollte bei einer Operationalisierung
+Rechnung getragen werden. In diesem Zusammenhang
+schlagen wir ein zweistufiges Konzept vor: Spezifikation
+eines IR-Prozesses als Diagramm (Schritt 1), das automa-
+tisch instanziiert und als verteiltes Softwaresystem imple-
+mentiert wird (Schritt 2).
+3 Spezifikation von IR-Prozessen
+Als Beispiel für einen IR-Prozess betrachten wir die Auf-
+gabe, ein Dokument sowohl nach Thema als auch nach
+Genre in eine Themen-Taxonomie bzw. Genre-Taxonomie
+einzuordnen [Meyer zu Eißen und Stein 2004]. Abbil-
+dung 2 zeigt eine Spezifikation des zugrunde liegenden
+IR-Prozesses in Pseudo-Code: aus einem Dokument mit
+der URL u werden Computerrepräsentationen für eine
+Themen-Kategorisierung und eine Genre-Kategorisierung
+erstellt, die als Eingabe für bereits konstruierte Klassifizie-
+rer dienen. Man beachte, dass mehrere Textrepräsentatio-
+nen (HTML, Rohtext, gefilterter Text) notwendig sind, um
+die Repräsentationen zu generieren.
+Diese Art der Spezifikation folgt dem eingangs beschrie-
+benen bibliotheksbasierten Paradigma, und sie besitzt meh-
+rere Schwächen: (i) der Austausch eines Moduls zieht
+fehleranfällige Datenstruktur- und Code-Ersetzungen nach
+sich, (ii) Expertenwissen bezüglich der zugrunde liegen-
+den Softwarebibliothek ist notwendig, (iii) das Ausnutzen
+der Parallelität zwischen Teilaufgaben führt zu einem un-
+flexiblen Design, da die Parallelität im Programm fest ver-
+drahtet werden muss, u. a. in der Gestalt von Threads oder
+Remote-Function-Calls, (iv) auch die Verteilungsstrategie
+muss fest verdrahtet werden.
+Einen Ausweg stellt die Spezifikation von IR-Prozessen
+auf einer konzeptuellen Ebene dar, beispielsweise mittels
+einer grafischen Modellierungssprache. In der Vergangen-
+heit wurden verschiedene Modellierungstechniken für ähn-
+liche Fragestellungen eingesetzt; sie lassen sich nach dem
+folgenden Schema einteilen [Teich 1997]:
+1. kontrollflussdominant oder zustandsorientiert:
+endliche Automaten, UML Zustandsdiagramme
+2. datenflussdominant oder aktivitätsorientiert:
+Datenflussgraphen, Petri-Netze, markierte Graphen,
+UML Aktivitätsdiagramme
+3. strukturorientiert:
+Komponentenzusammenhangsdiagramme, UML
+Klassendiagramme, UML Verteilungsdiagramme
+4. zeitorientiert: UML Zeitdiagramme
+5. datenorientiert: ER-Diagramme
+6. hybrid: Kombinationen der oben genannten
+Prinzipien, z. B. Kontroll/Datenflussgraphen
+78
+LWA 2006
+Input: URL u, dictionary dict, stopword list stl.
+Output: genre and topic class for the document at URL u.
+Text ht=download(u);
+Text plainText=removeHTMLTags(ht);
+Text filteredText=removeStopwords(plainText, stl);
+FeatureVector topicModel=buildTopicModel(filteredText, dict);
+Language lang=detectLanguage(plainText);
+FeatureVector presentationFeatures=buildPresentationFeatures(ht);
+FeatureVector posFeatures=buildPOSFeatures(plainText, language);
+FeatureVector genreModel=union(presentationFeatures, posFeatures);
+int topicClass=classifyTopic(topicModel);
+int genreClass=classifyGenre(genreModel);
+return(topicClass, genreClass);
+Abbildung 2: IR-Prozess für eine Kategorisierungsaufgabe, spezifiziert in Pseudo-Code
+Ein Großteil der IR-Prozesse kann als datenflussdomi-
+nant angesehen werden, da sie von Anwendern mittels ei-
+ner Anfrage gestartet werden und kein involviertes Modul
+ohne die Ausgabedaten seiner Vorgängermodule ausführ-
+bar ist.
+Neben der Möglichkeit, Datenabhängigkeiten zu spezi-
+fizieren, muss ein Modellierungsansatz für IR-Prozesse es
+auch ermöglichen, Parallelität (Verzweigungen und Syn-
+chronisation) zu definieren. Weiterhin sollte ein Modellie-
+rungsansatz die Typisierung von Daten unterstützen, um
+leistungsfähige Constraints für die Menge möglicher Mo-
+dulverbindungen definieren zu können. Abhängig von der
+Modellierungsgranularität kann es sinnvoll sein, Iteratio-
+nen auf Teilprozessen mit den damit verbundenen Bedin-
+gungen zu formulieren.
+Der folgende Abschnitt diskutiert gängige Modellie-
+rungswerkzeuge in Hinblick auf ihre Eignung zur Spezi-
+fikation von IR-Prozessen.
+3.1 Petri-Netze
+Ein Petri-Netz [Petri 1962; Teich 1997] ist ein Tupel N =
+〈S, T, F, c, w, m0〉; dabei ist
+• S = {s1, . . . , sm} eine Menge von Stellen,
+• T = {t1, . . . , tn} eine Menge von Transitionen,
+• S ∩ T = ∅,
+• F ⊆ (S × T ) ∪ (T × S) eine Flussrelation; die
+Elemente in F werden auch als Kanten bezeichnet,
+• k : S → N ∪ {∞} eine Funktion, die eine
+Kapazitätsbeschränkung für jede Stelle definiert,
+• w : F → N eine Funktion, die Kantengewichte
+definiert,
+• m0 : S → N0 eine Anfangsmarkierung mit der
+Eigenschaft ∀s ∈ S : m0(s) ≤ k(s).
+Ein Petri-Netz ist ein bipartiter Graph, dessen Knoten-
+menge aus einer Stellenmenge S und einer Transitionsmen-
+ge T besteht, wobei jede Stelle s ∈ S bis zu k(s) Marken
+aufnehmen kann. Stellen werden als Kreise notiert, Mar-
+ken stellen Punkte in den entsprechenden Kreisen dar, das
+Symbol für eine Transition ist ein Balken, und gerichtete
+Kanten aus F werden als Pfeile zwischen Transitionen und
+Stellen notiert. Die Markierung m0 definiert eine initiale
+Verteilung der Marken auf die Stellen, und eine beliebige
+Markierung ist mit m : S → N0 bezeichnet. Abhängig
+davon, welche Transition feuert, ändert sich auch die Mar-
+kierung. Abbildung 3 zeigt ein Petri-Netz, das die Katego-
+risierungsaufgabe modelliert.
+Semantik von Petri-Netzen Für x ∈ S ∪ T bezeichne
+•x = {y | (y, x) ∈ F} den Vorbereich von x und x• =
+{y | (x, y) ∈ F} den Nachbereich von x. Eine Transition
+t ∈ T heißt aktiviert unter einer gegebenen Markierung m
+genau dann, wenn gilt:
+1. ∀s ∈ •t \ t• : m(s) ≥ w(s, t)
+2. ∀s ∈ t • \ • t : m(p) ≤ k(s) − w(t, s)
+3. ∀s ∈ t • ∩ • t : m(s) ≤ k(s) − w(t, s) + w(s, t)
+Eine aktivierte Transition t kann feuern. Dadurch werden
+an jeder Stelle s ∈ •t genau w(s, t) Marken konsumiert
+und für jedes s ∈ t• genau w(t, s) Marken produziert.
+Download
+Plain text extraction
+Stopword removal
+Topic model builder
+Topic classifier
+URL
+Hypertext
+Filtered text
+Topic model
+Topic class
+Presentation
+feature builder
+POS feature
+builder
+Stopword
+list
+Plain text
+Dictionary
+Feature union
+Genre classifier
+Genre model
+Genre class
+POS features
+Language
+Presentation
+features
+Language
+detection
+Copy
+Plain text
+Abbildung 3: IR-Prozess für die Kategorisierungsaufgabe,
+spezifiziert als Petri-Netz.
+79
+FGIR 2006
+Diskussion In unserem Szenario werden Module durch
+Transitionen modelliert, und die Marken entsprechen den
+Daten, die in Modulen verarbeitet und zwischen Modulen
+ausgetauscht werden. Petri-Netze können sowohl sequen-
+tielle als auch nebenläufige Prozesse modellieren: Abbil-
+dung 3 zeigt ein Petri-Netz für die Kategorisierungsaufga-
+be. Die beiden Klassifikationen werden parallel ausgeführt
+und lassen sich synchronisieren, um das Ergebnis einem
+Anwender anzuzeigen.
+Petri-Netze sind gut erforscht; in den vergangenen vier-
+zig Jahren wurden zahlreiche Werkzeuge zu ihrer Analyse
+und Simulation entwickelt, wie Algorithmen zur Ermitt-
+lung der Erreichbarkeit oder zur Feststellung von Dead-
+locks. Allerdings sind die Marken in Petri-Netzen nicht un-
+terscheidbar und daher nicht zur Modellierung unterschied-
+licher Datentypen geeignet. Des weiteren sehen Petri-
+Netze nicht vor, eine Verarbeitungsreihenfolge der Marken
+innerhalb der Stellen zu definieren, und es ist fraglich, ob
+eine Standardstrategie (z. B. FIFO) immer hinreichend für
+IR-Prozesse ist.
+Die Beschränkung bezüglich der Datentypen lässt sich
+mit gefärbten Petri-Netzen aufheben [Jensen 1997]. Aber
+auch mit dieser Erweiterung bleibt das Modellieren von
+Kontrollflüssen stark eingeschränkt: Da Petri-Netze nicht
+in eine Marke hinein sehen können, lassen sich Kontroll-
+flüsse, die von den Werten der Daten abhängen, nur um-
+ständlich modellieren.
+3.2 Datenflussgraphen
+und Kontroll/Datenflussgraphen
+Ein Datenflussgraph G = 〈V, E〉 ist ein gerichteter Graph,
+in dem jeder Knoten eine Aufgabe repräsentiert und jede
+gerichtete Kante einen Datenfluss zwischen ihren inziden-
+ten Knoten darstellt. Die Semantik eines solchen Graphen
+ist, dass eine Aufgabe v ∈ V nur dann ausgeführt werden
+kann, falls alle Aufgaben u ∈ V mit (u, v) ∈ E schon aus-
+geführt worden sind. Abbildung 4 zeigt einen Datenfluss-
+graphen für die Kategorisierungsaufgabe.
+Wenn man in dem abgebildeten Datenflussgraphen Kno-
+ten und Kanten durch Petri-Netz-Transitionen und -Stellen
+ersetzt, erhält man ein Petri-Netz, das isomorph zu Abbil-
+dung 3 ist. Folglich treffen die oben diskutierten Schwä-
+chen auch auf Datenflussgraphen zu. Die Schwäche, dass
+Kontrollstrukturen wie Iterationen schlecht modellierbar
+Download
+Plain text extraction
+Stopword removal
+Topic model builder
+Topic classifier
+Hypertext
+Filtered text
+Topic model
+out
+Presentation
+feature
+builder POS feature
+builder
+Stopword
+list
+Plain text
+Dictionary
+Feature union
+Genre classifier
+Language
+Language
+detection
+in
+out
+Genre model
+Abbildung 4: IR-Prozess für die Kategorisierungsaufgabe,
+spezifiziert als Datenflussgraph.
+sind, trifft nicht mehr auf die ausdrucksstärkeren Kon-
+troll/Datenflussgraphen (CDFG) zu. Diese nämlich ergän-
+zen Datenflussgraphen um Kontrollflusskanten, die zur
+Modellierung von Kontrollflussalternativen sowie zur Mo-
+dellierung von Iterationen benutzt werden können. Übli-
+cherweise definieren Kontrollflusskanten alternative Pfade,
+von denen genau einer gemäß einer Bedingung begehbar
+ist.
+Diskussion CDFGs sind ausdrucksstark genug, um kom-
+plexe IR-Prozesse mit Verzweigungen und Iterationen zu
+modellieren. Allerdings zeigt die Datenflusskomponente in
+Abbildung 4, dass sich Datentypen und Synchronisation
+nur implizit durch Kantenbeschriftungen modellieren las-
+sen. Dieses Defizit wird von dem intuitiven UML Model-
+lierungsansatz behoben.
+3.3 UML Aktivitätsdiagramme
+UML Aktivitätsdiagramme vereinen neue Ideen, die
+Flusssprachen zur Spezifikation von Web-Service-Kompo-
+sitionen (z. B. BPEL [Andrews et al. 2003]) zugrunde lie-
+gen, mit traditionellen Konzepten wie dem Markenkonzept
+von Petri-Netzen, um Kontroll- und Datenflüsse zwischen
+so genannten Aktionen zu modellieren. Insbesondere wer-
+den Aktionsknoten, Objektknoten und Kontrollknoten mit
+gerichteten Kanten verbunden, die sowohl Datenflüsse als
+auch Kontrollflüsse modellieren können [Hitz et al. 2005].
+Abbildung 5 zeigt ein Aktivitätsdiagramm, das die Katego-
+risierungsaufgabe modelliert.
+Ähnlich wie bei CDFGs werden IR-Basisdienste mit
+Knoten beschrieben, hier als Aktionsknoten bezeichnet.
+Objektknoten können zwischen Aktionsknoten platziert
+werden und stellen Datenobjekte dar, die zwischen den
+Aktionsknoten übertragen werden. Alternativ können auch
+Konnektoren, so genannte Pins, direkt mit Aktionsknoten
+Download
+Plain text
+extraction
+Feature union
+Stopword
+removal
+Topic
+model builder
+Topic
+classifier
+URL
+u:URL
+hyperText:Text
+hyperText:Text
+plainText:Text
+stl:Text
+filteredText:Text
+dict:Dictionary
+topicModel:
+FeatureVector
+Presentation
+feature builder
+Language
+detection
+POS
+feature builder
+Genre
+classifier
+genreModel:
+FeatureVector
+posFeatures:
+FeatureVector
+presentation
+Features:
+FeatureVector
+lang:Language
+hyperText:Text hyperText:Text
+topic classgenre class
+Abbildung 5: IR-Prozess für die Kategorisierungsaufgabe,
+spezifiziert als UML Aktivitätsdiagramm.
+80
+LWA 2006
+verknüpft werden, um Eingabe- und Ausgabedatentypen zu
+spezifizieren.
+Kontrollknoten unterteilen sich weiter in Verzweigungs-
+knoten (decision nodes), Verschmelzungsknoten (merge
+nodes), Parallelisierungsknoten (fork nodes) und Synchro-
+nisierungsknoten (join nodes). Verzweigungsknoten leiten
+den Kontrollfluss exklusiv über einen von mehreren mögli-
+chen Zweigen, abhängig von der Bedingung, die an einen
+Verzweigungsknoten gebunden sind; ihr Gegenstück sind
+die Verschmelzungsknoten. Der Beginn einer nebenläufi-
+gen Verarbeitung wird mittels Parallelisierungsknoten mo-
+delliert; Synchronisierungsknoten synchronisieren sowohl
+Daten- als auch Kontrollflüsse.
+Ein Aktivitätsdiagramm kann in „Schwimmbahnen“
+(swim lanes) unterteilt werden, wobei eine Schwimmbahn
+dazu dient, Knoten und Kanten hinsichtlich gemeinsamer
+Eigenschaften zu gruppieren. Solche logischen Einheiten
+(zum Beispiel in sich geschlossene Teile einer Retrieval-
+Aufgabe) werden vom Anwender definiert und erlauben es,
+einen komplexen IR-Prozess zu strukturieren.
+Diskussion Nicht nur wegen ihrer Intuitivität sind UML
+Aktivitätsdiagramme weitläufig akzeptiert. Weiterführen-
+de Konzepte umfassen die Modellierung von Streams, Pa-
+rametermengen, Stereotypen, aktions- und zeitgesteuerten
+Ereignissen sowie Ausnahmebehandlung. Diese Konzepte
+sind bereits in der aktuellen Version von UML standardi-
+siert und machen die Diagramme zu einem idealen Mo-
+dellierungswerkzeug für IR-Prozesse. Für die kommende
+UML 2.1-Spezifikation sind an Blockdiagramme erinnern-
+de Bedingungs- und Iterationsknoten geplant; sie sollen
+helfen, die Modellierung von Kontrollflüssen noch weiter
+zu vereinfachen.
+4 Operationalisierung
+von IR-Prozessen mit TIRA
+Unter dem MDA-Paradigma4 stellt eine UML-Spezifikati-
+on eines IR-Prozesses ein plattformunabhängiges Modell
+(PIM) dar [Object Management Group (OMG) 2003a], da
+Aktivitätsdiagramme nicht an Programmiersprachen, Be-
+triebssysteme, Middleware oder Systemarchitekturen ge-
+bunden sind. Um einen als Aktivitätsdiagramm spezifizier-
+ten IR-Prozess zu operationalisieren, ist eine Zielplattform
+zu wählen und das PIM in ein ausführbares, plattformab-
+hängiges Modell (PSM) zu übersetzen.
+Der Begriff Plattform bezeichnet hier die nächste
+(= tiefere) Abstraktionsebene, auf der ein bestimmtes
+Modell konkreter beschrieben wird. Beispielsweise sind
+J2EE und CORBA mögliche Plattformen für die Im-
+plementierung von Geschäftsprozessen, und die Java-
+Entwicklungsumgebung ist eine mögliche Plattform für die
+CORBA-Implementierung. Das Beispiel verdeutlicht, wie
+durch eine Folge von Transformationen auf jeweils eine
+tiefere Ebene ein PIM ausführbar gemacht wird. Die OMG
+bezeichnet in diesem Zusammenhang alle Plattformen, die
+sich zwischen PIM und ausführbarem Code befinden, als
+Middleware-Plattform [Object Management Group (OMG)
+2003a].
+Wie in anderen MDA-basierten Anwendungsszenarien
+ist es unser Ziel, ausgehend vom PIM Transformationen
+auf tiefere Plattform-Ebenen hinsichtlich ihrer Semantik zu
+4MDA steht für Model Driven Architecture.
+definieren und zu implementieren. Im Unterschied zu typi-
+schen MDA-basierten Anwendungsszenarien sind wir al-
+lerdings nicht daran interessiert, das PIM auf eine große
+Anzahl verschiedener Middleware-Plattformen abzubilden,
+sondern konzentrieren uns auf eine Zielplattform, die be-
+sonders geeignet ist, personalisierte IR-Prozesse auszufüh-
+ren. Kurz gefasst: unser Fokus liegt auf schnellem Entwurf,
+kurzen Entwicklungszyklen und einem minimiertem Auf-
+wand für Implementierung und Test.
+Abbildung 7 zeigt unseren Vorschlag einer Schichten-
+architektur für TIRA: Eingabe ist ein PIM, das einen IR-
+Prozess in Form eines UML Aktivitätsdiagramms spezifi-
+ziert. Das Diagramm wird, wie im nächsten Abschnitt er-
+läutert, in ein PSM überführt und in einer verteilten Umge-
+bung ausgeführt. Die Module für die IR-Basisdienste stam-
+men aus einer Modulbibliothek; sie sind als Web-Services
+gekapselt und über Rechnergrenzen hinweg transparent
+aufrufbar. Sowohl Eingabe als auch Ausgabe der Modu-
+le sind Datenobjekte, serialisiert in der Form von XML-
+Datenströmen.
+Operating system
+Java Development Kit
+XML
+object
+serialization
+XML
+object
+visualization
+PIM specification
+PSM generation
+Middleware
+platform
+Computing
+platform
+IR module library
+Web service abstraction
+UML activity diagrams:
+ compilation, deployment, processing
+UML activity diagrams: 
+GUI, modeling, management
+TIRA
+Abbildung 7: Die Schichtenarchitektur von TIRA setzt auf
+einer Rechnerplattform auf. Die IR-Modul-Bibliothek ist
+nicht Teil von TIRA, sondern steht für eine offene und er-
+weiterbare Menge von IR-bezogenen Algorithmen und Da-
+tenstrukturen.
+4.1 Von PIM zu PSM
+Ein Aktivitätsdiagramm – sei es aus einer Datei geladen
+oder interaktiv mit der TIRA-GUI modelliert – wird spei-
+cherintern als Objektstruktur dargestellt. Diese Struktur
+ist am UML Metamodell der Object Management Group
+(OMG) [2003b] orientiert: Die Objekte der Struktur sind
+Instanzen von Aktionsknoten, Parallelisierungsknoten usw.
+und mittels Datenknoteninstanzen verbunden. Diese Struk-
+tur wird zu einem Kontroll-/Datenflussgraphen G übersetzt
+und mit einer Petri-Netz-artigen Markensemantik ausge-
+führt. Die Aktionsknoten in G werden an die entsprechen-
+den Web-Services gebunden, die Datenknoten in G auf
+XML-Objekte abgebildet. Zur Abarbeitung von G werden
+zunächst alle ausführbaren Knoten bestimmt und die as-
+soziierten Web-Services asynchron aufgerufen. Sobald ein
+Web-Service sein Ergebnis liefert, wird die entsprechende
+Marke in G propagiert, und die Menge der ausführbaren
+Aktionsknoten aktualisiert.
+4.2 Die TIRA Middleware-Plattform
+Die Funktionen in der Modulbibliothek erhalten Objekte
+als Eingabe und liefern neue Objekte zurück. Anstatt die
+81
+FGIR 2006
+Web-Services mit Serialisierungen dieser Objekte aufzu-
+rufen, ist die Parameterübergabe mit dem Call-By-Name-
+Paradigma realisiert: Ein Parameter ist eine URL, die auf
+den Ort einer serialisierten XML-Repräsentation des ent-
+sprechenden Objekts zeigt. Dieser Ansatz hat folgende Vor-
+teile:
+1. Während der Ausführung eines IR-Prozesses muss
+ein Client nicht die Daten zwischen zwei Web-
+Service-Aufrufen übertragen. Stattdessen greift ein
+Web-Service unmittelbar auf die angegebenen URLs
+zu. So werden Datentransportkosten reduziert – ins-
+besondere, wenn die Web-Services zweier aufeinan-
+der folgender Module auf demselben Server gehostet
+sind.
+2. Der Transfer von URL-Referenzen anstelle von Da-
+tenobjekten ermöglicht es, auch Rechner mit geringer
+Bandbreite zu voll funktionstüchtigen Clients zu ma-
+chen.
+3. Die Verwendung von URLs schafft die Vorausset-
+zung, das World Wide Web zur Datenspeicherung und
+-verteilung zu nutzen.
+XML ist als Standard zum Datenaustausch und zur Seri-
+alisierung von Datenobjekten weit verbreitet. In TIRA wer-
+den zum Lesen und Schreiben von XML-Daten-Streams
+moderne Parser-Generatoren der Java-XML-Sprachbin-
+dung (JAXB) eingesetzt [Sun Microsystems 2003].
+Die zwischen den Modulen ausgetauschten Daten las-
+sen sich für eine visuelle Analyse oder zu Debugging-
+Zwecken angezeigen. Hierbei kommt die Technik der XSL-
+Transformationen zum Einsatz, mittels der serialisierte
+XML-Objekte auf Basis von XSL-Stylesheets in Formate
+wie XHTML oder PostScript on-the-fly umgewandelt wer-
+den können.
+4.3 Arbeiten mit TIRA
+Abbildung 6 (links) zeigt einen Snapshot unserer Meta-
+Suchmaschine AIsearch als TIRA-Anwendung. AIsearch
+sucht zu eingegebenen Schlüsselworten passende Web-
+Dokumente mit Hilfe kommerzieller Suchmaschinen und
+ordnet die gefundenen Dokumente nach inhaltlicher Ähn-
+lichkeit [Meyer zu Eißen und Stein 2002]. Der zugrunde
+liegende IR-Prozess extrahiert die von den Suchmaschinen
+gelieferten Dokumentausschnitte, entfernt Stopworte, führt
+eine Wortstammreduktion durch und erzeugt eine kompri-
+mierte Term-Vektor-Darstellung. Auf Grundlage der Term-
+Vektoren wird eine Cluster-Analyse mit dem MajorClust-
+Algorithmus durchgeführt [Stein und Niggemann 1999]
+und für die gefundenen Themenkategorien aussagekräfti-
+ge Bezeichnungen mittels statistischer Textüberdeckungs-
+algorithmen generiert.
+Abbildung 6 (rechts) zeigt einen Snapshot des TIRA
+Aktivitätsdiagramm-Editors, der in einem Java Applet aus-
+geführt wird. Die linke Seite zeigt eine Auswahl der instan-
+ziierbaren Module und Datenknotentypen. Die Instanzen
+sind auf der rechten Seite des Applets zu sehen und können
+mit Pfeilen, die die Richtung des Datenflusses definieren,
+verbunden werden. Ein Klick auf einen Datenknoten star-
+tet die assoziierte XSL-Transformation, die die Daten in
+ein anzeigbares Format umwandelt, das dann im Browser
+dargestellt wird.
+5 Zusammenfassung
+IR-Prozesse haben eine ubiquitäre Präsenz erreicht, sei
+es in Form von Suchmaschinen im privaten oder pro-
+fessionellen Kontext, auf mobilen Endgeräten oder auf
+stationären Rechnern, oder als Retrieval-Komponenten
+in Dateisystemen, Dokumentkollektionen, Datenbanken
+oder Wissensmanagement-Werkzeugen. Der Grund die-
+ser Durchdringung ist ein wachsender Informationsbedarf,
+die Vielfältigkeit der IR-Aufgaben, und ein gewünsch-
+ter Grad an Personalisierung. Obgleich viele spezialisier-
+te Retrieval-Algorithmen in der Vergangenheit entwickelt
+wurden, sind wenig Anstrengungen unternommen worden,
+IR-Prozesse aus der Sicht der Softwaretechnik zu model-
+lieren und zu operationalisieren.
+Das vorliegende Papier soll an dieser Stelle einen Bei-
+trag leisten: Ausgehend von einer Diskussion einschlägi-
+ger Modellierungstechniken bezüglich ihrer Eignung für
+die Abstraktion von IR-Prozessen haben wir TIRA als ei-
+ne flexible MDA-Lösung für den schnellen Entwurf maß-
+geschneiderter IR-Werkzeuge vorgestellt. Mit TIRA ist es
+möglich, IR-Prozesse als UML Aktivitätsdiagramme zu
+modellieren, die per Knopfdruck in plattformspezifische
+Modelle transformiert und in einer verteilten Umgebung
+ausgeführt werden können.
+TIRA hat zurzeit den Status eines Forschungsprototyps
+und wird in unserer Arbeitsgruppe weiterentwickelt. Der
+Abbildung 6: Der linke Snapshot zeigt unsere Meta-Suchmaschine AIsearch, deren IR-Prozess mit TIRA modelliert ist.
+Der rechte Snapshot zeigt den TIRA-Editor für die Spezifikation von IR-Prozessen mittels Aktivitätsdiagrammen.
+82
+LWA 2006
+TIRA-Ansatz ist unabhängig von IR-Algorithmen und Da-
+tenstrukturen; unser Ansatz sieht die Einbindung existie-
+render IR-Bibliotheken (und das hierin codierte Know-
+How) explizit vor.
+Literatur
+Tony Andrews, Francisco Curbera, Hitesh Dholakia, Yaron
+Goland, Johannes Klein, Frank Leymann, Kevin Liu, Dieter
+Roller, Doug Smith, Satish Thatte, Ivana Trickovic und
+Sanjiva Weerawarana. Business process execution language
+for web services (bpel4ws) version 1.1.
+http://www-128.ibm.com/developerworks/
+library/specification/ws-bpel/, Mai 2003.
+Erich Gamma, Richard Helm, Ralph Johnson und John
+Vlissides. Design Patterns: Elements of Reusable
+Object-oriented Software. Addison-Wesley Longman
+Publishing Co., Inc., 1998.
+Martin Hitz, Gerti Kappel, Elisabeth Kapsammer und Werner
+Retschitzegger. UML @ Work. dpunkt.verlag, 2005.
+Georgiana Ifrim, Martin Theobald und Gerhard Weikum.
+Learning Word-to-Concept Mappings for Automatic Text
+Classification. In Proceedings ICML, Learning in Web Search
+Workshop, 2005.
+Kurt Jensen. Coloured Petri Nets. Basic Concepts, Analysis
+Methods and Practical Use., Volume 1 der Monographs in
+Theoretical Computer Science. Springer, 1997.
+Sven Meyer zu Eißen und Benno Stein. The AIsearch Meta
+Search Engine Prototype. In Amit Basu und Soumitra Dutta,
+Eds., Proceedings 12th Workshop on Information Technology
+and Systems (WITS 02), Barcelona Spanien. Technische
+Universität Barcelona, Dezember 2002.
+Sven Meyer zu Eißen und Benno Stein. Genre Classification of
+Web Pages: User Study and Feasibility Analysis. In Susanne
+Biundo, Thom Frühwirth und Günther Palm, Eds., KI 2004:
+Advances in Artificial Intelligence, Volume 3228 Lecture
+Notes in Artificial Intelligence, S. 256-269, Berlin Heidelberg
+New York, September 2004. Springer.
+Sven Meyer zu Eissen und Benno Stein. Intrinsic plagiarism
+detection. In Mounia Lalmas, Andy MacFarlane, Stefan M.
+Rüger, Anastasios Tombros, Theodora Tsikrika und Alexei
+Yavlinsky, Eds., Proceedings European Conference on
+Information Retrieval (ECIR 2006), Volume 3936 Lecture
+Notes in Computer Science, S. 565-569. Springer, 2006.
+Object Management Group (OMG). Model driven architecture
+(mda) guide.
+http://www.omg.org/docs/omg/03-06-01.pdf,
+2003.
+Object Management Group (OMG). The UML Metamodel.
+http:
+//www.omg.org/cgi-bin/doc?ptc/2004-10-05,
+2003.
+Carl Adam Petri. Kommunikation mit Automaten. Dissertation,
+Universität Bonn, 1962.
+M. F. Porter. An Algorithm for Suffix Stripping. Program,
+14(3):130-137, 1980.
+Martin Porter. Snowball. http://snowball.tartarus.org/,
+2001.
+E. Stamatatos, N. Fakotakis und G. Kokkinakis. Text genre
+detection using common word frequencies. In Proceedings
+18th Int. Conference on Computational Linguistics,
+Saarbrücken, 2000.
+Benno Stein und Oliver Niggemann. On the Nature of Structure
+and its Identification. In Peter Widmayer, Gabriele Neyer und
+Stefan Eidenbenz, Eds., Graph-Theoretic Concepts in
+Computer Science, Volume 1665 Lecture Notes in Computer
+Science, S. 122-134. Springer, Juni 1999.
+Benno Stein und Martin Potthast. Putting Successor Variety
+Stemming to Work. In 30th Annual Conference of the German
+Classification Society (GfKl) 2006 (erscheint in Kürze), 2006.
+Sun Microsystems. Java Architecture for XML Binding (JAXB
+Specification). http:
+//java.sun.com/xml/downloads/jaxb.html,
+2003.
+Jürgen Teich. Digitale Hardware/Software-Systeme. Springer,
+1997.
+83
+FGIR 2006

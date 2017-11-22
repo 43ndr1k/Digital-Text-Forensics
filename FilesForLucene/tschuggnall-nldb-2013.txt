@@ -1,0 +1,347 @@
+Using Grammar-Profiles to Intrinsically Expose
+Plagiarism in Text Documents
+Michael Tschuggnall and Günther Specht
+Databases and Information Systems
+Institute of Computer Science, University of Innsbruck
+{michael.tschuggnall,guenther.specht}@uibk.ac.at
+Abstract. Intrinsic plagiarism detection deals with the task of finding
+plagiarized sections in text documents without using a reference corpus.
+This paper describes a novel approach in this field by analyzing the gram-
+mar of authors and using sliding windows to find significant differences
+in writing styles. To find suspicious text passages, the algorithm splits
+a document into single sentences, calculates syntax grammar trees and
+builds profiles based on frequently used grammar patterns. The text is
+then traversed, where each window is compared to the document profile
+using a distance metric. Finally, all sentences that have a significantly
+higher distance according to a utilized Gaussian normal distribution are
+marked as suspicious. A preliminary evaluation of the algorithm shows
+very promising results.
+Keywords: intrinsic plagiarism detection, pq-gram profiles, grammar
+trees, stylistic inconsistencies, NLP applications.
+1 Introduction
+The huge amount of publicly available text documents makes it increasingly eas-
+ier for authors to copy suitable text fragments into their works. On the other
+side, the task of identifying plagiarized passages becomes increasingly more dif-
+ficult for software algorithms that have to deal with large amounts of possible
+sources. An even harder challenge is to find plagiarism in text documents where
+the majority of sources is composed of books and other literature that is not dig-
+itally available. Nevertheless, more and more recent events show that especially
+in such cases it would be important to have reliable tools that indicate possible
+misuses.
+The two main approaches for detecting plagiarism in text documents are exter-
+nal and intrinisic methods, respectively. Given a suspicious document, external
+algorithms compare text fragments with any available sources (e.g. collections
+from the world wide web), whereas intrinsic algorithms try to detect plagia-
+rism by inspecting the suspicious document only. Frequently applied techniques
+in both areas as well as in related topics such as authorship identification or
+text categorization include n-gram comparisons or standard IR techniques like
+common subsequences [2] combined with machine learning techniques [3].
+E. Métais et al. (Eds.): NLDB 2013, LNCS 7934, pp. 297–302, 2013.
+c© Springer-Verlag Berlin Heidelberg 2013
+298 M. Tschuggnall and G. Specht
+The idea of the approach described in this paper is to use a syntactical feature,
+namely the grammar used by an author, to identify passages that might have
+been plagiarized. Due to the fact that an author has many different choices of how
+to formulate a sentence using the existing grammar rules of a natural language,
+the assumption is that the way of constructing sentences is significantly different
+for individual authors. For example, the famous Shakespeare quote ”To be, or
+not to be: that is the question.” (1) could also be formulated as ”The question is
+whether to be or not to be.” (2) or even ”The question is whether to be or not.” (3)
+which is semantically equivalent but differs significantly according to the syntax.
+The main idea of this approach is to quantify those differences by creating a
+grammar profile of a document and to utilize sliding windows techniques to find
+suspicious text sections.
+The rest of this paper is organized as follows: Section 2 describes the algorithm
+in detail, while a preliminary evaluation of it is shown in Section 3. Finally,
+Section 4 sketches related work and Section 5 summarizes the main ideas and
+discusses future work.
+2 The PQ-PlagInn Algorithm
+The PQ-PlagInn is a variation of the PlagInn1 algorithm proposed in [14], which
+calculates grammar trees of all sentences of a document to analyze their building
+structure in order to find outstanding sentences. Instead of calculating a distance
+matrix using tree edit distances, in this approach we build syntax profiles of the
+whole document and compare text sections with the document profile using
+sliding windows. More concretely, the algorithm consists of the following steps:
+1. At first the document is cleaned to contain alphanumeric characters and
+punctuation marks only. Then it is parsed and split into single sentences,
+which is currently implemented with the open source tool OpenNLP2.
+2. Each sentence is then anaylzed by its grammar, i.e. a full syntax grammar
+tree is calculated using the Stanford Parser [7]. For example, Figure 1 depicts
+the grammar trees resulting from analyzing sentences (1), (2) and (3). The
+labels of each tree correspond to a Penn Treebank tag [9], where e.g NP
+corresponds to a noun phrase or JJS corresponds to a superlative adjective.
+In order to examine the building structure of sentences only, the concrete
+words, i.e. the leafs of the tree, are ignored.
+3. Having computed a grammar tree for every sentence, the pq-gram index
+[1] of each tree is calculated in the next step. Pq-grams consist of a stem
+(p) and a base (q) and can be related to as ”n-grams for trees”. Thereby
+p defines how much nodes are included vertically, and q defines the num-
+ber of nodes to be considered horizontally. For example, a valid pq-gram
+with p = 2 and q = 3 starting from level two of tree (1) shown in Figure
+1 would be [S-VP-VP-CC-RB]. In order to obtain all pq-grams, the base is
+1 PlagInn stands for Intrinsic Plag iarism detection Innsbruck.
+2 http://incubator.apache.org/opennlp, visited February 2013.
+Using Grammar-Profiles to Intrinsically Expose Plagiarism 299
+S
+: S
+VB
+(be)
+S
+VP
+VP CC
+(or)
+RB
+(not)
+VP
+VPTO
+(To)
+VB
+(be)
+VPTO
+(to)
+NP VP
+DT
+(that)
+RBZ
+(is)
+NP
+DT
+(the)
+NN
+(question)
+S
+NP VP
+DT
+(The)
+NN
+(question)
+VBZ
+(is)
+SBAR
+IN
+(whether)
+S
+S CC
+(or)
+S
+VB
+(be)
+VP
+VPTO
+(to)
+VB
+(be)
+VP
+VPTO
+(to)
+RB
+(1) (2)
+S
+NP VP
+DT
+(The)
+NN
+(question)
+VBZ
+(is)
+SBAR
+IN
+(whether)
+S
+VP
+VPTO
+(to)
+VB
+(be)
+NP
+QP
+CC
+(or)
+RB
+(not)
+(3)
+Fig. 1. Grammar Trees Resulting From Parsing Sentence (1), (2) and (3)
+shifted left and right additionally: If then less than p nodes exist horizon-
+tally, the corresponding pq-gram is filled with * for missing nodes. Therefore
+also the pq-grams [S-VP-*-*-VP], [S-VP-*-VP-CC], [S-VP-RB-VP-*] or
+[S-VP-VP-*-*] are valid. Finally, the pq-gram index contains all valid pq-
+grams of a grammar tree, whereby multiple occurences of the same pq-grams
+are also present multiple times in the index.
+4. Subsequently, the pq-gram profile of the whole document is calculated by
+combining all pq-gram indexes of all sentences. In this step the number of
+occurences is counted for each pq-gram and then normalized by the doc-
+ument length, i.e. normalized by the total number of distinct pq-grams.
+As an example, the three mostly used pq-grams of a selected document
+are: {[NP-NN-*-*-*], 2.7%}, {[PP-IN-*-*-*], 2.3%}, {[S-VP-*-*-VBD],
+1.1%}. The pq-gram profile then consists of the complete table of pq-grams
+and their occurences in the given document, indicating the favours or the
+style of syntax construction used by the (main) author.
+5. The basic idea is now to utilize sliding windows and calculate the distance for
+each window compared to the pq-gram profile. A window has a predefined
+length l which defines how many sentences should be contained, and the
+window step s defines the starting points of the windows.
+Then for each window the pq-gram profile P (w) is calculated and compared
+to the pq-gram profile of the whole document. For calculating the distance,
+the measure proposed in [12] has been used, as it is well suited for com-
+paring short text fragments (the window w) with large text fragments (the
+document D):
+d(w,D) =
+∑
+p∈P (w)
+(
+2(fw(p)− fD(p))
+fw(p) + fD(p)
+)2
+Thereby fw(p) and fD(p) denote the normalized frequencies of occurences of
+pq-gram p in the window w and the document D, respectively. An example
+of the sliding window distances of a whole document is illustrated in Figure
+2. It shows the distance for each sliding window starting position, using a
+window length of l = 5 and a window step of s = 1 in this case.
+300 M. Tschuggnall and G. Specht
+μ
+μ + 2σ
+μ + σ
+∂
+susp
+plagiarized
+(solution)
+predicted
+(algorithm)
+window start position in document
+di
+st
+an
+ce
+ to
+ d
+oc
+um
+en
+t p
+q-
+gr
+am
+ p
+ro
+fil
+e
+Fig. 2. Distances of pq-gram Occurences of Sliding Windows Compared to the Docu-
+ment Profile
+6. As it can already be seen visually, some sliding windows differ significantly
+more than others, which may be the case because they have been plagiarized.
+The final decision of whether sentences should be predicted to be plagiarized
+or not is made similar to the method used in the original PlagInn-algorithm
+by fitting a gaussian normal distribution function and estimating the mean μ
+and standard deviation σ. Subsequently, all sentences having a higher thresh-
+old than δsusp (where δsusp  μ+σ) are marked as suspicious. Moreover, the
+sentence selection algorithm proposed in [14] is applied to either filter out
+standalone suspicious sentences or to add non-suspicious sentences to groups
+of suspicious sentences if they reside in between. The bottom of the diagram
+shown in Figure 2 depicts the final prediction of the algorithm together with
+the correct solution obtained from the corresponding test set annotations of
+the document.
+3 Evaluation
+The PQ-PlagInn algorithm has been preliminary evaluated by using 50 ran-
+dom documents of the PAN 2011 test corpora [11]. All documents are written
+in English, and the set has been chosen to be heterogenously distributed, i.e.
+containing short and large documents, with and without pagiarism. The results
+shown in Figure 3 indicate that this approach is very well suited for the task of
+intrinsic plagiarism detection. By varying the window length and window step a
+promising3 F-score of about 44% could be reached using l = 8, s = 2 and the pq-
+gram configuration p = 2 and q = 3 . Thus, the PQ-PlagInn variation indicates
+to outperform the original PlagInn approach which achieved 35% over the whole
+3 Compared to current approaches, e.g. [12] which achieves an F-score of 33%.
+Using Grammar-Profiles to Intrinsically Expose Plagiarism 301
+test corpus (over 4000 documents). The F-scores are composed of high precision
+values compared to low recall values. For example, the best performance resulted
+from a precision value of about 75% and a recall value of about 31%, indicating
+that if the algorithm predicts a text passage to be plagiarized it is often correct,
+but on the other hand lacks of finding all passages.
+
+
+
+
+	
+   
+ 	    
+
+
+
+	
+
+
+		
+
+
+Fig. 3. Evaluation Results
+4 Related Work
+An often applied concept in the field of intrinsic plagiarism detection is the us-
+age of n-grams [12,6], where the document is split up into chunks of three or
+four letters, grouped and - as proposed with the algorithm in this paper - ana-
+lyzed through sliding windows. Another approach also uses the sliding window
+technique but is based on word frequencies, i.e. the assumption that the set of
+words used by authors is significantly different [10]. Approaches in the field of
+author detection and genre categorization also use NLP tools to analyze docu-
+ments based on syntactic annotations [13]. Word- and text-based statistics like
+the average sentence length or the average parse tree depth are used in [5].
+Another interesting approach used in authorship attribution that tries to de-
+tect the writing style of authors by analyzing the occurences and variations of
+spelling errors is proposed in [8]. It is based on the assumption that authors
+tend to make similar spelling and/or grammar errors and therefore uses this
+information to attribute authors to unseen text documents.
+Lexicalized tree-adjoining-grammars (LTAG) are poposed in [4] as a ruleset
+to construct and analyze grammar syntax by using partial subtrees, which may
+also be used with this approach as an alternative to pq-gram patterns.
+5 Conclusion and Future Work
+In this paper a new approach for intrinsic plagiarism detection is presented
+which tries to find suspicious sentences by analyzing the grammar of an author.
+It builds a grammar-profile using pq-grams of syntax trees of a suspicious text
+document and compares it by utilizing sliding windows. A preliminary evaluation
+using 50 random documents reached a promising F-score of about 44%. Manual
+302 M. Tschuggnall and G. Specht
+inspections showed that the algorithm produces high precision values, i.e. mostly
+predicts plagiarism only where this is really the case. On the other hand it could
+be improved to find more plagiarism cases, i.e. increasing the recall value.
+Future work should also evaluate the approach against a larger and more
+representative test set. Additionally, all parameters like window length, window
+step, pq-gram configurations or other thresholds should be optimized. As cur-
+rently no lexical information is used, a combination with existing approaches
+could enhance the overall performance as well as the adaption to more (syntac-
+tically complex) languages. Finally, the PQ-PlagInn algorithm also seems to be
+very suitable for tasks in the field of authorship attribution/verification or text
+categorization, and it should thus be adjusted and accordingly evaluated.
+References
+1. Augsten, N., Böhlen, M., Gamper, J.: The pq-Gram Distance between Ordered
+Labeled Trees. ACM Transactions on Database Systems, TODS (2010)
+2. Gottron, T.: External Plagiarism Detection Based on Standard IR Technol-
+ogy and Fast Recognition of Common Subsequences. In: CLEF (Notebook Pa-
+pers/LABs/Workshops) (2010)
+3. Joachims, T.: Text Categorization with Suport Vector Machines: Learning with
+Many Relevant Features. In: Proceedings of the 10th European Conference on
+Machine Learning, London, UK, pp. 137–142 (1998)
+4. Joshi, A.K., Schabes, Y.: Tree-Adjoining Grammars. Handbook of Formal Lan-
+guages 3, 69–124 (1997)
+5. Karlgren, J.: Stylistic Experiments For Information Retrieval. PhD thesis, Swedish
+Institute for Computer Science (2000)
+6. Kestemont, M., et al.: Intrinsic Plagiarism Detection Using Character Trigram
+Distance Scores. In: CLEF Labs and Worksh. Papers, Amsterdam, Netherlands
+(2011)
+7. Klein, D., Manning, C.D.: Accurate unlexicalized parsing. In: Proc. of the 41st
+Meeting on Comp. Linguistics, Stroudsburg, PA, USA, pp. 423–430 (2003)
+8. Koppel, M., Schler, J.: Exploiting Stylistic Idiosyncrasies for Authorship Attribu-
+tion. In: IJCAI 2003 Workshop on Computational Approaches to Style Analysis
+and Synthesis, pp. 69–72 (2003)
+9. Marcus, M.P., Marcinkiewicz, M.A., Santorini, B.: Building a large annotated cor-
+pus of English: The Penn Treebank. Comp. Linguistics 19, 313–330 (1993)
+10. Oberreuter, G., et al.: Approaches for Intrinsic and External Plagiarism Detection.
+In: Notebook Papers of CLEF Labs and Workshops (2011)
+11. Potthast, M., Stein, B., Barrón-Cedeño, A., Rosso, P.: An Evaluation Framework
+for Plagiarism Detection. In: Proceedings of the 23rd International Conference on
+Computational Linguistics (COLING 2010), Beijing, China (2010)
+12. Stamatatos, E.: Intrinsic Plagiarism Detection Using Character n-gram Profiles.
+In: CLEF (Notebook Papers/Labs/Workshop) (2009)
+13. Stamatatos, E., Kokkinakis, G., Fakotakis, N.: Automatic text categorization in
+terms of genre and author. Comput. Linguist. 26, 471–495 (2000)
+14. Tschuggnall, M., Specht, G.: Detecting Plagiarism in Text Documents through
+Grammar-Analysis of Authors. In: 15. GI-Fachtagung Datenbanksysteme für Busi-
+ness, Technologie und Web, Magdeburg, Germany (2013)

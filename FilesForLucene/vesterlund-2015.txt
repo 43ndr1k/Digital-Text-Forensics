@@ -1,0 +1,746 @@
+Assignment: Project
+Vesterlund, Martin
+(vesterlund.martin@bahnhof.se)
+BTH February 2015
+Course: DV2542 - Machine Learning
+School of Computing
+Blekinge Institute of Technology
+SE – 371 79 Karlskrona
+Sweden
+Abstract
+In this paper I test the classification performance on the task of attributing Twitter mes-
+sages to a known author mostly using word-bigrams and character tri-grams. The classification
+algorithms compared are SVM, NaiveBayes, OneR, HoeffdingTree and k-nearest neighbor. I will
+also compare the performance difference between different combination of used features during
+classification. The conclusions drawn are that it is possible to successfully attribute a tweet to
+a specific user with a limited set of features with a success rate between 40 and 50% without
+changing any of the default settings on the classifier that showed best overall performance.
+1 Introduction
+Communication via short messages like SMS, in-
+stant messaging, Facebook statuses and Twitter
+has increased over the last years compared with
+written letters and e-mails. Those messages can
+be used for illegal actions like harassment and
+threats as well as for more gray zoned actions like
+planning of crimes. From that perspective author
+attribution of messages are important for law en-
+forcement because that can aid in an investiga-
+tion if found short messages from an anonymous
+source can be connected to an identified person.
+Another related topic are attribution of e.g. ex-
+tracted file fragments from seized devices.
+Other uses for author attribution is to identify
+authors that uses a shared account or to identify
+a single user that uses multiple accounts. The lat-
+ter example can be interesting for news agencies
+to take into account because even if there is a lot
+of accounts that pushes the topic does not neces-
+sarily mean that there are a lot of actual people
+behind it.
+In this work I have mainly focused on what
+features that can be relevant for author attribu-
+tion of Tweets and how these can be extracted.
+I will also compare the classification performance
+of some classifiers on the data set regarding
+time and correctly classified tweets. All source
+code created and used during the project can be
+found online at https://gitlab.bthstudent.
+se/otyg/machine-learning-project/tree/
+master, used arff-files and the raw material can
+be obtained by contacting me.
+2 Related work
+From (Fissette and Grootjen 2010) I mainly took
+the idea of using word bi-grams as a feature
+for classification. (Layton, Watters, and Daze-
+ley 2010) contains a thorough analysis on how to
+perform author attribution on Tweets, from this
+work I took the idea of substitute @username and
+#tag with a fixed value. While the replacement
+in (Layton, Watters, and Dazeley 2010) are ”@”
+and ”#” I choose to replace with a longer string
+since ”@” and ”#” could be used as short-hands
+for expressions in Tweets. From (Schwartz et al.
+2013) the usage of markers that identified the first
+respectively the last word was taken.
+In more general terms (McCombe 2002) pro-
+vided some useful insights in author attribution
+methods and what features that could be useful
+for the task. Another work that provided some
+useful entry points for what features that could be
+useful was (Hoorn et al. 1999) which also planted
+a thought about that some combinations of let-
+ters could be preferred for a specific author. (Sta-
+matatos 2006) and (Stamatatos 2008) gave also
+some good basic foundations about author attri-
+bution of texts based on machine learning tech-
+niques.
+While e-mails often are longer and has more
+”invisible” structure than e.g. Tweets, (Corney et
+al. 2001) and (Vel et al. 2001), that both handles
+author identification of e-mails, gave some foun-
+dation about what ”meta-data”1 markers that
+could be used for identification. Other previous
+works worth noting are (Layton, McCombie, and
+Watters 2012) and (Knaap and Grootjen 2007)
+which looks at chat logs that often are more simi-
+lar to tweets than to e-mails regarding length and
+usage of informal language and jargong.
+3 Method
+The method that was followed consisted of
+roughly five steps, that will be detailed below:
+1e.g. average word length, usage of punctuation etc
+1
+• Select tweeters to collect from
+• Collect and store tweets
+• Define what possible attributes the tweets
+had
+• Select what attributes to use and extract
+them
+• Selecting models and measure the perfor-
+mance
+3.1 Selecting Tweeters
+For this experiment I needed to scrape from at
+least two tweeters. I decided to scrape from a
+minimum ten tweeters and a maximum of 25.
+The lower limit was chosen to have a chance to
+get enough diversion between the tweeters and
+the higher was mostly set for performance reasons
+(e.g. storage space) and to get as little problems
+with the Twitter-API request limits as possible.
+To spread the diversion between the tweet-
+ers, and also test how general my models was,
+I choose tweeters who only wrote in English, only
+in Swedish, partly in Swedish and partly in other
+languages, and finally one tweeter who mostly
+wrote in German.
+The selected tweeters field of subjects could
+be placed in one, or more, of these categories:
+• Computer security
+• Computer science
+• ”IT” politics (e.g. immaterial rights, online
+surveillance)
+• Defense politics
+• General politics
+• Humor
+3.2 Collection and storing of
+Tweets
+An API-key for Twitter was obtained and a
+Python-script was created that fetched up to 200
+tweets since a given tweet from a selected users
+time-line. A database for storage of the fetched
+Tweets was created and the Python-script in-
+serted the fetched data into it and fetched what
+Tweet was the last seen for the user.
+3.3 Possible attributes
+One Tweet was fetched and used as a model
+for what data the API-calls returned and used
+for defining what attributes a tweet could have.
+The API-call returned an easily parsed json-string
+which the Python library used converted into a
+Python dictionary (example dictionary can be
+found in Appendix A). Attributes deemed inter-
+esting sources for author attribution was the fol-
+lowing:
+1 text contains the actual tweet message.
+2 source contains from what type of device
+the tweet came (web client etc).
+3 coordinates probably location coordinates
+4 hashtags hashtags used in the tweet
+5 user mentions other users mentioned in
+the tweet
+6 in reply to user id if the tweet are a reply
+to a specific user
+7 user id the id of the user posting the tweet
+8 geo probably geo-location
+9 lang probably what language the tweet are
+written in or what lang the client are set to
+use
+10 created at time-stamp
+Since not all attributes was present in the ex-
+ample Tweet the contents of some attributes was
+guessed.
+3.4 Used attributes
+All information about the authors writing style
+are contained in the text-attribute, so this at-
+tribute was chosen as the main source of features.
+As extra information user mentions and hashtags
+was selected as sources since these attributes can
+be used to build a profile about the authors in-
+terests and which people he or she often direct
+tweets to. Last user id was chosen as this are
+relevant for validation and training.
+Features that was considered for inclusion but
+not chosen in the first run was source, coordinates
+2
+and geo, lang and created at. While all of these
+can tell us something about the author I decided
+that in the first run the interesting part was the
+language itself and the social network around the
+author2.
+3.5 Choosing features
+Since I mainly focused on the tweet-text most of
+the features had to do with that attribute. Both
+(Fissette and Grootjen 2010) and (Schwartz et al.
+2013) make use of word n-grams, i.e. n number
+of words are paired as they are encountered in
+the message. Example: the sentence ”The quick
+brown fox” gives the following n-grams if n=2
+The quick
+quick brown
+brown fox
+The reasoning behind the choice of this feature
+are that according to (Schwartz et al. 2013 an
+author uses a certain type of language and there-
+fore some combinations of words will be more fre-
+quent than others. Since the nature of Tweets
+are that they are quite short I decided that word
+bi-grams probably was sufficient as a feature. I
+choose to keep all special characters found in the
+tweet, as opposed to (Fissette and Grootjen 2010)
+who removes punctuation, because I hypnotizes
+that some stylistic information can be found in
+the use of punctuation in combination with the
+pure words. Related to this I choose to replace
+all inline user mentions and #-tags with a marker
+as done in (Layton, Watters, and Dazeley 2010)
+since it can be relevant to see if a specific user uses
+a certain word in combination with mentions or
+#-tags. Along the same line of reasoning I choose
+to add two special word-bigrams marking the first
+and last word of the tweet as done in (Schwartz
+et al. 2013).
+The next feature I choose to use was char-
+acter tri-grams, i.e. like the word bi-grams but
+with individual characters instead of full words.
+For example the word bi-gram ”The quick” gives
+the following tri-grams:
+The
+he
+e q
+qu
+qui
+uic
+ick
+Both (Layton, Watters, and Dazeley 2010) and
+(Schwartz et al. 2013) make use of character n-
+gram since these are tolerant against typographi-
+cal errors and incorrect use of punctuation. While
+(Schwartz et al. 2013) follows a practice and using
+n-grams of four characters, (Layton, Watters, and
+Dazeley 2010) uses a range between two and seven
+for n. I choose to set n=3 since it’s in the mid-
+dle of the latter range and quite near the practice
+value of 4. Because of performance reasons the
+trigram-extraction took place before substitution
+of #-tags and inline user mentions.
+The user mentions and #-tags was extracted
+individually and used as features. My reasoning
+behind this was that some users are mentioned
+often by certain tweeters and not at all by oth-
+ers, therefore a network of mentioned users can be
+build around a specific author and by that iden-
+tify her to some degree. A similar reasoning goes
+for the #-tags, that certain users use specific #-
+tags more often than others do. Both (Schwartz
+et al. 2013) and (Layton, Watters, and Dazeley
+2010) uses similar arguments in their articles.
+3.6 Selection of used tweets
+Since I was only interested in what the specified
+authors had written all retweets was ignored dur-
+ing the feature extraction since those probably
+was not written by the selected author. The same
+rule was followed when the experimental data sets
+was created.
+3.7 Selection of models and per-
+formance measurement
+In related literature use of Support Vector Ma-
+chines shows good results on this type of classifi-
+cation tasks ( Vel et al. 2001, Corney et al. 2001,
+Luyckx and Daelemans 2008, Fissette and Groot-
+jen 2010 and Schwartz et al. 2013) so I decided
+to make a comparison between LibLINEAR and
+2The main reason for exclusion of lang was the fact that one of the authors in the corpus are the only one that
+writes in German.
+3
+LibSVM in Weka 3.7.12. In (Hoorn et al. 1999)
+the authors compares classification made with k-
+nearest neighbor, naive Bayes and neural network
+with quite good results, so I decided to also in-
+clude k-nearest neighbor and naive Bayes since k-
+nearest neighbor showed good classification per-
+formance in (Hoorn et al. 1999) and since naive
+Bayes often shows good timing performance. Fur-
+ther I choose to use a Hoeffding tree classifier
+because it has theoretical proof of sound perfor-
+mance guarantees. I also choose to include the
+rule based OneR-classifier in the experiment be-
+cause the use of the minimum-error feature for
+prediction might be a good solution in this type
+of data-sets.
+The performance attributes I was interested
+in was the time needed to train the classifier, the
+time needed for classification and the percentage
+of correctly identified authors. The training time
+are interesting to measure since if the method
+should be used in a practical context it should
+be as fast as possible since available time for the
+task could be limited. The same reasoning goes
+for the time needed for classification.
+The correctly identification rate are interesting
+since a classifier might be blazing fast both on
+training and classification and therefore a suitable
+choice for the task. But if the rate for correctly
+classified instances are below or around the rate
+for pure chance the model are not suitable for the
+task.
+4 Execution
+4.1 Scraping
+As mentioned in the method-section the scraping
+was done via a script written in Python that used
+Twitter API-calls to fetch a selected users time-
+line. The script ran every half hour for about a
+month and fetched up to 200 tweets from the last
+stored tweet from the selected user.
+In total 58120 tweets was fetched from 19 dif-
+ferent users, the maximum number of tweets for a
+user was 4209 and the minimum number of tweets
+was 564. The median number of tweets was 3340
+and the average was circa 3012.
+One possible problem during the scraping was
+that the Twitter API only allow up to 200 tweets
+to be fetched with one call in combination with a
+rate-limit of 180 calls to the API during a period
+of 15 minutes. In reality these limits was not a
+problem during the experiment.
+4.2 Feature extraction
+From the collected tweets the interesting tweet
+attributes mentioned in section 3.4 was extracted
+by a script written in Python that also extracted
+the features mentioned in 3.5 in the same process.
+The process of feature extraction began with
+fetching all the stored tweets in the database and
+remove all the results that were retweets. From
+the remaining tweets character tri-grams was ex-
+tracted and the occurrence of each unique trigram
+was counted, after that each mentioned name and
+#-tag was extracted, counted and replaced with a
+marker. When this was done each tweet was split
+to an array containing each word in a separate
+space and the last index was stored. Two spe-
+cial bi-grams were created, namely the first word
+with a marker and the last word with a marker.
+After that the array of words was traversed and
+bi-grams was created by pairing the current word
+with the next word. The result was four dictio-
+naries with each found character-trigrams, word-
+bigrams, usernames or #-tags as keys and their
+respective counts as value. See Algorithm 1 in
+Appendix B.
+4.3 Feature filtering
+Since there was in total 541761 features extracted
+some filtering was needed. By keeping count of
+how often each feature was observed it was dis-
+covered that around 50% of the observed word-
+bigrams was seen only once in the whole corpus.
+Similar patterns was observed for the other fea-
+tures. Therefore the decision was made to ignore
+less frequent features since these only would af-
+fect a couple of tweets. A quite rough approach
+was selected were features that was observed less
+frequent than a certain threshold simply was ig-
+nored. See Algorithm 2 in Appendix B for the
+general idea. Below a table with the total num-
+ber of entries and filtered entries for each type of
+feature.
+4
+Feature type Total Filtered
+Word-bigrams 375285 1294
+Char-trigrams 150427 7403
+Mentioned names 13414 232
+Used #-tags 2635 44
+One problem with the approach are that the
+filtering are too aggressive and the remaining fea-
+tures are so usual that they are more or less use-
+less for classification of individual authors. There-
+fore I choose quite low threshold values as noted
+below.
+Feature type Threshold
+Word-bigrams 25
+Char-trigrams 50
+Mentioned names 25
+Used #-tags 25
+After the filtering procedure 8973 features re-
+mained in the data set.
+4.4 Creation of data set
+Initially I wanted learning and classification on all
+the collected tweets, but because the size of the
+collection (58120 tweets) and the large number of
+features in the set this was not possible for prac-
+tical reasons. The solution was to create ten data
+sets by randomly selecting, without duplicates in
+each set, 5000 tweets from the database.
+From the obtained set all retweets was re-
+moved. The features from each selected tweet was
+extracted in the same way as in 4.3 with the ex-
+ception of feature filtering. Each set of features
+for a tweet was then compared with the set of fea-
+tures created in 4.3 and if a match was found that
+specific feature was given a value related to how
+many times it occurred in the tweet feature set.
+If no match was found the feature was given the
+value 0. The author of the tweet was extracted
+and added to the feature set as class-feature. See
+Algorithm 3 for reference.
+4.5 Classification
+Weka experimenter was used for the classification
+task. Ten data sets was added to the list of data
+sets and the following classifiers was added ac-
+cordingly to 3.7:
+• LibLINEAR
+• NaiveBayes
+• HoeffdingTree
+• IBK
+• OneR
+• LibSVM
+All algorithms was used with their default set-
+tings as a part of this experiment. The experi-
+ment was run with ten-fold cross validation.
+5 Results
+5.1 Performance differences be-
+tween classifiers
+Number of training instances was on average 2747
+and the number of testing instances were on av-
+erage 305 instances. The key for reading the
+following tables are as follows: (1) LibLINEAR,
+(2) NaiveBayes, (3) HoeffdingTree, (4) IBk, (5)
+OneR, (6) LibSVM.
+The output from Wekas PairedCorrectedTTester
+with confidence 0.05 (two tailed) while analyzing
+percentage of correctly classified instances are
+showed below:
+(1) (2) (3) (4) (5) (6)
+50.02 45.90* 44.23* 11.62* 15.73* 8.00*
+Elapsed training time (in seconds) as follows:
+(1) (2) (3) (4) (5) (6)
+1.42 6.11v 207.95v 0.00* 3.38v 20.28v
+Elapsed time classifying in seconds:
+(1) (2) (3) (4) (5) (6)
+0.04 18.14v 19.80v 145.44v 0.01* 1.91v
+5.2 Performance differences be-
+tween feature sets
+Only the best algorithm was used in this task,
+mostly due to time expenses. The data sets used
+was the first of the sets used in the first task,
+but manipulated so that only relevant features
+remained. The use of only one data set affected
+probably the classification performance in nega-
+tive ways, but the importance of the individual
+features should be visible in the results. The time
+needed for training and classification remained al-
+most at the same levels as before.
+5
+5.2.1 Trigrams
+When only character trigrams was used as a fea-
+ture, the percentage of correctly classified in-
+stances dropped to 38.94%, the percentage in-
+creased when tags and names was added to the
+feature set and reached 45.94%.
+5.2.2 Bigrams
+When only word bigrams was used the percent-
+age of correctly classified instances decreased to
+26.09% and when names and tags was added to
+the set it reached almost the same percentage as
+only trigrams did: 37.79%.
+5.2.3 Trigrams and Bigrams
+When both character trigrams and word bigrams
+was used as features the percentage of correctly
+classified instances was 44.18% which is almost
+in level with trigrams in combination with men-
+tioned names and #-tags.
+6 Future work
+As I did not tweak any algorithm settings a fu-
+ture work is to find the optimal settings for the
+different classifiers to maximize classification per-
+formance and timing performance. Another field
+for future experimentation is if performance can
+be gained by including more meta data about
+the tweets, for example geographical information,
+what time a tweet was made and which source
+that was used for creation of the tweet.
+Another related future work is to determine if
+the lessons taken from this experiment, and simi-
+lar works, could be applied in other fields like log
+analysis for detection of intrusion attempts.
+7 Conclusion
+My experiment has showed that quite good clas-
+sification performance, both regarding percent-
+age of correctly classified instances and time con-
+sumption, can be obtained from LibLINEARs
+implementation of Support Vector Machines in
+Weka without tweaking of the default settings
+when using character trigrams, word bigrams,
+mentioned names and #-tags as features. For in-
+creased accuracy manipulation of the settings for
+the chosen classifier are probably necessary and
+the selection and filtering of features in the data
+set could also be considered for manipulation.
+Another conclusion drawn from my experi-
+ment are that the feature class that contributes
+most to the classification rate are the trigrams.
+When trigrams are combined with mentions of
+other users and hashtags the rate approaches
+50%. On the other hand, if the attribution tech-
+niques should be used in a forensic context were
+we can assume that the perpetrator won’t use
+his or hers normal social network the best option
+seems to be to use word bigrams in combination
+with character trigrams. Similar observations and
+conclusions are made in (Layton, Watters, and
+Dazeley 2010).
+6
+References
+Apache (2015). Log Files. Accesslog. The Apache
+Software Foundation. url: https://httpd.
+apache . org / docs / current / logs . html #
+accesslog.
+Corney, Malcolm W. et al. (2001). “Identifying
+the Authors of Suspect Email”. url: http:
+//eprints.qut.edu.au/8021/.
+Fissette, Marcia and FA Grootjen (2010). “Au-
+thor identification in short texts”. In: Bach-
+elor theses, Raboud Universiteit Nijmegen.
+url: http : / / www . dcc . ru . nl / ~idak /
+teaching / batheses / MarciaFissette _
+scriptie.pdf.
+Hoorn, JF et al. (1999). “Neural network iden-
+tification of poets using letter sequences”.
+In: Literary and Linguistic Computing 14.3,
+pp. 311–338. doi: 10 . 1093 / llc / 14 . 3 .
+311. eprint: http://llc.oxfordjournals.
+org/content/14/3/311.full.pdf+html.
+url: http : / / llc . oxfordjournals . org /
+content/14/3/311.abstract.
+Knaap, L. van der and F.A. Grootjen (2007).
+“Author identification in chatlogs using for-
+mal concept analysis”. In: BNAIC 2007 : Pro-
+ceedings of the 19th Belgium-Netherlands Ar-
+tificial Intelligence Conference, pp. 181–188.
+url: http : / / repository . ubn . ru . nl /
+handle/2066/55542.
+Layton, R., S. McCombie, and P. Watters (2012).
+“Authorship Attribution of IRC Messages
+Using Inverse Author Frequency”. In: Cy-
+bercrime and Trustworthy Computing Work-
+shop (CTC), 2012 Third, pp. 7–13. doi:
+10 . 1109 / CTC . 2012 . 11. url: http : / /
+ieeexplore.ieee.org/stamp/stamp.jsp?
+tp=&arnumber=6498422.
+Layton, R., P. Watters, and R. Dazeley (2010).
+“Authorship Attribution for Twitter in 140
+Characters or Less”. In: Cybercrime and
+Trustworthy Computing Workshop (CTC),
+2010 Second, pp. 1–8. doi: 10.1109 /CTC.
+2010.17. url: http://ieeexplore.ieee.
+org/xpls/abs_all.jsp?arnumber=5615152.
+Luyckx, Kim and Walter Daelemans (2008). “Au-
+thorship Attribution and Verification with
+Many Authors and Limited Data”. In: Pro-
+ceedings of the 22Nd International Confer-
+ence on Computational Linguistics - Volume
+1. COLING ’08. Manchester, United King-
+dom: Association for Computational Linguis-
+tics, pp. 513–520. isbn: 978-1-905593-44-6.
+url: http://dl.acm.org/citation.cfm?
+id=1599081.1599146.
+McCombe, Niamh (2002). “Methods of au-
+thor identification”. In: url: https : / /
+www . cs . tcd . ie / undergraduate /
+computer-science-language/bacsll_web/
+mccombe0102.pdf.
+Schwartz, Roy et al. (2013). “Authorship Attri-
+bution of Micro-Messages”. In: Proceedings of
+the 2013 Conference on Empirical Methods
+in Natural Language Processing. Association
+for Computational Linguistics, pp. 1880–1891.
+url: http://www.aclweb.org/anthology/
+D13-1193.
+Stamatatos, Efstathios (2006). “Ensemble-based
+Author Identification Using Character N-
+grams”. In: Proc. of the 3rd Int. Workshop on
+Text-based Information Retrieval (TIR’06),
+pp. 41–46. url: http://www.icsd.aegean.
+gr / lecturers / Stamatatos / papers /
+TIR2006.pdf.
+— (2008). “Author identification: Using text
+sampling to handle the class imbalance prob-
+lem”. In: Information Processing & Manage-
+ment 44.2, pp. 790 –799. issn: 0306-4573.
+doi: http : / / dx . doi . org / 10 . 1016 / j .
+ipm . 2007 . 05 . 012. url: http : / / www .
+sciencedirect . com / science / article /
+pii/S0306457307001197.
+Vel, O. de et al. (2001). “Mining e-Mail Content
+for Author Identification Forensics”. In: SIG-
+MOD Rec. 30.4, pp. 55–64. issn: 0163-5808.
+doi: 10.1145/604264.604272. url: http:
+//doi.acm.org/10.1145/604264.604272.
+7
+A Appendix A
+{
+u’contributors’: None,
+u’truncated’: False,
+u’text’: u"Trust me, I’m an engineer: http://t.co/Go6ezqUHKe",
+u’in_reply_to_status_id’: None,
+u’id’: 544785484506210306,
+u’favorite_count’: 0,
+u’source’: u’<a href="http://twitter.com" rel="nofollow">Twitter Web Client</a>’,
+u’retweeted’: False,
+u’coordinates’: None,
+u’entities’:
+{
+u’symbols’: [],
+u’user_mentions’: [],
+u’hashtags’: [],
+u’urls’: [{
+u’url’: u’http://t.co/Go6ezqUHKe’,
+u’indices’: [27, 49],
+u’expanded_url’: u’http://bit.ly/1yXA7nK’,
+u’display_url’: u’bit.ly/1yXA7nK’
+}]
+},
+u’in_reply_to_screen_name’: None,
+u’id_str’: u’544785484506210306’,
+u’retweet_count’: 0,
+u’in_reply_to_user_id’: None,
+u’favorited’: False,
+u’user’:
+{
+u’id’: 2914240534,
+u’id_str’: u’2914240534
+},
+u’geo’: None,
+u’in_reply_to_user_id_str’: None,
+u’possibly_sensitive’: False,
+u’lang’: u’en’,
+u’created_at’: u’Tue Dec 16 09:25:55 +0000 2014’,
+u’in_reply_to_status_id_str’: None,
+u’place’: None
+}
+8
+B Appendix B
+Input: Tweets stored in database
+Output: Dictionaries with word-bigram, character trigram, mentioned usernames and #-tags
+as keys
+Fetch tweets from database;
+foreach fetched tweet do
+if Beginning not equal ’RT’ then
+Extract trigrams to char trigrams;
+foreach trigram IN char trigrams do
+Store count of trigram occurrences to char trigrams[trigram]
+end
+Store all inline user mentions to names;
+foreach name IN names do
+Store count of name occurrences to names[name]
+end
+Store all inline #-tags to tags;
+foreach tag IN tags do
+Store count of tag occurrences to tags[tag]
+end
+Replace all inline user mentions with ’ !@NAME’;
+Replace all inline #-tags with ’ !#TAG!’;
+Split tweet string to words;
+Store last index in words to lastIndex;
+Create special word-bigram (’ !START!’,words[0]);
+Create special word-bigram (words[lastIndex],’ !STOP!’);
+Store start and stop bigram to word bigrams;
+foreach word IN words do
+if current index not equals lastIndex then
+Store (word[index],word[index+1]) to word bigrams;
+end
+end
+foreach bigram IN word bigrams do
+Store count of bigram occurrences to word bigrams[bigram]
+end
+end
+end
+Algorithm 1: Feature extraction
+9
+Input: Dictionaries with word-bigram, character trigram, mentioned usernames and #-tags
+as keys
+Output: Filtered lists of word-bigram, character trigram, mentioned usernames and #-tags
+foreach bigram IN word bigrams do
+if number of bigram occurrences ≥ threshold then
+add bigram to filtered bigrams
+end
+end
+foreach trigram IN char trigrams do
+if number of trigram occurrences ≥ threshold then
+add trigram to filtered trigrams
+end
+end
+foreach name IN names do
+if number of name occurrences ≥ threshold then
+add name to filtered names
+end
+end
+foreach tag IN tags do
+if number of tag occurrences ≥ threshold then
+add tag to filtered tags
+end
+end
+Algorithm 2: Feature Filtering
+10
+11
+C Appendix C
+Input: 5000 randomly selected tweets, set of collected and filtered features
+Output: ARFF-data for classification
+Filtered character trigrams from Algorithm 2 to filtered trigrams;
+Filtered word bigrams from Algorithm 2 to filtered bigrams;
+Filtered user mentions from Algorithm 2 to filtered names;
+Filtered #-tags from Algorithm 2 to filtered tags;
+Append {filtered trigrams, filtered bigrams, filtered names, filtered tags, class} to features;
+Write features to ARFF-file;
+foreach tweet IN selected tweets do
+Set tweet data[class] to username extracted from tweet;
+Extract features according to Algorithm 1 to tweet features[feature type];
+foreach trigram IN filtered trigrams do
+if trigram IN tweet features[trigrams] then
+Set tweet data[trigram] to Count trigram occurrences in
+tweet features[trigrams]/total number of trigrams in tweet features[trigrams];
+end
+else
+Set tweet data[trigram] to 0;
+end
+end
+foreach bigram IN filtered bigrams do
+if bigram IN tweet features[bigrams] then
+Set tweet data[bigram] to Count bigram occurrences in
+tweet features[bigrams]/total number of bigrams in tweet features[bigrams];
+end
+else
+Set tweet data[bigram] to 0;
+end
+end
+foreach name IN filtered names do
+if name IN tweet features[names] then
+Set tweet data[name] to Count tag occurrences in tweet features[names]/total
+number of names in tweet features[names];
+end
+else
+Set tweet data[name] to 0;
+end
+end
+foreach tag IN filtered tags do
+if tag IN tweet features[tags] then
+Set tweet data[tag] to Count tag occurrences in tweet features[tags]/total number
+of tags in tweet features[tags];
+end
+else
+Set tweet data[tag] to 0;
+end
+end
+Append tweet data to dataset;
+end
+Write dataset to ARFF-file;
+Algorithm 3: Dataset creation
+12

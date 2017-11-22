@@ -1,0 +1,1671 @@
+15051
+Examensarbete 30 hp
+Juli 2015
+Machine learning to detect online 
+grooming 
+Maxime Meyer
+Institutionen för informationsteknologi
+Department of Information Technology
+
+ 
+ 
+ 
+Teknisk- naturvetenskaplig fakultet 
+UTH-enheten 
+ 
+Besöksadress: 
+Ångströmlaboratoriet 
+Lägerhyddsvägen 1 
+Hus 4, Plan 0 
+ 
+Postadress: 
+Box 536 
+751 21 Uppsala 
+ 
+Telefon: 
+018 – 471 30 03 
+ 
+Telefax: 
+018 – 471 30 00 
+ 
+Hemsida: 
+http://www.teknat.uu.se/student 
+Abstract
+Machine learning to detect online grooming
+Maxime Meyer
+Online grooming is a major problem in today’s society where more and more time is
+spent online. To become friends and establish a relationship with their young victims
+in online communities, groomers often pretend to be children. In this paper we
+describe an approach that can be used to detect if an adult is pretending to be a child
+in a chat room conversation. The approach involves a two step process wherein
+authors are first classified as being a children or adults, and then each child is being
+examined and false children distinguished from genuine children.
+Our results shows that even if it is hard to separate ordinary adults from children in
+chat logs it is possible to distinguish real children from adults pretending to be
+children with a high accuracy. In this report the accuracy of the methods proposed is
+discussed, as well as the features that were important in their success. We believe
+that this work is an important step towards automated analysis of chat room
+conversation to detect possible attempts of grooming. Our approach where we use
+text analysis to distinguish adults who are pretending to be children from actual
+children could be used to inform children about the true age of the person that they
+are communicating. This would be a step towards making the Internet more secure
+for young children and eliminate grooming.
+Tryckt av: Reprocentralen ITC
+15051
+Examinator: Edith Ngai
+Ämnesgranskare: Michael Ashcroft
+Handledare: Lisa Kaati
+
+Contents
+1 Introduction 7
+1.1 Legal aspects on grooming . . . . . . . . . . . . . . . . . . . . 8
+1.2 Subject Limitation . . . . . . . . . . . . . . . . . . . . . . . . 10
+1.3 Outline . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2 Related Work 12
+2.1 Age estimation . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.2 PAN competition . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.3 Groomer identification . . . . . . . . . . . . . . . . . . . . . . 14
+3 Theoretical Background 17
+3.1 Algorithms . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+3.1.1 Adaboost . . . . . . . . . . . . . . . . . . . . . . . . . 18
+3.1.2 Support Vector Machine (SVM) . . . . . . . . . . . . . 19
+3.1.3 Naive Bayes . . . . . . . . . . . . . . . . . . . . . . . . 22
+3.2 Text Classification . . . . . . . . . . . . . . . . . . . . . . . . 22
+3.2.1 Confusion Matrix . . . . . . . . . . . . . . . . . . . . 23
+3.3 Tools for text classification . . . . . . . . . . . . . . . . . . . . 24
+3.3.1 Weka . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+3.3.2 R . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+4 Data 25
+4.1 Datasets . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+4.2 Downloading the data . . . . . . . . . . . . . . . . . . . . . . 27
+4.3 Cleaning the data . . . . . . . . . . . . . . . . . . . . . . . . . 28
+4.3.1 Gathering the meta-data . . . . . . . . . . . . . . . . . 28
+4.3.2 Separating the speakers and the posts . . . . . . . . . . 28
+4.3.3 Removing tags, urls and images . . . . . . . . . . . . . 29
+1
+4.3.4 Transforming text into tokens . . . . . . . . . . . . . . 29
+5 Features 30
+5.1 Features . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+5.2 Creation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+5.3 Feature Selection . . . . . . . . . . . . . . . . . . . . . . . . . 33
+6 Experiments 37
+6.1 Experiment 1: Child vs Adult . . . . . . . . . . . . . . . . . . 37
+6.2 Experiment 2: N-gram . . . . . . . . . . . . . . . . . . . . . . 41
+6.2.1 Children and Adults . . . . . . . . . . . . . . . . . . . 41
+6.2.2 Children and Policemen . . . . . . . . . . . . . . . . . 44
+6.3 Experiment 3: Kids vs Police (fake kids) . . . . . . . . . . . . 44
+6.4 Experiment 4: Pedophile . . . . . . . . . . . . . . . . . . . . . 49
+7 Conclusions 51
+8 Future work 52
+2
+List of Figures and Tables
+Figure 3.1 The three different types of Learning[1] . . . . . . . . . . . . . . . . . . . . 18
+Figure 3.2 Adaboost[2] . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+Figure 3.3 SVM - separable case[3] . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+Figure 3.4 SVM - non separable case[4] . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+Figure 3.5 SVM - kernel trick[5]. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+Figure 3.6 Text Classification example (Supervised Learning)[6] . . . . . . 23
+Figure 5.1 Underfitting and overfitting example [7] . . . . . . . . . . . . . . . . . . . 34
+Table 3.1 Confusion matrix . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+Table 4.1 The different datasets used for the experiments. . . . . . . . . . . . 27
+Table 5.1 The classes of features that we have used in our experi-
+ments . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+3
+Table 5.2 The list of POS-tags used as features . . . . . . . . . . . . . . . . . . . . . 36
+Table 6.1 The datasets used for creating the models. . . . . . . . . . . . . . . . 37
+Table 6.2 Separating kids from adults on a single dataset using Ad-
+aboost, SVM and Naive Bayes. . . . . . . . . . . . . . . . . . . . . . . . . . . . . 38
+Table 6.3 Results on the mixed dataset using Adaboost. . . . . . . . . . . . . 38
+Table 6.4 Results of the prediction of the class for CHAT-POLICE. 39
+Table 6.5 First 10 unigram from BOOK-KID and BOOK-ADULT
+dataset. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 40
+Table 6.6 First 10 unigram from BLOG-KID and BLOG-ADULT
+dataset. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 40
+Table 6.7 First 10 unigram from CHAT-KID and CHAT-ADULT
+dataset. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+Table 6.8 First 15 unigrams based on 223 instances of each category 42
+Table 6.9 Results of models seeking to distinguish police pretending
+to be children from real children from chat logs. . . . . . . . . . . . 42
+Table 6.10 The 30 most important features for distinguishing police
+from real children with and without grooming features . . . . 43
+Table 6.11 Distinguishing policemen from children with a limited set
+of features. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 45
+4
+Table 6.12 Separating policemen from children using a limited set of
+features. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 46
+Table 6.13 Separating policemen from both children and adults. . . . . . 49
+Table 6.14 Results of the model distinguishing policemen and pe-
+dophiles from both children and adults. . . . . . . . . . . . . . . . . . . . 49
+5
+Acknowledgements
+I would like to thank my supervisor, Mrs. Lisa Kaati, for the valuable advice
+and support she has given me in the writing of this report but also during
+the completion of this project. Thanks to her advices I have been able to
+structure this work and to get results despite the vast amount of topics this
+subject was covering at the beginning. It is thanks to her dedication that
+a paper on this subject have been submitted for a conference. I would also
+like to thank my reviewer, Mr. Michael Ashcroft for his encouragement and
+guidance. Thanks to him and the numerous courses that he has provided
+almost once a week I have been able to work faster and understand the
+principle behind machine learning, and the different algorithms that I have
+used in this project but also the usage of R. Thanks also to my coworkers
+Enghin Omer and Amendra Shrestha for their suggestions and for always
+bringing fun in the office.
+6
+Chapter 1
+Introduction
+Over the past two decades the Internet has been growing at a very fast pace.
+At the end of 2014 more than 40% of the world population had access to
+the Internet [8]. The penetration level is higher in developed countries such
+as the United States and England where almost 90% of the population has
+access to the Internet. According to the website Statistica [9] one quarter
+of the Internet users worldwide are under 25 years old. Children are using
+the Internet from different devices such as phones, computers, or tablets for
+many different reasons, for work, as well as gaming, socializing, etc. It is
+difficult for parents to monitor when their child is accessing the Internet and
+what he or she is doing online.
+Young people and children are familiar with technology and the use of
+the Internet since it has been a part of their lives from the start. However,
+in today’s society children and teenagers may face many dangers online. In
+many cases it is easier for young people to be deceived by others than it
+is for adults. Young people might not fully understand the risks that they
+are facing when talking to strangers and providing strangers with personal
+information.
+People on the Internet can easily hide or change their identity online. By
+staying anonymous they can lie about themselves and provide false personal
+information. Thus parents and police have a hard time recognizing people
+with bad intentions and catching them. If advices on how to protect children
+online are offered to parents by governmental websites or children association
+websites, most of the population is either unaware of or ignore them.
+One example of threats towards children and teenagers on the Internet
+7
+are pedophiles. Pedophiles are present online and they are more difficult to
+catch than pedophiles in real life because they are not seen directly. They are
+dangerous since they can stay hidden and laws cannot always help to arrest
+them because it is difficult to prove that they are guilty as well as it is not
+possible to arrest someone just because of an improper chat conversation.
+The attempt of building a relationship leading to sexual relationship with a
+child by a pedophile is called grooming.
+According to the website Internet safety 101 [10], some alarming numbers
+and conclusions can be noted from statistics retrieved over the Internet. In
+most of the cases of online sex crimes against minors (82%), the predator will
+first gather information about the victim on social network websites in order
+to approach him/her more easily. It is particularly easy to access chat room
+designed to children under a false identity. It is estimated that about one
+out of seven children online will receive a sexual solicitation still according
+to [10].
+Moreover children do not always report incidents that might be consid-
+ered to be a grooming incident. The reasons for this can be guilt, that the
+child is feeling ashamed of what happened, the child felt that they were in
+a boyfriend or girlfriend relationship with the groomer or simply because
+children don’t always know that they are being abused. By analyzing what
+people are writing online it is possible to learn things about them and about
+their behavior. There are many studies on text analysis that shows that
+it is possible to obtain information about someone using text analysis. For
+example, it is possible to establish a good estimation of someone’s age by
+studying what they write online as well as how and when they write it. It is
+also possible to get an understanding of the author’s gender, location, level
+of education, etc. This kind of profiling can be used in different research
+fields such as forensics, plagiarism or intelligence.
+1.1 Legal aspects on grooming
+Grooming is always about people who are trying to sexually abuse or harm
+children or young people by getting close to them and by building a trust-
+relationship between them. According to the U.S. legal system, see [11], the
+definition of child grooming is:
+”Child grooming refers to an act of deliberately establishing an
+8
+emotional connection with a child to prepare the child for child
+abuse. Child grooming is undertaken usually to carry out sexual
+abuse and other child exploitation like trafficking of children, child
+prostitution or the production of child pornography. Currently
+child grooming occur through the use of the Internet.”
+NSPCC [12] includes real world grooming in the definition. Depending on
+the countries, laws on child grooming are not always the same. In the U.S.,
+it is illegal to do child grooming, it is considered as federal offense pursuant
+to 18 USCS 2422 [11]. The provision of the section reads as:
+(a) Whoever knowingly persuades, induces, entices, or coerces
+any individual to travel in interstate or foreign commerce, or in
+any Territory or Possession of the United States, to engage in
+prostitution, or in any sexual activity for which any person can
+be charged with a criminal offense, or attempts to do so, shall be
+fined under this title or imprisoned not more than 20 years, or
+both.
+(b) Whoever, using the mail or any facility or means of inter-
+state or foreign commerce, or within the special maritime and
+territorial jurisdiction of the United States knowingly persuades,
+induces, entices, or coerces any individual who has not attained
+the age of 18 years, to engage in prostitution or any sexual activ-
+ity for which any person can be charged with a criminal offense,
+or attempts to do so, shall be fined under this title and imprisoned
+not less than 10 years or for life.
+In the UK, child grooming might fall under an article of the Indecency
+with Children Act from 1960 [13] which says:
+1. (1) Any person who commits an act of gross indecency with
+or towards a child under the age of fourteen, or who incites a
+child under that age to such an act with him or another, shall be
+liable on conviction to imprisonment for a term not exceeding two
+years, or on summary conviction to imprisonment for a term not
+exceeding six months, to a fine not exceeding one hundred pounds,
+or to both.
+Gross indecency is a concept that involves actions such as sexual actions
+but it is still a vague concept with a large scope of possible interpretation.
+9
+The problem is that it might be difficult to find evidence that the groomer has
+committed an act of gross indecency online. It is also difficult to categorize
+an act as such. The interpretation of the law is difficult and sometimes the
+legal system cannot do anything until a real life meeting happens.
+As presented by the European online grooming project [14], laws in Eu-
+rope are also problematic. They focus on child exploitation and on child
+pornography online but not on grooming and the grooming process. In the
+UK studies have been conducted to reveal the magnitude of the problem of
+online grooming. In 2012, UK was one of the four European countries that
+had a grooming legislation. More and more researches have focused on the
+detection of online sexual predators but they tend to focus on the content of
+the conversation rather than trying to determine the age of the participant
+of the conversation is.
+1.2 Subject Limitation
+In this thesis, we investigate to what extent it is possible to recognize adults
+posing as children online, people who are lying about their age and who are
+trying to imitate the way of writing of kids. And, if we manage to so, to
+see if those people who are hiding their identity are doing so for grooming
+purpose. The problem can be summarized to the question: to what extend
+is it possible to recognize an adult posing as a child online?
+Due to a lack of data we have not been able to classify pedophiles posing
+as children in this work. There is not a lot of available chat logs involving
+pedophile conversations that are made available online and we have only
+be able to use a single dataset for the pedophiles texts and some of are not
+pretending to be kids even if some are lying about their age in order to appear
+younger than they are. Also, because of the vast amount of possibilities that
+this subject offers, due to the time limitation for this master thesis this work
+focuses mostly on trying to classify adults posing as kids and once again,
+due to the limitation of the datasets available, only the policemen posing as
+children have been used for this classification.
+10
+1.3 Outline
+This report starts in Chapter 2 with a description of related work and research
+done in related areas. In Chapter 3, the tools and scientific concepts needed
+to understand text classification and the different algorithms that have been
+used is presented. In Chapter 4 the different dataset that have been gathered
+and used for the project is presented. This work focus on texts written in
+English since it is easier to find suitable dataset in English. Some results
+might be valid for other languages while some features used are specific to
+the English language. After that a description of the process to transform
+texts into feature vectors is presented in Chapter 5. A description of the
+experiments done and of the results achieved is presented in Chapter 6. This
+chapter also contains a discussion of the results obtained in order for the
+reader to be able to reflect on the results and their meaning. Finally, Chapter
+7 contains some concluding remarks and Chapter 8 some directions for future
+work.
+11
+Chapter 2
+Related Work
+In this chapter, work related to ours is presented. The focus is on machine
+learning and detection of grooming. Machine learning is a field of research
+that is growing quickly there is a lot of excellent books introducing the subject
+of machine learning like Introduction to Information Retrieval [15], Founda-
+tions of Machine Learning [16] or Data Mining and Analysis: Fundamental
+Concepts and Algorithms [17]. The book of Srivastas and Sahami [18], focus-
+ing on text classification propose some methodology ideas. There are some
+interesting ideas and methodological advice on how to use specific machine
+learning algorithms described by T. Joachims in [19] where the focus is on
+SVM (Support Vector Machine) and in [20] where S. Luz reasons about the
+use of Naive Bayes classifiers.
+For detecting groomers, research about author identification is closely
+related. Therefore it is important to have an idea of what is possible and
+what have been tried in the field of author identification. One aspect of
+author identification is age detection. Age detection is the attempt to guess
+the age of an author given a text written by him. It is rather difficult to
+guess the perfect age of the author. Similarly to how a human can guess an
+approximated range of the age for someone after seeing him or her, you can
+only try to guess a range for the age of an author. It is easier to distinguish
+a grown up adult from a young child than to distinguish a teenager from
+a young adult and it is even more difficult to recognize someone trying to
+deceive someone else by trying to imitate the way of writing of someone from
+a different age category. Pedophiles who were caught during sting operation
+didn’t realize that they were talking to policemen instead of children. A
+sting operation, here, is an operation were policemen will pose as children
+12
+and engage conversation online in order to try to catch pedophiles.
+2.1 Age estimation
+Different studies have been made on author profiling using age detection.
+One of the difficulties in the field is to find a suitable corpus of text in order
+to obtain satisfying results. High accuracy has been obtained by Argamon &
+al. [21], whose work focused on corpora of literal texts containing thousands
+of words per author. Several studies have made use of blog posts or long
+text as described in [22]. Tam et al. [23] focus on age detection in chats and
+obtain good results, but they note that their results are biased by the corpus
+used. Age estimation has typically been restricted to classification within
+intervals like 10s, 20s, 30s and over rather than age regression [21, 24, 25]
+were you try to get the exact age of the author. The features that we will
+use for analyzing chat room conversations will be different from the features
+that are used when analyzing literal texts. Suggestions regarding promising
+features for age classification have been described by De Arteaga & al.[26].
+It is important to describe the features that are used and the classifier that
+is used in order to have a good idea of the value of the results and their
+meaning. A good description of work and results achieved in this field is
+given by Peersman & al.[22].
+2.2 PAN competition
+Every year, a competitive lab on uncovering plagiarism, authorship and so-
+cial software misuse is held by PAN [27] and in 2012 one of the tasks was
+to identify sexual predators and the corpus proposed was derived from the
+chat logs available on the Perverted Justice association website [28]. Another
+important theme at the PAN conference is author and gender identification
+Even if the results are not always good, some of the proposed ideas are inter-
+esting. In the report of the task on author profiling of 2013 [29] we can see the
+different approaches used by the participants for the classification task. Ad-
+aboost and SVM have been used by most of the participants. One interesting
+idea is described in Gilad & al. (2014) [30] where an attempt to use random
+forest classifiers is proposed. Rangel & al. (2013) [31] propose the use of
+emotions. R. Chandramouli & al. provides a list of the features that they
+13
+have been using in [32] for gender identification but some of those features
+seems to be reusable for age classification. S. Argamon first uses text cat-
+egorization in [33] and applied it to blogs in his paper with J. Pennebaker[25].
+2.3 Groomer identification
+Groomers online often target children based on their public profile data, and
+wait for one of them to reply before starting a conversation. Psychological
+studies on grooming state that it is possible to identify some kind of pattern
+in the conversations between a groomer and a child[34][35]. In her paper, R.
+O’Connell [36] identified six different stages in a grooming conversation. The
+groomers will not necessarily pass by all stages during a conversation and
+they might not necessarily progress linearly through the stages but most of
+stages are found in the conversation available in [28]. The identified stages
+are:
+• A friendship forming stage which is the first stage of all conversations
+where the groomer will present himself and ask basic question to the
+child;
+• A relationship forming stage when the groomer will try to become friend
+with the child;
+• A risk assessment stage where the groomer will generally try to make
+sure that he is safe and that it is safe for him to talk to the child;
+• An exclusivity stage which is often developed by the groomer in order
+to be sure that the child has taken the hook;
+• The sexual stage is the more obvious one and the conversation will
+generally lead to the last stage;
+• The real life meeting stage of the conversation.
+It is important to differentiate a groomer conversation or a pedophilic
+conversation from a teenager to teenager conversation. Both can be sexually
+oriented but the first one is against the law and these are the conversations
+that we are trying to detect. In the US, police officers are trying to catch
+14
+groomers and pedophiles online by pretending to be children or teenagers
+and then wait for an adult pedophile to approach them. The conversations
+are used for catching the pedophile and then as pieces of conviction in order
+to convict him. When the pedophile is convicted in a court and arrested, the
+conversations are made publicly available on the police website.
+Groomer identification using linguistic features, text classifiers and/or
+post level has been undertaken by several authors. In [37], Rahman Miah &
+al. collected chat logs from the Perverted Justice Foundation and mixed them
+with logs from different chats. They focus on two types of features: term-
+based feature and a mix of psychometric and word categorical information
+from the tool LIWC. The conclusion is that the second set of feature is
+useful for detecting child exploitation conversation. Escalante & al. (2012
+& 2013) in [38][39] propose different approaches to the problem of sexual
+predator detection. In the first paper, they introduce a two step method
+that first identify a conversation as potentially containing child exploitation
+and in a second step they try to separate the users of the chat conversation to
+identify the pedophile. They submitted this for the PAN 2012 competition
+and obtained the best results. In [39] they separate the conversation into
+three parts that could correspond to the stages of grooming described earlier.
+A classifier is built on each local part and then linked to the whole text. The
+results shows that this approach would have been competitive on the PAN
+competition of 2012.
+Peersman & al. (2012) in [40] describe an approach similar to the one
+proposed in [38]. The results obtained are less good but it still shows that a
+many step process is a good idea.
+Finally Gupta & al. (2012) [41] seperates the text into six parts that
+they think correspond to the process of grooming based on the work of R.
+O’Connell [36]. They use linguistic features and shows that the first stage
+of the conversation is the most important one in the detection of groomers
+based on this separation approach.
+An example making use of interesting game theoretic principles is Laor-
+den & al. (2012) [42] who utilized a software agent which initiates conversa-
+tions with other users and then assess the grooming potentiality level of the
+conversation. They use the principle of level for categorizing the whole con-
+versation, and, when a new log is submitted, the engine evaluates the level
+of the log, and reevaluate the level of the whole conversation. By doing this,
+15
+the software is able to gather information on interesting conversation and if
+the level of grooming is considered as important, the software is supposed to
+send an alert to the authorities in charge.
+16
+Chapter 3
+Theoretical Background
+Our approach for detecting groomers is to use machine learning tools. Ma-
+chine learning is the part of computer science that focuses on researching,
+constructing and working on algorithms that can learn from data. These
+algorithms are used to create statistical models that are trained with data
+in order to perform predictions on new data. A model is set of assumptions
+made to try to describe the observed data. It is closely related to artificial
+intelligence and statistical analysis.
+There are three main types of machine learning algorithms summarized in
+3.1: supervised learning algorithms, reinforcement learning algorithms and
+unsupervised learning algorithms.
+• In supervised learning, the algorithm has training data made of input
+and the output for this input. Based on this, the system builds a model.
+The system is learning from its prediction error.
+• Reinforcement learning uses an agent, formed by the learning system
+and by an action selector. The action selector receives information on
+the current state of the system. From the information on the state,
+the learning system will propose several actions to the action selector.
+The action selector will select the action that is considered to be the
+best given the current state. This action will be performed on the
+system which will transition to a new state. Based on the action and
+its outcome, the agent will receive a reward. The goal of the agent is
+to receive the maximum reward possible. It uses the reward to learn.
+• In unsupervised learning, the data is unlabeled. The algorithm will try
+17
+to find hidden relation or structure from the data.
+Figure 3.1: The three different types of Learning[1]
+Amongst the many algorithms created for machine learning purpose, Sup-
+port Vector Machine (SVM) and Adaboost are two algorithms that regularly
+perform well on text classification tasks, see Chapter 2. We also used the
+Naive Bayes algorithm to have an idea of what could be the expected results.
+3.1 Algorithms
+3.1.1 Adaboost
+Adaboost is a machine learning algorithm first introduce by [43] as a boosting
+algorithm. The principle of boosting is to combine weak decision rule in
+order to create a much stronger decision rule. A boosting algorithm can be
+represented as:
+FT (x) =
+T￿
+t=1
+ft (x) (3.1)
+where each ft (x) is a weak classifier and T is the set of weak classifier used.
+When learning each classifier in the sequence, the data is weighted so that
+more attention is paid to those cases which previous classifiers failed to cor-
+rectly classify. Final classifications are then obtained by a weighted vote of
+all classifiers. The final vote H (x) as introduced in [43] can be seen as:
+H (x) = sign (f (x)) = sign
+￿
+T￿
+t=1
+αtht (x)
+￿
+(3.2)
+18
+where αt ∈ R is the weight associated to ht (x) and is chosen to minimize the
+error, ht (x) is the weight of the classifier t ∈ T .
+The base classifiers in our case were classification trees wherein the feature
+space is divided in regions by recursive partitioning. It is similar to what is
+presented in Figure 3.2 except that the tree classifier will always perform
+binary partitions on particular variables. That means that the lines will be
+orthogonal to the axes in our case.
+Figure 3.2: Adaboost[2]
+When creating a new partition, the decision tree algorithm adds a node
+to its classification tree. The node correspond to a binary test made on the
+attributes, and the leafs represent the label of the data after the decision.
+The rule used for partitioning the data corresponds to the path between the
+nodes. We used the implementation of the algorithm present in the packages
+ada and maboost of R.
+3.1.2 Support Vector Machine (SVM)
+SVM was introduced in 1963 but has really emerged after the publication
+on the kernel trick by B. Boser & al. in [44]. SVM is an algorithm that
+19
+will work out the decision boundary that gives the optimal margin for the
+classification task.
+In the case were data is linearly separable, the algorithm will work out
+the hyperplane that maximize the margin so that the decision boundary is
+as far away from the data of both classes as possible as represented in Figure
+3.3.
+Figure 3.3: SVM - separable case[3]
+If it is not possible to separate the data linearly, the algorithm will add
+an error term ξ that approximates the number of misclassified samples as
+represented in Figure 3.4. The goal here is to find the hyperplane that will
+minimize the error term
+￿
+i ξi and still maximize the margin. This new
+margin is called the soft margin introduced in 1995 by C. Cortes in [45].
+This introduce a new parameter C in front of the sum term which introduce
+a new constraint.
+SVM is famous because it generalizes this approach to non-linear decision
+boundaries. The idea behind this is to work on a higher dimensional space
+where the problem will be easier and might turn back into a linear decision
+boundary problem. This is made possible thanks to the results of Cover’s
+function counting theorem presented in [46]. The solution is to use the kernel
+trick. The kernel trick is making use of the fact the result of applying a
+kernel function is equivalent to applying an inner product in some higher
+dimensional space. In the linear optimization problem, the data points were
+only appearing as an inner product xTi xi. Thanks to this we can calculate
+20
+Figure 3.4: SVM - non separable case[4]
+the inner product in the feature space without the need to do the exact
+mapping in the other space. We define the kernel function K by:
+k (x, x￿) = (Ø (x) ·Ø(x)) (3.3)
+With the kernel trick, the data can be separated in a linear way as shown
+in Figure 3.5.
+Figure 3.5: SVM - kernel trick[5]
+The hardest part of this is to choose the right kernel function. It is this
+function that creates the kernel matrix which summarizes the data. The
+21
+kernel matrix is a square matrix K defined so that its (i,j)-entry is given by
+Kij = k
+￿
+x
+(i)
+, x
+(j)
+￿
+. A popular choice of kernel is for example the Gaussian
+radial basis function :
+k (x, x￿) = exp
+￿
+−γ ￿x− x￿￿2
+￿
+(3.4)
+This is a reasonable measure of x and x￿ similarity, and is close to 1 when x
+and x￿ are close, and near 0 when x and x￿ are far apart.
+3.1.3 Naive Bayes
+Naive Bayes is an algorithm that relies on probabilistic analysis. Naive Bayes
+basically just computes the probability of a document d being of class Ck:
+p (Ck|d) for every k class. Now if we consider the document d as being rep-
+resented by a feature vector of n variable x = (x1, ..., xn). Using Bayes’
+theorem, we can write the conditional probability as:
+p (c|x) = p (c) p (x|c)
+p (x)
+(3.5)
+We also assume that those variables are conditionally independent (thus the
+naive approach of the algorithm). The probability of a document d being in
+class c is expressed as:
+p (c|x1, ..., xn) ∝ p (c)
+n￿
+i=1
+p (xi|c) (3.6)
+For more information, the Coursera platform [47] offers online lectures
+on machine learning, and those articles offer detailed explanation of SVM [3]
+and Adaboost [43].
+3.2 Text Classification
+One field of application for machine learning is text classification. The goal
+is to attach or to decide on a label for a text based on how similar it is
+to other text for which are already labeled. The principle is the following:
+22
+assume that we have a set of different texts that are part of a dataset. The
+texts have either a label or a class attached to them. In our case the class
+is a Boolean reflecting the age category of the author: adult or child. The
+text is transformed into feature vectors (see Chapter 5) and a model is built
+using machine learning. The model is built using the feature vectors as can
+be seen in Figure 3.6.
+The data is separated into a training set that will be used to build the
+model, a testing set that will be used to test the model and correct it and
+finally, a validation set that will allow us to validate the performance of the
+model.
+Figure 3.6: Text Classification example (Supervised Learning)[6]
+3.2.1 Confusion Matrix
+For test and validation, the model will predict the class of the data passed
+as the input. Then, the results of the prediction will be compared to the real
+class of the data. Classifier results are reported using confusion matrices in
+which we present the number of true positives, false negatives, true negatives,
+and false positives as illustrated in Table 3.1.
+Predicted class
+Actual class
+True Neg. (TN) False Pos. (FP)
+False Neg. (FN) True Pos. (TP)
+Table 3.1: Confusion matrix
+23
+The confusion matrix is used to get an understanding of how the model
+perform. In our evaluation we use statistics derived from the confusion ma-
+trices. The measures we use are accuracy, precision and recall. Accuracy is
+defined as:
+TP + TN
+TP + FP + TN + FN
+Precision is defined as:
+TP
+TP + FP
+and finally recall is defined as:
+TP
+TP + FN
+In some cases we also use confidence intervals (CI). When these are in-
+cluded, a 95% confidence interval (95% CI) specify the interval within which
+we are 95% sure the true population accuracy for the classifier is found.
+3.3 Tools for text classification
+3.3.1 Weka
+Weka is a software developed by the university of Waikato (New Zealand)
+that contains tools written in Java for machine learning and more precisely
+data mining. It is presented in [48]. It is a free software that allows the
+user to work directly via a friendly-user interface on dataset. The language
+recognized for the dataset is the ARFF (Attribute-Relation File Format)
+language. This software offer a variety of algorithm implementation and
+allows the user to visualize the results easily.
+3.3.2 R
+R is a free software environment for statistical computing and graphics as
+described in the official website of the project [49]. It includes various libraries
+implementing the different algorithms presented in 3.1. It is one of the current
+most powerful tool for statistical analysis. It has been used through the IDE
+RStudio [50].
+24
+Chapter 4
+Data
+The creation of models for text classification requires data. In our case
+we need data related to kids, adults and pedophiles. We have used three
+different sources for data: book reviews, blog posts, and chat logs. When we
+don’t know the approximate age range of the author (child or adult) the text
+cannot be used in the experiments. We also require the metadata connected
+to the data to be accurate, which is not always the case with data from the
+Internet. For example, on chat boards people can easily modify their personal
+information and lie about their age and gender. Considering these aspects,
+it is quite difficult to find reliable data that we can use in our experiments.
+4.1 Datasets
+The corpus that we have used is composed of a number of different datasets.
+The datasets are described in more detail below and a summary can be found
+in Table 4.1.
+BOOK-KID
+The first dataset that has been downloaded consists of reviews made by
+children between 7 and 15 years old on the website of the Spaghetti Book
+Club[51]. The reviews can be described as syntactically and orthographically
+well written text. This dataset has not been used before in the scientific
+community so it offers a new contribution to the research area. The reviews
+are generally made of 200 words and there are a little more than 11000 of
+25
+them. The reviews are posted by teachers and each review contains the
+child’s name, age and grade and the teacher’s name. This allows us to be
+relatively sure of the identity of the author.
+BOOK-ADULT
+In order to have a dataset containing data from an opposing class for the
+classifier, we needed book reviews made by adults. The closest dataset that
+we found is made of book reviews posted on amazon. Unfortunately for
+this dataset, we don’t have any information about the author but we have
+assumed that the writers are adults since it is more realistic to assume that
+adults write reviews on Amazon. The data has been gathered for the project
+SNAP [52] at Stanford University and is described in the paper of McAuley
+& al. (2013) [53].
+BLOG-KID and BLOG-ADULT
+This corpus consist of blogs post gathered in 2004 from the website blog-
+ger.com. Each blog thread in the corpus is identify by its blogger Id and age
+category. There are three age categories: 10’s (13-17), 20’s (23-27) and 30’s
+(33-47). For each age group, there is an equal number of blogs from male
+and female authors. The corpus can be found on this webpage[54]. It has
+been used by Pennebaker & al. in their paper on author profiling in blogging
+(2006) [25]. BLOG-KID contains all blog posts from the age category 10s
+and BLOG-ADULT contains blog posts from the age categories 20s and 30s.
+CHAT-KID and CHAT-ADULT
+For the PAN (evaluation lab uncovering plagiarism, authorship, and social
+software misuse) competition in 2012 and 2013 a set of chat logs from conver-
+sation between children and conversation between adults is made available.
+Those conversation also includes texts written by pedophiles, selected from
+the Perverted Justice website. The files of the corpus are presented as XML
+files with different tags in order to identify each text. A first tag is for the
+identification of the author of the file. A second tag specifies the number
+of different conversations present in the file. Finally a third tag identifies
+each conversation. The dataset also contains a file providing the age and
+status (pedophile or not) of the author. We have divided the dataset into
+26
+two different datasets: CHAT-KID that contains all chat logs with children
+and CHAT-ADULT containing chat logs with adults.
+CHAT-POLICE and CHAT-PEDOPHILE
+The website Perverted Justice [28] released a dataset containing chat logs
+with entire conversations between police investigators and pedophiles. The
+released chat logs were those leading to the conviction of the pedophile. In
+this chat logs policemen pretended to be children to attract pedophiles. We
+have extracted the parts of the conversations written by these policemen
+pretending to be children and they form the dataset CHAT-POLICE. The
+pedophiles’ logs correspond to CHAT-PEDOPHILE. There is a total of 223
+conversations between policemen and pedophiles. As not all of the pedophiles
+are pretending to be children, they cannot be used as false kids.
+Dataset Description
+BOOK-KID Book reviews written by kids.
+BOOK-ADULT Book reviews written by adults.
+BLOG-KID Blog posts written by kids.
+BLOG-ADULT Blog posts written by adults.
+CHAT-KID Chat logs with children’s conversations.
+CHAT-ADULT Chat logs with adults’ conversations
+CHAT-POLICE Chat logs with policemen pretending to be children.
+CHAT-PEDOPHILE Chat logs with pedophiles.
+Table 4.1: The different datasets used for the experiments.
+4.2 Downloading the data
+Some of the datasets have been used by other researchers and can be down-
+loaded as file archives from the associated website. However, in order to
+download the reviews from the websites Perverted Justice [28] and Spaghetti
+Book Club [51], a crawler was created in python. The crawler uses the python
+modules urllib and beautifulsoup4.
+The first module is an interface that helps fetching online documents. Those
+documents are written in html and therefore we used the second module
+27
+which is a html parser. In the Perverted Justice website, the list of pages to
+download is created from all the url fetched in the page ’all archive’ from
+Perverted Justice. Only the urls related to the conversations are of interest.
+They all start by the same url root : http://www.perverted-justice.com/?archive=,
+so it is easy to isolate them and then download the associated html file. For
+the spaghetti book club, the web page url of a book review always start by the
+same prefix : http://www.spaghettibookclub.org/review.php?review id= and
+has a specific number ID at the end of the url. Here the crawler downloaded
+every page between a range of IDs and removed the files that contains no
+review.
+Then for each file, only the core of the html file that contains the review or
+the conversation and the metadata associated with the document is stored.
+4.3 Cleaning the data
+When the data is downloaded it is in a raw format and it needs to be cleaned
+and formatted. Since every dataset is different, each dataset have been
+cleaned separately and then reformatted and combined into one dataset.
+4.3.1 Gathering the meta-data
+To classify a text as being written by an adult or by a child we use the
+metadata associated with the text. The first step is to extract metadata
+and label the document or the author according to the metadata. For the
+Spaghetti book club, all the reviews are written by children. For the blog
+authorship corpus, the age range of the author of the posts is in the title of
+the document which makes it easy to extract. For the PAN data, it is more
+difficult since documents are made of entire conversation. The metadata
+is mostly contained in a truth file that contains an ID of the author and
+metadata associated to the author (such age, pedophile user, etc.)
+4.3.2 Separating the speakers and the posts
+To use the PAN dataset we need to separate conversation by several users
+into a single file per user. For this, a parser have been made in Java. This
+parser will separate conversations and users and associate the age contained
+in the truth file to the users.
+28
+4.3.3 Removing tags, urls and images
+A file is created for each review, blog post, or for each user in each conver-
+sation. This file contains a lot of unwanted data and therefore a cleaner is
+developed in Java that cleans the text files and remove unwanted data. All
+html tags such as < br />, < strong>, etc. are removed as well as references
+to other website, post, or contains images. All urls in a file are removed and
+replaced by ’URL’ and similarly each image is replaced by the word ’IMG’.
+4.3.4 Transforming text into tokens
+The text in each file is tokenized and each token is separated by a space.
+A space is inserted before and after numeric values and punctuation marks.
+For example the sentence:
+’Today he arrived at 8p.m. at school for the first time 0 o !!’
+is transformed into:
+’Today he arrived at 8 p . m . at school for the first time 0 o !!’
+29
+Chapter 5
+Features
+When text classification is performed, it is necessary to transform a text
+document into a feature vector. A feature vector is a representation of the
+text as a n-dimensional vector containing mostly numerical components. The
+non-numerical components, such as the name of the file, can be ignored or
+represented by numeric value. By representing text documents as feature
+vectors, the computer can process the vector and perform statistical analysis
+on it. Each feature of the vector, or each component, is predefined so that
+each text is transformed into a vector with the same structure and size,
+which means the same number of features positioned at the same space.
+Each feature is the numerical representation of some information contained
+in the text. It can be for example the number of time the alphabet letter ’k’
+appear in the text, or the number of adjectives that are present in the text.
+During this transformation from text to feature vector, it is important
+to add as many feature as possible to the feature vector in order not to lose
+information from the original text. At a later time, depending on the model
+used, feature selection is performed to reduce the number of features (see
+Section 5.3).
+5.1 Features
+The features that are used in this paper are a mix of features that have
+proven to be useful in other papers. The classes of features we have used are
+shown in Table 5.1, in total we used 735 different features.
+Many of the features are stylometric features that are commonly used
+30
+Feature type Number of features
+Emoticons count 1
+Stop and function words 428
+Total stop and function words 1
+Grooming and sexual words 191
+Total sexual and grooming words 1
+Alphabet letter 26
+Total numbers 1
+Punctuation marks 32
+Total punctuation 1
+Average number of letters per word 1
+Uppercase letters 1
+Number of images 1
+Number of urls 1
+Part of speech 46
+Table 5.1: The classes of features that we have used in our experiments
+and described in [55] and in [56]. The stylometric features include stop and
+function words, letters of the alphabet, punctuation, and numbers. Stop
+words and function words are words that expresses a grammatical or struc-
+tural relationship with other words in a sentence. These words have little or
+no meaningful content and therefore the topics that are discussed in the text
+that is analyzed is not taken into consideration. Stop words and function
+words are also known as grammatical words. We also count the occurrences
+of characters such as letters of the alphabet, various punctuation signs and
+numbers that are present in the text. In addition to these basic features,
+emoticons, url and image counts are also added. Here we simply count how
+many emoticons, urls and images are present in the text. Emoticons have
+been used previously in [23]. We use a list of the 140 emoticons that are
+mostly used in western countries.
+We have also added a list of grooming and sexual words. The list contains
+191 words that are related to grooming and sex. The words are a combination
+of words from previous work [41], [36] and [57], synonyms to these words, and
+words that appeared in conversations that where about sex and grooming.
+The conversations about sex and grooming that we had access to are from
+the website Perverted Justice [28]. They consist of a dataset containing chat
+31
+logs with entire conversations between police investigators and pedophiles.
+Examples of words that are in this list are: adult, bang, blowjob, boyfriend,
+age, alone, breasts, clean, clothing, cock, cute, date, dating, dildo, depressed,
+erotic, experience, happy, hole, illegal, intercourse, intimate, home, lucky,
+loving, meeting, phone, problem, relationship, sexy, shag, wet, whore, young,
+and shaved.
+The final type of features we use are grammatical tags in the form of
+part of speech (POS) as introduced in [58]. These POS are assigned each
+word. Examples of categories that are used for POS-tagging are noun, verb,
+adjective. We have used the Stanford NLP library to create a POS for each
+word. If a word is not recognized by the POS tagger it is assigned with the
+tag FW indicating that it is a foreign word that the POS-tagger does not
+recognize. A foreign word could be words borrowed from other languages as
+well as misspelled words, abbreviations or slang words. We use 46 different
+POS-tags that are presented and exemplified in Table 5.2.
+To see if it we could recognized some kind of topic dependent pattern, a
+n-gram analysis has been done. An n-gram is the combination of n successive
+tokens. For example, in the text: ”This is an example.” The unigrams are:
+This, is, an, example, . The bigrams are: This is, is an, an example, example.
+And the trigrams are: This is an, is an example, an example.
+5.2 Creation
+The creation of feature vectors is handled by a Java program that includes
+external natural language libraries such as the Stanford NLP libraries. Each
+file is loaded one by one, transformed into a feature vector and this vector is
+added to an ARFF file.
+The program loads the cleaned text files one by one into memory and then
+text manipulation is applied. First, by matching regular expressions (regexp),
+the program count the occurrence of the tags ’URL’ and ’IMG’ and remove
+these tags from the text. Then the same matching technique is done for
+each emoticon contained in the list of 140 emoticons in which each emoticon
+has been tokenized. After that, the program count the number of uppercase
+letters and transform the text into lower case.
+The text now is cleaned from URL, image’s tag, emoticon and uppercase
+letters. The program count the number of time each alphabetic character
+32
+and numeric value occurs in the text, which also gives the total number of
+letters in the text. The text is then split into tokens and count those made
+only of alphabetic characters, thus providing the number of words and the
+average number of letters per words.
+After that, the Stanford NLP (Natural Language Processing) libraries
+presented in [53] finds the POS tag of each token.
+Finally, using the same libraries, we lemmatize the text and stem the
+result. The goal of those transformation is to limit the forms that a word
+can take in the text. Those two techniques will convert a word into the root
+of the word that it refers. For example:
+am, are, is ⇒ be
+car, cars, car’s, cars’ ⇒ car
+We create a map of unigram, bigram and trigram present in the text. We
+add the content of those map to the count of unigram, bigram and trigram
+appearing all documents of the dataset. This gives use the list of n-grams
+that are used in the corpus and their frequency.
+5.3 Feature Selection
+Feature selection is already implemented in some algorithms such as Ad-
+aboost, but it is not the case in SVM and Naive Bayes.
+For those algorithms, the goal of the selection is to determine the smallest
+set features that will be able to give us the best result on test data It is
+necessary to do feature selection for several reasons. Some of the reasons for
+feature selection are:
+• It allows us to reduce noise from the dataset. Features that are not
+useful at all, for example a word that appears only in a single document,
+will only add noise to the model.
+• It reduces the computational load. Indeed, the more features there is
+the more computational power is needed in order to create a model.
+• It reduces overfitting which occurs if the model, due to its complex-
+ity, starts to describe random noise instead of generalizable patterns as
+shown in 5.1. The model will not be able to perform well on new data
+33
+as it has modeled the particularities and noise of the training data too
+closely.
+Figure 5.1: Underfitting and overfitting example [7]
+Feature selection is often done using statistical tools and algorithms. We
+have used three different techniques for feature selection. The first one is the
+expert knowledge technique. Here, we have removed the features that had
+no value for us in the classification. To do that, we use our own experience
+and knowledge. This technique allows us to remove obviously uninformative
+features.
+The second technique we have used is pairwise statistical analysis. The
+statistic that is used here is information gain which can also be called mutual
+information. It measures the information that two variables X and Y have
+in common. Information gain IG is defined by:
+IG (Y |X) = H (X)×H (X|Y ) (5.1)
+where
+H (X|Y ) (5.2)
+is the conditional entropy of X given Y and H(X) the entropy of X, which
+correspond to the degree of uncertainty that can be associated with the vari-
+able X. Basically is shows how much knowledge of one of these variables
+34
+reduces uncertainty about the other. If the two variables are independent,
+the result is 0. The result can be as high as the entropy of the variables if
+they are deterministic given the other which is better in our case.
+Finally feature selection is also done by model validation. Model val-
+idation is done by validating the model that has been built by testing it
+on validation data and evaluating the performance of the model given the
+features selected.
+35
+POS Tag Description Example
+CC coordinating conjunction and
+CD cardinal number 1, third
+DT determiner the
+EX existential there there is
+FW foreign word d’hoevre
+IN preposition/subordinating conjunction in, of, like
+JJ adjective big
+JJR adjective, comparative bigger
+JJS adjective, superlative biggest
+LS list marker 1)
+MD modal could, will
+NN noun, singular or mass chair
+NNS noun plural doors
+NNP proper noun, singular Mary
+NNPS proper noun, plural Vikings
+PDT predeterminer both the boys
+POS possessive ending friend’s
+PRP personal pronoun I, he, it
+PRP possessive pronoun my, his
+RB adverb however, usually, naturally, here
+RBR adverb, comparative better
+RBS adverb, superlative best
+RP particle give up
+TO to to go, to him
+UH interjection uhhuhhuhh
+VB verb, base form take
+VBD verb, past tense took
+VBG verb, gerund/present participle taking
+VBN verb, past participle taken
+VBP verb, sing. present, non-3d take
+VBZ verb, 3rd person sing. present takes
+WDT wh-determiner which
+WP wh-pronoun who, what
+WP possessive wh-pronoun whose
+WRB wh-abverb where, when
+Table 5.2: The list of POS-tags used as features
+36
+Chapter 6
+Experiments
+Previous research indicates that it is possible to train a classifier to recognize,
+differentiate and classify an adult from a child on a literal text such as blog
+texts with an accuracy over 75%. The goal of the following experiments is
+to see if it possible to separate an adult from a child on a mixed dataset
+(containing book reviews, blog data and chat logs). The goal is then to use
+these results to reveal false children (adults pretending to be children) and
+finally to focus on the detection of groomers.
+6.1 Experiment 1: Child vs Adult
+The first experiment was done in order to have an idea of how text clas-
+sification was working, and how to use Weka. It also provided an idea of
+the results that could be expected and that were to be surpassed later on.
+The preliminary experiments were performed with the datasets described in
+Table 6.1.
+Dataset type
+Number of instances
+child (5000) adult (5000)
+Book reviews Spaghetti Book Club (BOOK-KID) Amazon (BOOK ADULT)
+Blog 10s (BLOG-KID) 20s & 30s (BLOG-ADULT)
+Chat kids (CHAT-KID) adults (CHAT-ADULTS)
+Chat fake kids (CHAT-POLICE)
+Table 6.1: The datasets used for creating the models.
+37
+As specified before, the BOOK-ADULT data is assumed to be written by
+adults. After the creation of the three models, they are tested on the same
+test data. The experiment is performed using Weka for SVM and Naive
+Bayes (NB) and ada in R for Adaboost.
+In each case, a model was trained on 10000 instances, 5000 from each
+class using the entire feature set. The models were then tested on 2000 hold
+out cases, 1000 from each class.
+Adaboost SVM NB
+Dataset ADULT KID ACC 95% CI ACC ACC
+Book
+989 3
+0.9975 (0.9942, 0.9992) 0.9374 0.8519
+2 1004
+Blog
+703 308
+0.7064 (0.6857, 0.7264) 0.6602 0.57
+271 690
+Chat
+531 407
+0.5875 (0.5654, 0.6093) 0.5267 0.542
+409 631
+Table 6.2: Separating kids from adults on a single dataset using Adaboost,
+SVM and Naive Bayes.
+Table 6.2 contains the results when separating kids from adults on a single
+dataset. The results for Adaboost have been presented as a confusion matrix
+in the first column followed by the accuracy (ACC) for the three different
+algorithms. Table 6.2 also contains the 95% confidence interval for Adaboost
+(but not for the other algorithms).
+Adaboost
+Dataset ADULT KID Accuracy
+MIXED
+10295 4592
+0.6878
+4695 10166
+Table 6.3: Results on the mixed dataset using Adaboost.
+First we can see that we have better results using Adaboost (the confi-
+dence interval has been excluded for SVM and Naive Bayes). For the rest
+of the experiments, Adaboost will be prioritized compare to SVM and Naive
+Bayes due to the fact that Adaboost performs feature selection by itself. For
+Adaboost, the optimal number of iteration have been chosen each time by
+looking at the test error percentage on the test and validation dataset for each
+38
+Adaboost
+Dataset ADULT KID
+CHAT-POLICE 3 220
+Table 6.4: Results of the prediction of the class for CHAT-POLICE.
+new iteration comprised between 1 and 500. For SVM, a linear kernel has
+been chosen in Weka. The number of features chosen after feature selection
+is the number that has lead to the best ratio of performance over execution
+time. For Naive Bayes a feature selection process have been performed as
+well similar to the one used for SVM.
+The results based on the accuracy and confusion matrix given by Ad-
+aboost shows that the performance of the models depends on the dataset
+used. The model build on the BOOK dataset performs really well to distin-
+guishing BOOK-KID from BOOK-ADULT. This was expected as explained
+in the related work part as BOOK is made of well written book reviews where
+authors from BOOK-KID have a specific way of writing their reviews. The
+model based on the CHAT dataset have a worse performance. The results
+are better than random guessing but are still close to it.
+To understand to what extent it is possible to separate kids from adults
+using a mixed dataset a set of experiments was done on a mixed dataset.
+The dataset was made by mixing BOOK, BLOG and CHAT. The model is
+tested on 15000 instances of each class.
+The results on the mixed dataset is presented in Table 6.3. The results
+shows that the model is performing better on a mixed dataset than on a
+single chat dataset for the classification of children and adults.
+Finally, an experiment was done on the dataset CHAT-POLICE. Here,
+the model for the mixed dataset was used to see how it classifies the con-
+versations in CHAT-POLICE (chat logs with policemen pretending to be
+children).
+The results of the prediction is presented in Table 6.4. Here almost all
+the policemen (adults) posing as kids are considered as kids by the classifier.
+This motivate the second step of the approach that we use to detect fake
+kids. In this second step we focus only on the instances that are classified as
+kids by the mixed model (Table 6.3).
+39
+BOOK-KID BOOK-ADULT
+book 11343 book 16327
+read 9012 read 8505
+recommend 8095 ’s 7970
+think 7312 make 5409
+favorite 7229 write 4431
+story 6518 just 4190
+make 5654 I 4068
+I 5641 work 3739
+people 4858 know 3677
+want 4696 use 3669
+Table 6.5: First 10 unigram from BOOK-KID and BOOK-ADULT dataset.
+BLOG-KID BLOG-ADULT
+I 10365 I 8831
+just 8440 just 7687
+think 7089 ’s 7116
+know 6933 think 6587
+say 6311 know 6437
+day 6125 make 6081
+’s 6100 say 5643
+really 6072 day 5580
+... 5984 thing 5175
+make 5938 come 5075
+Table 6.6: First 10 unigram from BLOG-KID and BLOG-ADULT dataset.
+40
+CHAT-KID CHAT-ADULT
+make 6091 make 5077
+use 4556 use 3837
+just 4444 just 3631
+people 3925 ’s 3075
+know 3438 people 3060
+way 3404 way 2871
+’s 3366 know 2702
+lot 3241 want 2625
+want 3231 look 2540
+really 3082 lot 2393
+Table 6.7: First 10 unigram from CHAT-KID and CHAT-ADULT dataset
+6.2 Experiment 2: N-gram
+6.2.1 Children and Adults
+To get an understanding on how conversations by children and adults dif-
+fer we have done a set of experiments using n-grams, to be more precise:
+unigrams, bigrams and trigrams. The goal of this experiment is to see if
+there a difference between the words used in the different datasets and help
+us answer the question: do children employ different words, link words or
+formulate sentences differently than adults? This will also allow us to see if
+there is some kind of topic relation between the texts of a same dataset, which
+would be later on problematic if we use those n-gram for a classification.
+For this two different experiments have been conducted. The first based
+on the same dataset that were used in the first experiment with 40000 in-
+stances of each dataset except for the BOOK-KID dataset because there is
+only 11687 texts (instead of 20000). Then, each text was analyzed and each
+different n-gram appearing in the text was added to the total n-gram list.
+In Table 6.5, Table 6.6 and Table 6.7 the 10 most common unigrams in
+the different datasets are presented. What can be noticed is that there is a
+relation between the most common unigrams and the topic of the dataset.
+As expected most of the unigrams are related to the topic book review for
+the BOOK dataset and that the less common one (use in BOOK-ADULT)
+is still present in almost 20% of the documents while the most common one
+(book in both BOOK-KID and BOOK-ADULT) is present in almost 90% of
+41
+Policemen Pedophiles Children
+I 222 I 221 thi 87
+want 219 just 216 thei 67
+dont 215 want 214 just 48
+just 212 ok 214 make 44
+think 211 know 214 mai 37
+tell 211 think 207 wai 36
+come 211 thei 204 veri 35
+u 210 ye 203 ’s 34
+lol 209 sure 203 peopl 32
+im 206 talk 202 ani 30
+sai 206 right 203 look 30
+mom 202 look 201 person 29
+na 204 tell 201 realli 29
+thei 199 let 199 lot 28
+pic 199 come 199 know 27
+Table 6.8: First 15 unigrams based on 223 instances of each category
+Features Police Children Accuracy 95% CI
+All
+56 0
+0.999 (0.9946, 1)
+1 979
+Minus Grooming
+55 0
+0.9981 (0.993, 0.9998)
+2 979
+Table 6.9: Results of models seeking to distinguish police pretending to be
+children from real children from chat logs.
+the dataset. On the other hand we can see that all the unigrams for the
+CHAT dataset are comprised in 10 to 30% of the texts from the dataset. For
+the CHAT dataset there seems to be no specific topic. For the three dataset,
+there is a slight difference between the unigrams used by adults against those
+used by kids, but this difference doesn’t seem to be large enough to use n-
+grams as a feature. The analyzis of the bi-gram and trigram confirmed
+those conclusion. This could be an explanation of the results in Table 6.2,
+classification performing better when there is a topic present in the dataset.
+42
+Important Features (With Grooming) Important Features (No Grooming)
+1 k POS Tag: foreign words
+2 POS Tag: foreign words k
+3 what u
+4 POS Tag: noun, plural what
+5 u POS Tag: Wh-adverb
+6 POS Tag: Wh-adverb POS Tag: noun, plural
+7 how POS Tag: Particle
+8 Digit’s count Digit’s count
+9 POS Tag: Particle how
+10 me f
+11 f no
+12 do POS Tag: Determiner
+13 POS Tag: Determiner POS Tag: Wh-pronoun
+14 POS Tag: Wh-pronoun s
+15 no Punctuation Mark &
+16 j get
+17 Upper case letter’s count Upper case letter’s count
+18 like j
+19 POS Tag: Interjection POS Tag: Wh-determiner
+20 Sex and grooming word count me
+21 Number of letter per word Number of letter per word
+22 pussy POS Tag: Interjection
+23 see cant
+24 s do
+25 get of
+26 o the
+27 the call
+28 lick sometime
+29 call o
+30 Punctuation Mark ? mine
+Table 6.10: The 30 most important features for distinguishing police from
+real children with and without grooming features
+43
+6.2.2 Children and Policemen
+A second experiment on n-gram was performed on the policemen and pe-
+dophile conversations. The experiment was setup on all 223 conversations of
+CHAT-POLICE against CHAT-PEDOPHILE. The goal was the same as in
+the previous experiment: to see if there is a pattern in the conversations.
+From the results presented in Table 6.8, we can notice that the conver-
+sation between pedophile and policeman always follows the same structure
+and use the same words in their conversations. Unigrams for those two are
+a little bit different which could help differentiate a pedophile from a police-
+man, but this also means that these kind of conversations are different from
+normal conversations. We can see that for a normal children conversation
+the unigram counts are lower which shows that the conversations are more
+diverse. This was to be expected but it also shows that a model trained
+on the specific conversation between the police and the pedophiles can be
+recognized.
+6.3 Experiment 3: Kids vs Police (fake kids)
+When using the same type of model that were presented in Section 6.1 to
+distinguish between police pretending to be children using the dataset CHAT-
+POLICE and actual children using the dataset CHAT-KID we obtain the
+results presented in Table 6.9. These excellent results led us to analyze
+which variables were important in performing this classification and attempt
+to exclude those that could be based on aspects of the data other than the
+writing style used by police officers when they attempted to write chat text
+as children. Using only such features, the results were reproduced, and a
+number of additional experiments caused us to make the tentative claim
+that it may be possible to detect adults pretending to be children in chat
+rooms even though it is not possible to distinguish between pretense-free
+adults and children.
+The performance of models generated in this manner on literal text was
+extremely impressive. Their performance on blogs appear reasonably high:
+Direct comparison with work from the PAN author profiling competition is
+difficult since the task there was to classify into three groups: <20, 20-30 and
+>30. Performance on the competing models ranged from .473 to .657, which
+prima facie might suggest the .706 performance with two categories was a
+44
+tier below top performers. This may be so, or it may be that the divisions
+in PAN were not equally difficult, with the distinction between <20 and 20+
+more problematic than that between 20-30 and >30. Regardless, the point is
+clear: Just as others’ experience foretold, models that perform well on literal
+text, and somewhat promisingly on blogs, perform unusably poorly on text
+from chat.
+Yet despite this, attempts to distinguish police pretending to be children
+in chat from real children in chat using the complete feature set were excep-
+tionally accurate as can be seen in Table 6.9. As can be noted, our model
+where able to distinguish adults pretending to be children from real children
+in almost 100 % of the cases.
+We were immediately concerned that this must reflect data bias rather
+than a genuine ability to distinguish the writing styles of the pretend chil-
+dren from real children. The dataset CHAT-POLICE contained chat logs
+with conversations between police investigators that were pretending to be
+children in order to attract pedophiles. Therefore we worried that the con-
+versations were focused exclusively on sex and could be distinguished from
+the CHAT-KID dataset through this fact, introducing a topic related de-
+pendency of the classifier. Examination of the most important variables did
+indeed reveal that they included three from the grooming feature set in the
+top thirty (Table 6.10) - though notice that they were relatively low in this
+list.
+Children Police
+Children 499 0
+Police 4 16
+Table 6.11: Distinguishing policemen from children with a limited set of
+features.
+Including the feature digit count (counting the number of occurrences of
+digits), on the assumption that it is stylistic rather than topic related (based
+partly on its presence as a variable of importance in other models), produced
+perfect results on the test data as can be seen in Table 6.12. Table 6.12 shows
+the result using foreign words, number of letters per word, number of upper
+case letters and the number of digits.
+To dispel this suspicion, the task was repeated without the use of the
+grooming features in an attempt to see if the police could be distinguished
+45
+Children Police
+Children 499 0
+Police 0 20
+Table 6.12: Separating policemen from children using a limited set of
+features.
+from children using topic neutral features only. The results of this are shown
+in Table 6.9. Once again, accuracy is excellent with almost 100 % both with
+and without grooming features.
+The key question is why. In the remainder of this section we examine
+three potential answers to this question:
+1. The topic concentration within police chats biased the data to a degree
+that even excluding features designed to capture the presence of this
+topic in the text was insufficient to nullify the biasing effect.
+2. The models are capturing artifacts of the task the police set themselves
+(to catch pedophiles).
+3. The models are distinguishing the police from children on the basis of
+the way police are attempting to pretend to be children.
+Note these are not necessarily exclusive. The performance may have been
+good because multiple of these situations pertain. What is particularly in-
+teresting is that if the last case is true it raises the interesting and surprising
+possibility that we might be able to distinguish adults pretending to be chil-
+dren from children in chat rooms even if it is not possible to distinguish
+pretense free adults from children in the same situation. If this is the case it
+would be because adults pretending to be children write in ways that are dif-
+ferent to both adults and children, perhaps overestimating the way in which
+children’s writing would be expected to differ.
+Regarding the first of these potential answers, we expect that if classi-
+fication performance were topic related then it would primarily be through
+the use of accidently topic related function and stop words. There are 12
+function words in the 30 most important variables as can be seen in Table
+6.10. Eight of these (no, get, me, cant, do, call, sometime and mine) appear
+to be potentially related to (the grooming) topic. The others (what, how,
+of and the) appear more stylistic: The first two relate to how the topic was
+46
+talked about, and the last two are stop words related primarily to gram-
+matical construction. Significantly, none of these eight possibly topic related
+function words are present in the top ten most important variables. More
+tentatively, both the parts of speech tag representing the presence of plural
+nouns (6th, with the related count of the letter s at 14th) and the digit count
+(8th) do appear in the top ten and are at least possibly related to police topic
+concentration, though it is unclear to us why either would occur more or less
+frequently in grooming conversations than in others. It should also be noted
+that the digit count is important in all classifiers: 15th when distinguishing
+children from adults in book reviews, 7th with blogs and 3rd in chats. If topic
+concentration is involved in the performance, its role, we suggest, appears
+minor.
+The function words that do appear in the ten most important variables
+are what (4th) and how (9th). These suggest important differences in how
+the police and real children talked about topics - in particular the degree
+to which the conversation included interrogative components. This view
+is reinforced by the presence of the parts of speech tags WRB (5th), WP
+(13th), and WDT (19th), which indicate the use of why, where, who, when,
+how and less common related word such as whence as adverbs, pronouns
+and determiners respectively. It is possible that the importance of such
+features is a genuine marker of pretend children. For example, adults might
+wrongly expect children to be more or less inquisitive and accordingly over
+or under use these terms. But we fear that it is more likely that this is a
+feature identifying police who are attempting to do their job and to discover
+pedophiles from children who are not undertaking such a task. If so this
+is particularly troublesome insofar as the importance of these features may
+indicate that tech-savvy groomers could themselves use such tools to flag
+potential undercover police.
+Yet even accepting the foregoing conjectures, 16 of the top 30 and 6 of the
+top 10 most important variables appear primarily stylistic. Many of these
+are difficult to offer interpretations of. However, topping the importance list
+was the use of foreign words. It might strike us as unsurprising that police,
+as adults, used substantially more foreign words than genuine children (.100
+vs .008). Foreign words, though, actually mean any word that is unable to
+be found in the English language word list. It includes misspellings, abbrevi-
+ations, informal slang, etc. Children tended to use more foreign words than
+adults in chat (.0079 vs .0075), but at levels far below that of the police.
+Accounting for the enormous difference in foreign word use by police when
+47
+pretending to be children compared with ordinary adults appears very im-
+portant. We make the tentative suggestion that the additional foreign words
+used by police may in fact be a combination of excessive, probably deliber-
+ate, misspelling, slang and informal youth culture words overused by police
+attempting to play the part of children. For example, dunno instead of don’t
+know, cuz instead of because, or abbreviations like brb, lol, idk, gtg.
+This suggestion is in part a consequence of the examination of other
+variables. Also present in the most important 30, were the number of let-
+ters per word (21st) and the number of upper case letters (17th), where, in
+both cases police used fewer than genuine children. This, we suggest, may
+represent underestimating children’s sophistication and/or their respect for
+ordinary conventions (upper case letters). It is the latter thought that leads
+to the idea that police might likewise overuse slang and non-conventional
+vocabulary that they believe to be associated with children, as well as delib-
+erately including misspellings. If these tentative hypotheses are correct, it
+would indicate that the reason why police pretending to be children can be
+distinguished from real children, whilst adults and children cannot in gen-
+eral be so differentiated, may be because the police are overplaying the part.
+Assuming this is a trait common to all adults pretending to be children, this
+is extremely interesting.
+Testing this analysis, we created an Adaboost model that sought to dis-
+tinguish policemen pretending to be children from genuine children based
+only foreign words, number of letters per word and number of upper case let-
+ters. The confusion matrix describing this experiment can be found in Table
+6.11. The results in Table 6.11 are obtained using foreign words, number of
+letters per word and number of upper case letters.
+The results were very good; though the precision was .8, this is an order
+of magnitude better than what we see when trying to distinguish ordinary
+(pretense free) adults from children, and is anyway far less important than
+the recall which was 1.
+Even with the unfortunately small size of the dataset containing the police
+pretending to be children (CHAT-POLICE), these classifiers are clearly both
+powerful and the results statistically significant.
+Further confirming the potential of this approach, we performed an exper-
+iment examining our ability to distinguish police pretending to be children
+from both child and ordinary (pretense free) adult chat users in a three way
+classification using all non-grooming features, this time using the package
+maboost as ada does not permit non-binary target variables. The test con-
+48
+Children Adults Police
+Children 1352 1106 8
+Adults 1109 1389 1
+Police 0 0 93
+Table 6.13: Separating policemen from both children and adults.
+fusion matrix can be found in Table 6.13.
+Clearly despite our inability to distinguish ordinary adults from children
+(using chat text) with any useful degree of accuracy, we can distinguish the
+police pretending to be children. However, concerns must be expressed. The
+size of the police-pretending-to-be-children data was small. Further, the
+police involved were not randomly selected from the police population as a
+whole and so the existence of quirks within the small population that do not
+permit us to generalize to police in general cannot be ruled out. Moreover,
+it may be that police as a group differ from adults in general such that the
+results are not generalizable to other adult populations. For example, police
+may interact with an unrepresentative set of children and youth leading them
+to attempt to imitate the chat writing of such groups in ways that ordinary
+adults would not. It is imperative to obtain a larger set of examples of adults
+pretending to be children, drawn from a wider population of adults.
+6.4 Experiment 4: Pedophile
+A final experiment have been conducted to help us gaining understanding
+if the results from experiment 3 was too focused on the dataset CHAT-
+POLICE. In this experiment we used the datasets CHAT-PEDOPHILE,
+CHAT-POLICE, CHAT-ADULT and CHAT-KID.
+Children Adults Police Pedo
+Children 1352 1106 2 7
+Adults 1109 1389 5 7
+Police 0 0 102 3
+Pedo 0 0 13 99
+Table 6.14: Results of the model distinguishing policemen and pedophiles
+from both children and adults.
+49
+The results of the experiment is shown in Table 6.14. We can notice
+that despite the fact that the model have difficulties separating children and
+adults, it is able to separate them from the specific conversation between
+policemen and pedophiles, and it is able to do a separation between those
+policemen and the pedophiles.
+50
+Chapter 7
+Conclusions
+Grooming is the act of preparing children for abuse and the aim of a groomer
+is to build a relationship with a child. When grooming takes place it is
+common that an adult groomer is pretending to be a child with common
+hobbies or interests to build a relationship that includes trust with the child.
+In this work we have focused on a process that first identifies a person as an
+adult or a child based on the writing style. The second step in the process
+is to determine if a child is a fake child or not. Our results shows that it
+is possible to separate children and adults with good accuracy if they write
+formal text (in our case represented by book reviews) while it is more difficult
+to distinguish adults from child in blog texts and chat logs. It is in almost
+all cases it is possible to separate a child from a policeman that is pretending
+to be a child. This is a very strong result and even if the dataset that we
+have used for building our models is limited we believe that it is possible to
+determine if an adult is pretending to be a child.
+51
+Chapter 8
+Future work
+There are many directions for future work. One direction is to find more
+datasets to train and test our models on. It would be interesting to find
+data from various forms of communication not only chat logs. Analyzing
+data from various online social media is difficult both due to the nature of
+the data but also due to the difficulty of obtaining relevant data. Collecting
+data from online forums and chat room data is technically not difficult but
+without validated ages and genders of the writers the data cannot be used
+to build useful classification models.
+We have only focused on detecting adults that are pretending to be kids
+(or fake kids). A way forward to stop cyber grooming is to combine this
+with the identification of grooming conversations. Grooming is often divided
+into several different stages and by detecting conversations that contains
+potential grooming the grooming process can be stopped in an early stage.
+In Gupta & al. (2012) [41] psyco-linguistic profiles using the word-counting
+program LIWC is done to create an understanding of different stages of online
+grooming. It would be interesting to see if psyco-linguistic profiles can be
+used as input to identify actual groomers (and not only stages of grooming).
+To identify adults pretending to be children we only had data from chat
+logs. It would be very interesting to see if the kind of results will be achieved
+on other types of data, for example blog data or data from discussion boards.
+Obtaining such a dataset is however challenging. As well as attempting to
+collect them from the internet, an additional potential area for future research
+is the performance of experiments designed to obtain such data.
+When analyzing the most important features that were used in our clas-
+sification of adults pretending to be children foreign words was one of the
+52
+features that was important. This is an interesting observation and future
+work could investigate the vocabulary variation that is used in chat rooms
+to obtain more relevant features.
+53
+Bibliography
+[1] O. Gällmo, “Course: Learning from nature,” Uppsala University.
+[2] “Adaboost,” http://www.cc.gatech.edu/∼kihwan23/imageCV/
+Final2005/images/bestrong.JPG, accessed: 2015-02-24.
+[3] “Support vector machine - linear separable case,” http://www.ifp.
+illinois.edu/∼yuhuang/samsung/SVM.jpg, accessed: 2015-02-24.
+[4] “Support vector machine linear unseparable case,” http:
+//research.microsoft.com/en-us/um/people/manik/projects/trade-off/
+figs/svm2.PNG, accessed: 2015-02-24.
+[5] “kernel trick,” http://i.stack.imgur.com/qZV3s.png, accessed: 2015-02-
+24.
+[6] “supervised-classification,” http://www.nltk.org/images/
+supervised-classification.png.
+[7] “Introductory applied machine learning,” http://www.inf.ed.ac.uk/
+teaching/courses/iaml/slides/eval-2x2.pdf.
+[8] “Number of internet users (2015),” http://www.internetlivestats.com/
+internet-users/, accessed: 2015-01-27.
+[9] “Distribution of internet users worldwide as of november 2014,
+by age group,” http://www.statista.com/statistics/272365/
+age-distribution-of-internet-users-worldwide/, accessed: 2015-01-29.
+[10] “Predator statistics,” http://www.internetsafety101.org/
+predatorstatistics.htm, accessed: 2015-02-05.
+54
+[11] “Child grooming law & legal definition,” http://definitions.uslegal.com/
+c/child-grooming/, accessed: 2015-01-20.
+[12] “What is grooming?” http://www.nspcc.org.uk/preventing-abuse/
+child-abuse-and-neglect/grooming/what-is-grooming/, accessed: 2015-
+01-20.
+[13] “Online grooming and uk law,” http://www.childnet.com/ufiles/
+online-grooming.pdf, accessed: 2015-01-22.
+[14] J. Davidson, J. Grove-Hills, A. Bifulco, P. Gottschalk, V. Caretti,
+T. Pham, and S. Webster, “Online abuse: Literature review and
+policy context,” European Online Grooming Project, Tech. Rep., 2011.
+[Online]. Available: http://www.europeanonlinegroomingproject.com/
+wp-content/file-uploads/EOGP-Literature-Review.pdf
+[15] C. D. Manning, P. Raghavan, and H. Schütze, Introduction to Infor-
+mation Retrieval. New York, NY, USA: Cambridge University Press,
+2008.
+[16] M. Mohri, A. Rostamizadeh, and A. Talwalkar, Foundations of Machine
+Learning. The MIT Press, 2012.
+[17] M. J. Zaki and W. M. Jr, Data Mining and Analysis: Fundamental
+Concepts and Algorithms. New York, NY, USA: Cambridge University
+Press, 2014.
+[18] A. Srivastava and M. Sahami, Text Mining: Classification, Clustering,
+and Applications, 1st ed. Chapman & Hall/CRC, 2009.
+[19] T. Joachims, “Text categorization with suport vector machines:
+Learning with many relevant features,” in Proceedings of the 10th
+European Conference on Machine Learning, ser. ECML ’98. London,
+UK, UK: Springer-Verlag, 1998, pp. 137–142. [Online]. Available:
+http://dl.acm.org/citation.cfm?id=645326.649721
+[20] “Text classifier induction: Naive bayes classifiers,” https://www.scss.
+tcd.ie/∼luzs/t/cs4ll4/ctinduction-notes.pdf, accessed: 2015-03-03.
+[21] S. Argamon, M. Koppel, J. W. Pennebaker, and J. Schler,
+“Automatically profiling the of an anonymous text,” Commun.
+55
+ACM, vol. 52, no. 2, pp. 119–123, Feb. 2009. [Online]. Available:
+http://doi.acm.org/10.1145/1461928.1461959
+[22] C. Peersman, W. Daelemans, and L. Van Vaerenbergh, “Predicting
+age and gender in online social networks,” in Proceedings of the 3rd
+International Workshop on Search and Mining User-generated Contents,
+ser. SMUC ’11. New York, NY, USA: ACM, 2011, pp. 37–44. [Online].
+Available: http://doi.acm.org/10.1145/2065023.2065035
+[23] J. Tam and C. H. Martell, “Age detection in chat,” International
+Conference on Semantic Computing, vol. 0, pp. 33–39, 2009.
+[Online]. Available: https://calhoun.nps.edu/bitstream/handle/10945/
+39588/ICSC2009Tam.pdf
+[24] S. Goswami, S. Sarkar, and M. Rustagi, “Stylometric analysis of blog-
+gers’ age and gender.” in ICWSM, E. Adar, M. Hurst, T. Finin, N. S.
+Glance, N. Nicolov, and B. L. Tseng, Eds. The AAAI Press, 2009.
+[25] J. Schler, M. Koppel, S. Argamon, and J. W. Pennebaker, “Effects
+of age and gender on blogging,” in Computational Approaches to
+Analyzing Weblogs, Papers from the 2006 AAAI Spring Symposium,
+Technical Report SS-06-03, Stanford, California, USA, March 27-29,
+2006, 2006, pp. 199–205. [Online]. Available: http://www.aaai.org/
+Library/Symposia/Spring/2006/ss06-03-039.php
+[26] M. De-Arteaga, S. Jimenez, G. Dueñas, S. Mancera, and J. Baquero,
+“Author profiling using corpus statistics, lexicons and stylistic
+features notebook for PAN at CLEF-2013,” in Working Notes
+for CLEF 2013 Conference , Valencia, Spain, September 23-
+26, 2013., 2013. [Online]. Available: http://ceur-ws.org/Vol-1179/
+CLEF2013wn-PAN-DeArteagaEt2013.pdf
+[27] “Pan workshop and competition: Uncovering plagiarism, authorship and
+social software misuse,” http://pan.webis.de/, 2015-01-23.
+[28] “Perverted-justice.com - the largest and best anti-predator organization
+online,” http://www.perverted-justice.com/, accessed: 2015-01-28.
+[29] F. Rangel, P. Rosso, M. Koppel, E. Stamatatos, and G. Inches,
+“Overview of the author profiling task at pan 2013,” in Notebook Papers
+of CLEF 2013 LABs and Workshops (CLEF-2013), 2013.
+56
+[30] G. Gilad, P. Hrudya, K. Surendran, S. Thara, A. Aravind, and
+P. Prabaharan, “Ensemble learning approach for author profiling,”
+in CLEF 2014 Conference and Labs of the Evaluation Forum -
+Uncovering Plagiarism, Authorship, and Social Software Misuse
+(PAN), Sheffield, United Kingdom, 2014. [Online]. Available:
+http://www.uni-weimar.de/medien/webis/research/events/pan-14/
+pan14-papers-final/pan14-\author-profiling/gressel14-notebook.pdf
+[31] F. Rangel and P. Rosso, “Use of language and author profiling: Identifi-
+cation of gender and age,” in Proceedings of the 10th Workshop on Nat-
+ural Language Processing and Cognitive Science (NLPCS-2013), 2013.
+[32] N. Cheng, R. Chandramouli, and K. Subbalakshmi, “gender
+identification from text,” Digital Investigation, vol. 8, no. 1, pp. 78 –
+88, 2011. [Online]. Available: http://www.sciencedirect.com/science/
+article/pii/S1742287611000247
+[33] S. Argamon and A. R. Shimoni, “Automatically categorizing written
+texts by gender,” Literary and Linguistic Computing, vol. 17, pp. 401–
+412, 2003.
+[34] J. Wolak, D. Finkelhor, K. Mitchell, and M. Ybarra, “Online
+“predators” and their victims: Myths, realities and implications for
+prevention and treatment,” American Psychologist, vol. 63, pp. 111–
+128, 2008. [Online]. Available: www.apa.org/pubs/journals/releases/
+amp-632111.pdf
+[35] S. Wachs, D. K. Wolf, and P. Ching-Ching, “Cybergrooming:
+Risk factors, coping strategies and associations with cyberbullying,”
+Psicothema, vol. 24 Issue 4, pp. 628–633, November 2012. [Online].
+Available: www.psicothema.com/pdf/4064.pdf
+[36] R. O’Connell, “A typology of child cyber sexploitation and online
+grooming practices,” Cyberspace Research Unit, Tech. Rep., 2003.
+[Online]. Available: http://netsafe.org.nz/Doc Library/racheloconnell1.
+pdf
+[37] M. W. R. Miah, J. Yearwood, and S. Kulkarni, “Detection of child
+exploiting chats from a mixed chat dataset as a text classification task,”
+in Proceedings of the Australasian Language Technology Association
+57
+Workshop 2011, Canberra, Australia, December 2011, pp. 157–
+165. [Online]. Available: http://www.aclweb.org/anthology/U/U11/
+U11-2020
+[38] E. Villatoro-Tello, A. Juárez-González, H. J. Escalante, M. M.
+y Gómez, and L. V. Pineda, “A two-step approach for effective
+detection of misbehaving users in chats.” in CLEF (Online Working
+Notes/Labs/Workshop), P. Forner, J. Karlgren, and C. Womser-Hacker,
+Eds., 2012. [Online]. Available: http://dblp.uni-trier.de/db/conf/clef/
+clef2012w.html#Villatoro-TelloJEMP12
+[39] H. J. Escalante, E. Villatoro-Tello, A. Juárez, M. Montes-y
+Gómez, and L. Villaseñor, “Sexual predator detection in chats
+with chained classifiers,” in Proceedings of the 4th Workshop on
+Computational Approaches to Subjectivity, Sentiment and Social
+Media Analysis. Atlanta, Georgia: Association for Computational
+Linguistics, June 2013, pp. 46–54. [Online]. Available: http:
+//www.aclweb.org/anthology/W13-1607
+[40] C. Peersman, F. Vaassen, V. Van Asch, and W. Daelemans,
+“Conversation level constraints on pedophile detection in chat rooms,” in
+CLEF 2012 Conference and Labs of the Evaluation Forum - Uncovering
+Plagiarism, Authorship, and Social Software Misuse (PAN), P. Forner,
+J. Karlgren, and C. Womser-Hacker, Eds., Rome, Italy, 2012. [Online].
+Available: http://www.clips.ua.ac.be/sites/default/files/pan2012 0.pdf
+[41] A. Gupta, P. Kumaraguru, and A. Sureka, “Characterizing pedophile
+conversations on the internet using online grooming,” CoRR, vol.
+abs/1208.4324, 2012. [Online]. Available: http://arxiv.org/abs/1208.
+4324
+[42] C. Laorden, P. Galán-Garćıa, I. Santos, B. Sanz, J. M. G. Hidalgo, and
+P. G. Bringas, “Negobot: A conversational agent based on game theory
+for the detection of paedophile behaviour,” in CISIS/ICEUTE/SOCO
+Special Sessions’12. Springer Berlin Heidelberg, 2012, pp. 261–
+270. [Online]. Available: http://paginaspersonales.deusto.es/claorden/
+publications/2012/Laorden 2012 CISIS Negobot.pdf
+58
+[43] Y. Freund and R. E. Schapire, “Experiments with a new boosting algo-
+rithm,” in In Proceedings of the thirteenth International Conference on
+Machine Learning., 1996, pp. 148–156.
+[44] B. E. Boser, I. M. Guyon, and V. N. Vapnik, “A training algorithm
+for optimal margin classifiers,” in Proceedings of the Fifth Annual
+Workshop on Computational Learning Theory, ser. COLT ’92. New
+York, NY, USA: ACM, 1992, pp. 144–152. [Online]. Available:
+http://doi.acm.org/10.1145/130385.130401
+[45] C. Cortes and V. Vapnik, “Support-vector networks,” Machine
+Learning, vol. 20, no. 3, pp. 273–297, 1995. [Online]. Available:
+http://dx.doi.org/10.1023/A%3A1022627411411
+[46] S. Haykin, Neural Networks and Learning Machines (3rd Edition),
+3rd ed. Prentice Hall, Nov. 2008.
+[47] “Machine learning,” https://class.coursera.org/ml-005/lecture/preview,
+accessed: 2015-02-18.
+[48] M. Hall, E. Frank, G. Holmes, B. Pfahringer, P. Reutemann, and
+I. H. Witten, “The weka data mining software: An update,” SIGKDD
+Explor. Newsl., vol. 11, no. 1, pp. 10–18, Nov. 2009. [Online]. Available:
+http://doi.acm.org/10.1145/1656274.1656278
+[49] “The r project for statistical computing,” www.r-project.org, accessed:
+2015-03-18.
+[50] “Rstudio,” http://www.rstudio.com/, accessed: 2015-03-18.
+[51] “Spaghetti book club - book reviews by kids for kids!” http://www.
+spaghettibookclub.org/.
+[52] “Snap: Web data: Amazon reviews,” http://snap.stanford.edu/data/
+web-Amazon-links.html.
+[53] J. McAuley and J. Leskovec, “Hidden factors and hidden topics:
+Understanding rating dimensions with review text,” in Proceedings of
+the 7th ACM Conference on Recommender Systems, ser. RecSys ’13.
+New York, NY, USA: ACM, 2013, pp. 165–172. [Online]. Available:
+http://doi.acm.org/10.1145/2507157.2507163
+59
+[54] “The blog authorship corpus,” http://u.cs.biu.ac.il/ kop-
+pel/BlogCorpus.htm.
+[55] F. Rangel, P. Rosso, I. Chugur, M. Potthast, M. Trenkmann, B. Stein,
+B. Verhoeven, and W. Daelemans, “Overview of the 2nd author profiling
+task at pan 2014,” in CLEF 2014 Evaluation Labs and Workshop –
+Working Notes Papers, Sheffield, UK, 2014/09/18 2014.
+[56] A. Narayanan, H. Paskov, N. Gong, J. Bethencourt, E. Stefanov,
+E. Shin, and D. Song, “On the feasibility of internet-scale author identi-
+fication,” in 2012 IEEE Symposium on Security and Privacy (SP), may
+2012, pp. 300 –314.
+[57] A. Kontostathis, “Chatcoder: Toward the tracking and categorization
+of internet predators,” in Proceedings of Text Mining Workshop 2009
+held in conjunction with the Ninth SIAM International Conference on
+Data Mining, 2009.
+[58] M. P. Marcus, M. A. Marcinkiewicz, and B. Santorini, “Building
+a large annotated corpus of english: The penn treebank,” Comput.
+Linguist., vol. 19, no. 2, pp. 313–330, Jun. 1993. [Online]. Available:
+http://dl.acm.org/citation.cfm?id=972470.972475
+60

@@ -1,0 +1,2830 @@
+M.Sc. Thesis
+Suggestions for improvements of Search Engines
+Dimitrios Tsoutsias
+ICT Entrepreneurship Master's program ,
+School of Information and Communication Technology,
+Royal Institute of Technology
+February 2007
+
+Abstract
+This  thesis  analyses  two  modifications  of  the  traditional  search 
+engine architecture, the topic crawler and the genre based searcher. 
+Topic crawling is a special type of web crawl, where only relevant to 
+a specific topic pages are retrieved by the crawler. It is particularly 
+useful for search engines that do not intend to index the whole web, 
+instead, they specialise their index to only a specific topic/area. This 
+thesis  identifies  and  summarises  the  main  algorithms  for  topic 
+crawling and the content similarity  algorithm, used in naïve Best 
+First topic crawler, was implemented. This implementation can be 
+used as a component in a general search engine, in order it to be 
+transformed in a topic search engine. At the other end of the search 
+engine, the searcher, this thesis proposes the incorporation of the 
+parameter of the page's genre. Genre enhances the user query and 
+can be a distinguishing factor for the various information needs on a 
+specific topic. The various approaches taken for genre classification 
+of web documents are presented and a new method is proposed. 
+This method is based on ngrams, a property of text documents that 
+is  easily  extracted,  without  being computationally  expensive, 
+achieving up to 80% performance on an eight genre classes corpus. 
+Additionally, a novel interface of a genre enhanced search engine is 
+designed for both the query and the results page. 
+i
+Table of Contents
+1 Search engines background.........................................................................................1
+1.1 Introduction..........................................................................................................1
+1.2 The general infrastructure of a search engine......................................................1
+1.2.1 The crawler..................................................................................................2
+1.2.2 The index......................................................................................................5
+1.2.3 The searcher.................................................................................................5
+1.3 Search engine design challenges.........................................................................6
+2 Focused crawling algorithms.....................................................................................10
+2.1 Naïve Best First crawler....................................................................................11
+2.2 Combination of features for Link ordering........................................................11
+2.3 The Fish algorithm.............................................................................................13
+2.4 The Shark algorithm..........................................................................................14
+2.5 Measuring the importance of a page..................................................................15
+2.5.1 Page Rank .................................................................................................16
+2.5.2 The HITS algorithm ..................................................................................17
+2.6 Intelligent crawling ...........................................................................................20
+2.7 Ontology based focused crawling......................................................................21
+2.8 Metadata based focused crawling......................................................................22
+2.9 Language focused crawling...............................................................................23
+2.10 Document Object Model based focused crawling...........................................23
+2.11 Hub seeking DOM crawler..............................................................................25
+2.12 Context Graph Crawling..................................................................................25
+2.13 Combining context graphs with tag trees........................................................28
+2.14 Focused crawling with classification and distillation......................................29
+2.15 InfoSpiders ......................................................................................................30
+2.16 Concept graph focused crawling.....................................................................31
+2.17 Decision trees...................................................................................................33
+2.18 Tunnelling........................................................................................................33
+2.19 Reinforcement Learning..................................................................................35
+2.19.1 Neural Networks......................................................................................36
+2.19.2 Naïve Bayes.............................................................................................37
+2.20 Implementing the naïve Best First Algorithm.................................................37
+3 The genre parameter..................................................................................................39
+3.1 Introduction to genre..........................................................................................39
+3.2 Applications for genre classification.................................................................40
+3.3 Motives for genre classification.........................................................................41
+3.4 Difficulties in genre classification.....................................................................43
+3.5 Web genre classification approaches.................................................................44
+3.5.1 Including genre in search results................................................................45
+3.6 Approach proposed............................................................................................50
+3.6.1 Defining genre set......................................................................................50
+3.6.2 Genre classification algorithm...................................................................53
+3.6.3 Measurements............................................................................................56
+3.6.4 Including genre to search engine...............................................................62
+4 Conclusions...............................................................................................................66
+5 References.................................................................................................................69
+ii
+Index of Figures
+Figure 1: The components of a search engine................................................................2
+Figure 2: The main components of a crawler.................................................................3
+Figure 3: The PageRank score contribution.................................................................17
+Figure 4: Hubs and authorities.....................................................................................18
+Figure 5:  The Ontology and crawling cycles. Source: [30].........................................21
+Figure 6: From HTML to tag tree representation.........................................................24
+Figure 7: Indirect linkage of relative pages..................................................................26
+Figure 8: A two-layer context graph. Source: [27] ......................................................27
+Figure 9: Web graph, concept graph and State graph...................................................32
+Figure 10: Traditional results page versus genre based results page............................42
+Figure 11: An extended technical document presented in a two dimensional search 
+result page. Source:[29]................................................................................................47
+Figure 12: The result page with a tree based genre set. Source:[69]............................48
+Figure 13: The Easify interface. Source: [10]..............................................................49
+Figure 14: Search results enhanced with 'Webpage Type' . Source:[68]......................50
+Figure 15: The performance of the 3gram classifier....................................................57
+Figure 16: The performance of the 4gram classifier....................................................57
+Figure 17: The performance of the 5gram classifier....................................................58
+Figure 18: The performance of the 6gram classifier....................................................58
+Figure 19: The performance of the 7gram classifier....................................................59
+Figure 20: The performance of the 8gram classifier....................................................59
+Figure 21: The performance of the 9gram classifier....................................................60
+Figure 22: The performance of the 7gram classifier with different weights on the non 
+common ngrams between the page and the genre profile............................................61
+Figure 23: The performance of the classifier with 8000 kept ngrams..........................61
+Figure 24: Genre selection at the query page, template 1............................................63
+Figure 25: Genre selection at the query page, template 2............................................63
+Figure 26: Annotation of genre in the search results page...........................................65
+iii
+
+1 Search engines background
+1.1 Introduction
+The  'living  conditions' in  the  information  society  are  characterised  by  a  big 
+contradiction:  while  the  information  available  in  the  World  Wide  Web  (www)  is 
+growing with exponential rate, an attribute that is desired and welcome, it is becoming 
+more and more difficult to locate the information needed, which causes frustration and 
+limited exploitation of the web. While the information covering a specific need might 
+be present in the web, it might not be accessed because the user does not know how to 
+access it. It is therefore vital for the success of the web, the existence of services that 
+assist the users find what they are looking for. 
+The search engines assist  the user to find the desired information by continuously 
+crawling the web, indexing its pages and proposing the pages that could address the 
+user needs. Search engines are perhaps the most useful tool available in the web, that 
+enables its users to locate what they want through the billions of the web pages. It is 
+no wonder that they are amongst the top visited web sites world wide1. However, it is 
+becoming  clearer  that  both  the  continuous  expansion  and  dynamic  nature  of  the 
+available  information  and  the  expansion  of  the  user  groups  with  groups  having 
+different  needs  and  characteristics,  reduce  the  efficiency  of  the  traditional  search 
+engines.  Their  users  are  often  facing search results  with  millions  of  pages,  while 
+search is based only on a few terms, in its common form. 
+1.2 The general infrastructure of a search engine
+The search engine is the interface between the user and the web. In its most simple 
+implementation, the search engine is provided with a set of keywords by the user and 
+1 According to Alexa web search (http://www.alexa.com/site/ds/top_500)
+1
+returns a set  of pages that are most likely related to the keywords. A web search 
+engine is  divided in three main parts:  the crawler,  the index and the searcher [3], 
+presented in Figure 1. 
+1.2.1 The crawler
+The crawler is the interface of the search engine with the web since it is the only 
+component that has access to the web collection. The crawler's job is to constantly 
+fetch  documents  from the  web  in  order  to  increase  the  knowledge  of  the  search 
+engine. However, that job is quite complicated, considering the dynamic nature and 
+the continuously expanding, huge size of the web document collection. The crawlers 
+use the link structure of the web to 'crawl' from page to page through the links, hence 
+the  name  crawler.  They  are  also  known  as:  robots,  spiders,  fishes,  worms  and 
+wanderers. The main components of the crawler are the frontier, the fetcher, the parser 
+and the log [61] [Figure 2].
+The frontier is a sorted list of links that are to be visited by the crawler. In its most 
+simple form, it can be implemented as a FIFO queue. The first link of the queue is 
+extracted and visited by the fetcher, while the new links which are present in the page 
+that was fetched, are added to the end of the frontier by the parser. Therefore, that 
+crawler does not incorporate any kind of logic to visit  the pages and is known as 
+2
+Figure 1: The components of a search engine.
+Crawler
+Index
+Searcher
+www
+pages
+history
+pages pages
+Web graph
+User
+Information 
+need
+Pages 
+suggestions
+page
+requests
+The search 
+engine
+Log
+Information 
+need
+breadth  first  crawler.  The  breadth  first  crawler  visits  web  pages  blindly  and 
+exhaustively. A more complex approach to the implementation of the frontier is used 
+by crawlers who try to reach important pages or pages of a defined topic first, such as 
+the topic crawlers. In that case, an algorithm is used to assign each link a visiting 
+priority and the link list is sorted according to these priorities. The importance of a 
+page can be  topic related,  popularity related, or even a combination of these two, 
+while  there  are  proposed  many  different  algorithms  that  calculate  the  visiting 
+priorities of a list of links. Beyond sorting the list of links, the implementation of the 
+frontier arises issues of memory usage. The frontier should be large enough to support 
+the crawling process  while  its  contents should be accessed and manipulated,  both 
+during sorting and during duplicates check  to avoid visiting the same page multiple 
+times. The size of the frontier grows exponentially to the pages visited. Assuming that 
+one page has by average 7 out links, after crawling 10.000 pages the frontier will have 
+approximately 60.000 entries [47][63]. 
+The fetcher is an HTTP client  responsible for fetching the web page corresponding to 
+the first link in the frontier. It uses a time and a size bound, so it does not waste time 
+3
+Figure 2: The main components of a crawler
+Get seed 
+pages
+Log
+Parse
+ pages
+The crawler
+Links from 
+the page
+procedure
+data structure
+Index
+Fetch
+ pages
+Link list
+Page 
+representation
+Time 
+and link
+html page
+First link
+Seed links
+on slow servers and it fetches a part of the page, in case of huge web pages. It may 
+keep information about the page not directly related to its content as the last modified 
+header. The fetcher  has also to handle exceptions, error checking and redirections. 
+Some implementations of fetchers also include web form manipulation, in order to 
+crawl into the hidden web [64]. While fetching, the Robots Exclusion Protocol2 should 
+be followed. This protocol is used by site administrators to define the crawler access 
+policies in their web site. The log entries are also made by the fetcher, who reports the 
+time of accessing the links.
+The parser is responsible for parsing the contents of the web page which was fetched 
+by the fetcher.  The contents that have to be parsed depend on the specific search 
+engine.  However,  some  common  requirements  include  the  extraction  and 
+canonicalisation of the list of the page's out links, which will be added to the frontier 
+and  a  representation  of  the  page,  stored  in  the  index.  Additionally,  the  parser  is 
+responsible for providing the appropriate information to the algorithm that defines the 
+visiting priorities of the links, in case the algorithm uses the contents of the page, such 
+as the raw contents of the page, the body text of a page and the tag tree representation 
+of the page. Finally, the parser provides the information about the page that will be 
+stored in the index. This information can for example be the page's raw contents and 
+the page's MD5 hash. 
+In  the  log,  the  history  of  crawling  is  kept  and  can  be  used  for  constructing  the 
+crawling graph. The log is used for analysis of the performance of the crawler. It can 
+also be used by the link sorting algorithm, if this algorithm uses information about the 
+web structure to define the link priorities and in a similar manner by the searcher so 
+that the results are sorted according to their popularity.
+Crawling starts from a seed page, or even better, a set of seed pages, provided by the 
+crawler administrator. These seeds are used as the first entries in the frontier. After 
+feeding the crawler, an iterative procedure follows. The fetcher gets the first link out 
+of the frontier and fetches the corresponding web page, entering in the log the time of 
+2 For more information visit: http://www.robotstxt.org
+4
+the fetch. The parser extracts the required information form the page that will be used 
+by the sorting algorithm and provides it as input to the index, while the links of the 
+fetched page are inserted in the frontier.
+1.2.2 The index
+The index is the page repository of the engine. It is  the intermediate between the 
+crawler and the searcher, containing the pages crawled by the crawler and is used by 
+the  searcher  for  the  retrieval  of  the  result  pages.  This  data  structure,  can  be 
+implemented as a file repository, where every page is stored in a file. In order to check 
+the similarity, the hash value of the page Unified Resource Locator (URL) can be used 
+as the file's name. The representation of the page in the index depends on the search 
+methodology of the searcher. One usual page representation of the page's contents is 
+the inverted index, which is a data structure containing the vocabulary of the index 
+(the terms of the collection) and for each term, the id's of the pages that this term 
+appears (term t appears in page p) [63].
+1.2.3 The searcher
+The searcher is the interface of the search engine with the user. The user states his 
+information need and the searcher feedback is a set of pages that potentially meet 
+these needs, usually through a web based application. The information need may have 
+various forms, such as being keyword based, where the user enters a set of keywords 
+related with boolean operators (  k1 AND  k2 OR  k3),  query based (what is focused 
+crawling?)  and  document  based  (get  similar  pages).  The  searcher  uses  similar 
+functions for determining the relativity of the pages in the index as the functions used 
+by a  crawler  that  has  a  priority  list  for  implementing  the  frontier.  Therefore,  the 
+searcher bases its results on the page content similarity to the user's information need 
+and/or the popularity of the page. In a second case, the searcher interacts not only with 
+the index of the search engine but with the log of the crawler as well, in order to 
+construct the web graph and compute the page's popularity based on this graph. 
+5
+Along with the quality of the results, a critical element to the success of the search 
+engine is the representation of the results to the end user. The traditional methods are 
+text  based,  showing the title  of  the page,  a  snippet,  the URL and the  size of  the 
+document and they do not utilise the visual information of the page. However, there 
+are proposed new representation techniques that extend this textual information with a 
+visual presentation of the page (thumbnail) and the presentation of the summary of the 
+page provided by a summarizer [42]. These kind of result presentation provides more 
+information to the user about the page and facilitate the user's search experience by 
+giving the user more means available to judge the usefulness of a page before visiting 
+it. Therefore, a second layer of filtering the web pages, is then available to the user.
+1.3 Search engine design challenges
+The  idea  of  the  search  engine  is  quite  simple  and  the  implementation  of  a  web 
+retrieval  system should  theoretically  be  simple  as  well.  However,  in  practice,  the 
+design of the main components of a search engine has many challenges due to the 
+high  complexity  of  the  search  engine's  environment  which  is  characterised  by 
+exponential growth rate and a dynamic nature. 
+According to [72] the size of the web in 2001 was bigger than 2 billion pages while in 
+2005 it has grown to more than 11.5 billion indexable pages3 [39] and in 2006 the size 
+of the web is estimated to 50 billion pages [33]. Beyond the rapid expansion of the 
+web collection, the existing pages do not remain the same. Roughly 23% of the pages 
+change every day and up to 40% change their content every week while in the .com 
+domain, the pages that change every day approach 40% [19][20] . Additionally, there 
+are pages in the web collection that are not directly linked by any other page hence, 
+they can't be accessed by a traditional crawler since there is no link leading to them. 
+These pages are mainly pages that are dynamically generated from web database as a 
+result of interaction with a user, usually through a user query or a user submitted form 
+to the web data base. This part of the web is known as the hidden or deep web and its 
+3 The indexable pages are the pages considered for indexing by the search engines 
+[ 71]
+6
+size is estimated to 400 - 500 times the size of the indexable web [6]. Therefore, the 
+size of the indexable web, in bytes, exceeds 900 Terabytes while the size of the hidden 
+web is over 300.000 Terabytes, considering that the average size of a web page is 18,7 
+Kbytes and 13,7 Kbytes for the indexable and the hidden web respectively [6]. It is 
+clear that while the search engine takes pictures of the web, that picture changes in 
+content and size rapidly. In order to keep the picture as new as possible, the search 
+engine must include mechanisms for the effective crawling, re-crawling and indexing 
+the web, while searching this picture should be fast and effective. 
+Considering the size of the web, it is vital for the search engine to have a crawler that 
+fetches the important pages early in the crawling procedure. Therefore, the frontier 
+should be prioritised according to the importance of a page both for exhaustive and 
+topic crawlers. The importance of a page, if the topic is not considered, is closely 
+connected  to  the  popularity  of  the  page  and  is  usually  counted  with  link  based 
+algorithms [20] such as PageRank and HITS, analysed in Sections 2.5.1 and 2.5.2 
+respectively. In [13] a crawl strategy is proposed that can download 50% of the web 
+collection and capture 80% of the PageRank value. According to this strategy,  the 
+crawler had two different prioritising methods, a long term and a short term. The long 
+term policy dealt with creating lists of important pages that should be downloaded, 
+while  the short  term policy prioritised these lists  considering the optimal  network 
+utilisation.
+The crawler should not only use the network bandwidth for fetching new pages with 
+the optimal way but should allocate bandwidth and time for keeping the index fresh 
+and new. The freshness (how many pages are not outdated) and age (how old the 
+pages are) of the index is also a challenge since it needs to be updated in a manner 
+that the age of the pages in the index is not high and the pages in the index are not 
+outdated.  Therefore,  a  crawler  should also  have  a  re-visit  scheduling  policy.  Two 
+revisiting policies were studied by [20]. The uniform policy, where all the pages were 
+revisited by the same order and the proportional policy,  where pages that changed 
+more often were revisited more frequently. Impressively, the freshness of the index 
+7
+was higher with the uniform policy, since the crawler wastes to much resources trying 
+to update pages that chance frequently. 
+Beyond the visiting schedule, the crawler's architecture should be robust and adjusted 
+to the high computational and memory needs for fetching and parsing thousands of 
+pages per second. Distributed computing methods have been applied to crawling for 
+the  optimal  utilisation  of  the  memory,  the  processing  capacity  and  the  network 
+bandwidth. In [72] the crawler is divided in the crawler application, which represents 
+the logic functions of the crawler (prioritise the frontier, parse the pages and store 
+them to the index),  the  crawl manager,  which is guided by the application and is 
+responsible  for  distributing  the  requested  pages  to  the  downloader which  directly 
+interacts with the web downloading the pages and the DNS resolver. This architecture 
+can be scaled up by adding downloaders and resolvers at different workstations and 
+by  adding  more  crawl  managers.  The  performance  of  the  fetcher  threads  can  be 
+improved  by  an  optimised  network  utilisation  method  proposed  by  [28].  In  that 
+implementation, the next page to be fetched does not depend only on the estimation of 
+its importance but on the estimation of its network allocation as well. The crawler 
+keeps historical data about the transfer rates of each server and uses these data for 
+estimating  the  transfer  rate  of  each  page.  Whenever  bandwidth  is  available,  the 
+manager goes through the priority list, beginning from the top until a defined depth, 
+and fetches the URL that has a bandwidth allocation estimation equal or less to the 
+bandwidth available.
+As already mentioned, the indexable web is only a small portion of the whole web 
+collection.  In  the  hidden  web  there  are  pages  of  high  importance  which  could 
+obviously serve the information need of search engine users. In order to overcome the 
+traditional  crawler's  incapability  to  access  and  fetch  the  hidden  web,  there  are 
+methods proposed that allow the access to such web collections. In [64] a task specific 
+human  assisted  approach  is  developed.  Whenever  the  crawler  meets  a  form,  it 
+analyses it, fills the form with appropriate query terms found on a task specific term 
+database  and submits  it.  The result  page  is  the entry point  to  the specific  hidden 
+collection. A similar approach is developed by [57]. 
+8
+The index and the searcher should be adjusted to the requirements of fast response 
+time and huge size as well. Indexing is done in batches and not page by page, in order 
+to best utilise the available resources [13]. For achieving low query response time, the 
+index  is  usually  stored  in  a  distributed  file  system  among  several  physical 
+workstations. The techniques used for the distribution are the global inverted file and 
+the local inverted file [4]. In the global inverted file, the index vocabulary is spread 
+among  the  workstations,  and  each  workstation  contains  all  the  ids  of  the  pages 
+corresponding  to  the  specific  part  of  the  vocabulary.  However  the  global  file 
+architecture does not balance the workload evenly among the workstations, since for 
+each query,  only the workstations that have the query terms in the vocabulary are 
+utilised. On the other hand, in the local inverted file architecture, the vocabulary of the 
+collection is  given to  every workstation and the  pages'  ids  are  spread  among the 
+workstations. The query terms are the input to each workstation and the workstation 
+responses are merged in the result page. It has to be noted that since the result page 
+contains usually the top 10-20 results, only the top responses of each workstation are 
+merged at once, while the rest responses are merged while the user moves to the next 
+pages of the results.
+9
+2 Focused crawling algorithms
+Since general purpose search engines should answer any kind of query, the objective 
+of their crawler should be to visit as many web pages as possible. Therefore, the logic 
+guiding the crawl mainly copes with matters of covering the web the fastest way. On 
+the other hand, the objectives a search engine focusing on a topic, are quite different. 
+Its  collection  should  be  characterised  by  both  high  precision  (return  only correct 
+answers)  and  recall  (return  all  the  available  resources)  of  the  specific  topic’s 
+documents. A respective focused crawler should be able to collect the high quality 
+documents on the topic and discard the low quality and irrelevant documents, with the 
+minimum human interference. Additionally, the crawler should be able to follow as 
+less  irrelevant  pages  as  possible,  since  its  efficiency  is  one  of  its  main  desirable 
+features.
+In  order  to  achieve  topic  specialisation  of  high  quality,  the  logic  behind  focused 
+crawling tries to imitate the human behaviour when searching for a specific topic. The 
+crawler  takes  into  account  features  of  the  web  that  can  be  used  for  topic 
+discrimination including:
+● the relativity of the parent page to the subject
+● the importance of a page 
+● the structure of the web
+● features of the link and the text around a link
+● the experience of the crawler
+The  following  implementations  of  focused  crawling  techniques  utilise  this  set  of 
+features in many different ways and combinations since the features complement each 
+other. 
+10
+2.1 Naïve Best First crawler
+A quite simple approach for determining the priority of the out links of a page is the 
+Naïve Best First method [61][62]. This approach exploits the fact that relevant pages 
+possibly link to other relevant pages. Therefore, the relevance of a page a to a topic t, 
+pointed by a page b, is estimated by the relevance of page b to the topic t. 
+Each page is  represented as  a  vector  of  weights  corresponding to  the  normalised 
+frequencies of the document’s terms according to the tf-idf scheme. There are many 
+variations  of  the  tf-idf  scheme,  but  in  its  general  form,  it  consists  of  the  term 
+frequency (tf) part, which calculates the frequency of a term within a document and 
+the inverse term frequency (idf) part, which determines the importance of the term 
+throughout the whole collection. Therefore, the tf-idf scheme, weighs the importance 
+of a term that appears in a document. The crawler then computes the cosine similarity 
+of the page p and the description d as:
+dp
+dp
+vv
+vv
+dpsim
+⋅
+⋅
+=),(  (1)
+where vp and vd are the vector representations of the tf-idf of the page and the topic 
+terms respectively and vp . vd is the inner product of the two vectors.
+This  similarity  score  determines  the  relevance  of  the  page  with  the  topic  and  is 
+inherited  to  all  the  out  links.  The out  links are  then added to  the  priority  queue, 
+according to the score they got form their parent. 
+2.2 Combination of features for Link ordering
+Various  metrics  defining  the  importance  of  a  page  are  combined  in  [18].  These 
+metrics, estimate the importance I(p) of the page p, without having to download the 
+page itself. Instead, they are based on the estimated importance I*(p) derived from the 
+characteristics of their parent pages and the characteristics the respective in link has. 
+Given that we want a crawler to visit important pages first, a crawler utilises these 
+11
+metrics to sort the links into a priority queue, so that the link with the highest priority 
+is followed before the less important links. These metrics include 
+● the similarity to a query, 
+● the location metric, 
+● the backlink count, 
+● the forward link count and 
+● the PageRank.
+The importance of p based on similarity to a query q, IS(p,q), is the textual similarity 
+between the query q provided by the user and the contents of the page. Documents p 
+and q are represented as vectors v [w1, w2, …wn]. Given an n-terms vocabulary, wi is 0 
+if term i does not appear in the document, or the weight of the term i if i appears in the 
+document.  The  weight  of  a  term  is  computed  by  its  tf-idf  value.  The  similarity 
+between p and q is the inner product of vp and vq. Alternatively the cosine similarity 
+which is the inner product of the normalised vectors can be used. The  IS*(p,q) is 
+determined by the similarity of the anchor text and the link itself with the query.  
+The location metric take into account the characteristics of the link l that leads to p. 
+The importance IL(p) is therefore a function of l. Such a function for example, might 
+consider the links ending with .com more useful than others, or might assign a higher 
+importance to pages with few slashes than others with more slashes. 
+The backlink count, computes the importance of the page IB(p) by the number of the 
+links that point at p. Since it is not possible to know how many links over the entire 
+web link to  p,  the crawler estimates  IB(p) by counting the links to  p seen so far. 
+Similarly, the forward link count, defines the importance IF(p) of p proportionally to 
+the number of links that come from  p. Backlink and forward link count  share the 
+same  logic  with  the  authorities  and  hubs  concepts.  The  importance  of  a  page 
+according to its PageRank value IR(p) is extensively analysed in Section 2.5.1. 
+The crawling scheme could incorporate a combination of these importance metrics. 
+Therefore, the ordering method O which ranks the links in the priority queue is
+12
+ O(l) = a1IS(p,q) + a2IL(l) + a3IR(p) + a4IB(p) + a5IF(p)  (2)
+where a1, a2,… is the weight of the respective metric.
+The authors run various experiments concluding that when pages with high PageRank 
+values or pages with many in links are wanted, the crawler should look for pages with 
+high  IR(p).  Moreover, if the similarity to a query is important, the crawler should 
+follow the links that their anchor text is similar to the query, or they are similar to the 
+query themselves or their link distance from a relevant page is sort. 
+2.3 The Fish algorithm
+The Fish algorithm [24] is one of the first real time, client based search algorithms 
+proposed. The basic intuition behind Fish is that relevant pages most likely link to 
+other pages of the same topic. The algorithm simulates the behaviour of a school of 
+fish, searching for food, hence the name.  Their life time and their reproduction rate 
+depends on the food they find. Fishes leaving the school, either find food and create a 
+new school by reproduction or they don’t find food and they die. Additionally, fish 
+that go into polluted water produce weak fishes with a limited life time.
+Leaving the wild nature and going back to the algorithm, the links are metaphorically 
+the fishes and relevant documents are the food. When the link leads to a relevant 
+document it becomes stronger. The number of its children is analogous to the out links 
+of  this  document.  If  the  documents  are  not  relevant  the  links  become  weaker. 
+Following a path with no relevant documents will cause the termination of searching 
+the specific path of links. Additionally, low transfer rate (like polluted water) weakens 
+the links.
+The original version of Fish does not allow simultaneous search of the links due to 
+bandwidth limitations.  Therefore,  the search is  not done in parallel  through many 
+different links. Instead, fishes are simulated by a priority list of links to be explored. 
+13
+Width is the average number of links added to the list each time a document is fetched 
+and depth is the number of steps a fish can make without finding a relevant document. 
+As a starting point, the algorithm takes as input a seed page and a search query, and 
+dynamically builds a priority list. The list is processed in a slightly deviated depth first 
+manner. Each document fetched is analysed and scored according to its relativity. If 
+the document fetched is relevant, a selection of its out links is added to the front of the 
+list while if it is irrelevant its out links are added after the links coming from relevant 
+documents. The depth value of links from irrelevant documents is reduced by 1. When 
+the  depth  reaches  zero,  the  links  are  not  followed.  The algorithm does  not  allow 
+double entries in the list, so adding a link, it is checked if the link already exists in the 
+list. If it is in the list, the link will not be added again but might be moved up, in case 
+it comes from a relevant document.
+The algorithm determines the relevance score (0 or 1) of a document according to the 
+search criteria. 
+● In  the  keyword  search,  the  user  provides  a  set  of  keywords  and indicates 
+which of the keywords should be present in the document. The relevance of 
+the documents depends on the presence of the keywords
+● In the regular expression search, the user provides a regular expression and the 
+relevance depends on the number of matches in the document and its size
+● The user provides an external filter which return the relevance indicator
+2.4 The Shark algorithm
+The Shark search algorithm [41], is an improvement of the fish search algorithm, as 
+the name implies. The algorithm proposes some solutions to the limitations of the fish 
+search, mainly coming from it simplicity in the estimation of the page’s relevance, 
+producing very low scoring capabilities in the priority list, since a page is considered 
+either relevant or not relevant.
+14
+One of  the  main  difference  is  that  pages are  not  binary characterised  relevant  or 
+irrelevant, instead they are assigned a relevance score ranging from 0 to 1 by applying 
+the vector space model. This soft classification has a direct impact on the formation of 
+the priority list, since links coming from pages that are considered more relevant are 
+entered first. That way, the links with a higher score, are preferred over links coming 
+from less relevant pages and are explored first. The links also inherit the scores of the 
+pages  they belong,  so  that  the  score  combined with  a  decay factor  is  considered 
+throughout the link path.
+In addition to considering the history of the path, the relevance is affected by meta-
+information contained in the links. Both the text surrounding links and the anchor 
+texts are combined in order to assign the relevance score of the link. Therefore, links 
+that come from the same page might have different relevance score and may enter 
+with different order in the priority list.
+2.5 Measuring the importance of a page
+As already mentioned, beyond relativity, one of the main desirable features a focused 
+crawler should have is the ability to download ‘important’ pages first. The crawler 
+should fetch not just relevant pages, but high quality relevant pages. Similarly with 
+the relativity, the notion of the importance and quality is subjective since it is based on 
+the  personal  judge  and  the  general  concept  under  which  the  page  is  to  be  used. 
+Therefore,  the  approach  of  a  soft  based  ranking  algorithm  is  most  suitable  for 
+measuring the page’s importance. These algorithms have the same base as the citation 
+analysis methods [35][36]. They are exploiting the characteristics of the link structure 
+of the web, treating the links as citations and the pages as documents. The main idea 
+behind them is that a page is considered important if it is pointed to by many other 
+important pages. 
+15
+2.5.1 Page Rank 
+One of the most known and widely used algorithms computing the importance of a 
+page is the PageRank algorithm, proposed by Brin and Page [11][59]. It is one of the 
+heuristics used by the search engine Google. Since these heuristics are treated as a 
+company’s  properties,  they  are  kept  as  secrets.  This  analysis  of  the  PageRank 
+algorithm is based on one of the original version of it and might have involved since 
+then.
+Assume that pages c1, c2, …,cn are the pages that link to page p (are citations to p), outi 
+is the number of the out links of page ci and d<1 is a damping factor and T the total 
+number of the pages of the collection.
+The PageRank of a page p, PR(p),  is computed as:
+∑
+=
++−=
+ni i
+i
+out
+cPRd
+T
+dpPR
+..1
+)(1)(  (3)
+The algorithm tries to exploit the attributes of the web graph and the behaviour of a 
+regular web reader, who ‘surfs’ the web. Starting from any page, the reader has two 
+ways of moving to another page: either by randomly following an out link of the page 
+he is currently viewing, either by ‘jumping’ to another random page. The damping 
+factor  d,  represents  the probability that  the user ‘jumps’ to  a random page and is 
+usually set to 0.85. When the current page has no out links, the reader jumps to a 
+random page as well. The outcome of the Page Rank for a page p is the probability 
+that the random reader is at p any given time. If we assume that the web is a system, a 
+page is modelled as a state and a link as a uni-directional transition between two 
+stages, the PR(p) represents the probability that the system is at  p at its stationary 
+state.
+The PR(p) is high if it has many in links or if it has some in links from important 
+pages (pages with high PageRank) or, of course, both. However, there is a case that 
+the PageRank of p might be increased less from one in link of an important page with 
+16
+many out links, compared to an in link from a page with lower PageRank but with few 
+out  links.  That  is  because  the  PR(p) is  divided  among  p’s  out  links  evenly,  to 
+contribute to the ranks of the pages p points to. As an example, Figure 3 has p being 
+linked by page a and b, where PR(a) = 10 and PR(b) = 5. If a has 5 out links and b has 
+2 then they will contribute to PR(p) with 2 and 2.5 respectively. 
+Calculating the PR(p) is an iterative procedure that defines the importance of p as the 
+weighted sum of the importance of all the pages that link to p. It is calculated until a 
+desired point of convergence. 
+Modifications of PageRank algorithm include [78] where the algorithm is adjusted to 
+web  multimedia  objects  ranking,  [54]  where  only  links  to  different  hosts  are 
+considered, [67] where a probabilistic model of the relevance of the query to the page 
+is incorporated and [40] where topic specific PageRank scores are assigned to each 
+page for a given a set of topics. 
+2.5.2 The HITS algorithm 
+The HITS algorithm, proposed by Kleinberg [46]  is another a method for rating the 
+quality of a page. It introduces the idea of  authorities and  hubs.  An authority is a 
+prominent page on a topic. They are the target of the crawling process since they have 
+high  quality  on  a  topic.  A hub  is  a  page  that  points  to  many  authorities.  Their 
+characteristic is that its out links are suggestive of high quality pages. Hubs do not 
+17
+Figure 3: The PageRank score contribution
+α
+(10)
+p (4.5)
+b 
+(5)
+2 2.5
+need to have high quality on the topic themselves or links from 'good' pages pointing 
+to  them.  The idea  of  the  ‘hub’ is  a  solution to  the  problem of  distinguishing the 
+‘popular’ pages,  from the  authoritative  pages.  Therefore,  hubs  and authorities  are 
+defined in terms of mutual recursion. A good authority is a page pointed by many 
+hubs and a good hub is a page pointing to many good authorities [Figure 4]. The 
+algorithm has two main components, sampling and weight propagation. 
+The outcome of the sampling step is a focused sub graph of the web that is relatively 
+small,  rich  in  relevant  pages  and  contains  many  (desirably  most)  of  the  strong 
+authorities. This web graph is constructed with the help of a simple search engine. 
+Given the topic of interest, the t first results of the search engine on the specific topic 
+compose the  root set. This set will be small, since  t is adjusted and it will contain 
+relevant pages but might not have many strong authorities. Therefore, the root set is 
+expanded to include the pages that are linked by pages in the set, as well as include 
+pages that are linking to pages in the root set. The intuition is that strong authorities 
+either are within the highest ranked results of a search engine or they at least are 
+connected to a high ranked page. The focused sub graph is the set that arises after the 
+expansion of the root set. However considering that the sub graph should be relatively 
+small and that a page in the root set might be pointed by thousands of other pages, 
+each page in the root set is allowed to import only d pages pointing to it.
+18
+Figure 4: Hubs and authorities
+a h a huban authority
+a
+h
+h
+h
+h
+h
+a
+a
+a
+a
+a good hub a good authority
+A page p is characterised by a two numerical weights: the authority weight a(p) and 
+the hub weight h(p). The values are normalised so that the sum of their square weights 
+of pages in collection W equals to 1: 
+1)( 2 =∑
+∈ Wp
+pa  (4) and 1)(
+2 =∑
+∈ Wp
+ph  (5)
+These weights  are  iteratively computed at  weight  propagation step until  a  desired 
+point of convergence is achieved. The calculation is quite straightforward. Assume 
+that pages  c1, c2, …,cn are the pages that link to page  p (are citations to  p) and that 
+pages t1, t2, …,tm are the pages that p points to.
+∑
+=
+=
+ni
+ichpa
+..1
+)()(  (6) and ∑
+=
+=
+mi
+itaph
+..1
+)()(  (7)
+The pages with the highest values of the authority and the hub weights are considered 
+to be the strongest authorities and hubs for the specific search topic respectively. The 
+results  can  be  filtered  and  the  outcome of  the  algorithm is  the  set  of  the  strong 
+authorities  and  hubs.  While  HITS  and  PageRank  look  similar,  HITS  opposed  to 
+PageRank which is calculated at indexing time, is executed real time after the query, 
+computes  two  scores  per  document  (hub  and  authority)  as  opposed  to  the  single 
+PageRank score and concerns only a  small subset of ‘relevant’ documents and not all 
+documents as is the case with PageRank.
+Modified versions of  the HITS algorithm have been proposed by [53]  where two 
+modifications are proposed: one is extending the information provided by simple links 
+to longer paths of links, and the second modification takes into account the user link 
+selection.  In  [55]  a  ‘projection  method’ that  refines  the  root  set  and  a  ‘base  set  
+downsizing  method’ which  filters  out  of  the focused sub graph the pages without 
+multiple links in the root set, are proposed. In a system called ARC, [14][16] a second 
+weighting phase is introduced in order to exploit the textual conferral of authorities, 
+19
+provided by the text surrounding the links. A similar approach of combining the HITS 
+algorithm with content analysis was proposed by [8]. In [25] the HITS algorithm was 
+extended to exploit the links’ order in the page. 
+2.6 Intelligent crawling 
+In [1] a version of focused crawling the intelligent crawling, is introduced. In contrast 
+with  the  focused  crawling  techniques  that  base  their  heuristics  on  a  pre-defined 
+conception of the link structure of the web, intelligent crawling learns the features of 
+the web structure during crawling. Intelligent crawling can be applied during crawling 
+pages  which  satisfy  user  defined  arbitrary  predicates.  These  predicates  may  be 
+anything that can be used to determine the relevance of the link and page content to 
+the specific search need, such as keywords, topic search and document similarity. The 
+idea behind the adapted intelligent  crawler  is  that  depending on the nature of  the 
+predicate, the importance of the factors determining the relativity can vary. Because of 
+its adaptive nature, the crawler is insensitive to the starting point and its behaviour 
+during the first steps is similar to a general crawler.
+Therefore, the crawler adapts to the predicate and learns the most appropriate link 
+structure in order to maximise the harvest rate, with the use of a probabilistic model 
+predicting  the  link  priority  [56].  As  in  most  crawling  methods,  the  algorithm 
+maintains a priority list of unvisited links. The rating of the links depends on two 
+factors:  information from the  knowledge  K of  the  crawler,  coming from the  web 
+structure visited so far and the features of the links, related to K. The features of the 
+links may include the content of the pages they belong to, the relevance of these pages 
+with the predicate, the anchor text of the link and the number of relevant pages that 
+linked by the same page that the candidate link belongs to. 
+The input to the probabilistic model is the features and the link structure of the web 
+that has already been crawled, while the output is the priority order with which the 
+candidate will be visited. The knowledge that the algorithm got from a fact E, which 
+is a fact about a feature of a candidate link, may increase the probability that the 
+20
+candidate’s page satisfies the predicate. In other words, the algorithm tries to identify 
+the  rate  that  the  predicate  dependent  features  influence  crawling  effectively.  This 
+knowledge  about  every  feature  of  the  link  is  accumulated  over  time  during  the 
+crawling process and can be reused in case of a similar query.
+2.7 Ontology based focused crawling
+Proposed  by  [30]  the  ontology  based  crawling  framework  utilises  the  notion  of 
+ontologies in the process of crawling. It consists of two main processes which interact 
+with each other, the ontology cycle and the crawling cycle [Figure 5]. In the ontology 
+cycle the crawling target is defined by the means of ontology and the documents that 
+are considered relevant as well as proposals for the enrichment of the ontology are 
+returned to the  user.  The crawling cycle  retrieves  the  documents  on the  web and 
+interacts  with  the  ontology to  determine  the  relevance  of  the  documents  and  the 
+ranking of the links to be followed.
+The  framework  consists  of  five  modules:  the  user  interaction,  the  ontology 
+management,  the  crawling,  the  preprocessing and  the  computation.  During  user 
+interaction, the user provides the initial ontology, adjusts the computation strategy and 
+21
+Figure 5:  The Ontology and crawling cycles. Source: [30]
+priorities
+Ontology 
+Management
+Computation
+Crawling
+User 
+Interaction
+Preprocessing
+results
+computation 
+strategy & 
+ontologyweb graph
+normalised
+pages
+crawled
+pages
+refines the ontology, based on the output of the computation. Ontology management 
+directs the focus of the crawler providing a web graph as background knowledge. 
+Crawling is  the process where the documents are  retrieved according to the order 
+determined  by  computation.  The  crawled  documents  are  transferred  to  the 
+preprocessing module where text normalisation takes place. The core module of the 
+framework  is  computation.  The  normalised  documents  are  transferred  to  the 
+computation module, where a function mapping the document’s content against the 
+existing ontology outcomes with a relevance score. Additionally, the out links of the 
+documents are also assigned a score determining the order by which they are visited 
+during crawling.
+2.8 Metadata based focused crawling
+A focused crawling technique using metadata was proposed by [80]. The purpose of 
+the specific crawler was to harvest missing documents of digital libraries collections. 
+The crawler could therefore be used to build a complete collection of documents of a 
+given venue i.e. a journal or a conference. The document’s metadata are used to locate 
+the home pages of the authors, which are then crawled in order to find the target 
+document. 
+The system consists  of  a  Homepage  Aggregator and  a  Crawler.  Taken the  user’s 
+request  for  documents  of  a  specific  venue,  the  Homepage  Aggregator  aims  at 
+specifying a list with possible links to the author(s) homepage. It utilises a Public 
+Metadata  Repository  and  extract  useful  metadata  which  are  then  submitted  at  a 
+common search engine. The search results are filtered with a homepage filter, where 
+metadata  heuristics  are  used  for  removing  results  that  are  not  homepages  of  the 
+desired  author.  The  links  of  the  filtered  result  are  assigned  with  priority  weights 
+according to their possibility of being the homepage of the author.
+The Crawler uses the homepage link list as the seed links and runs a focused crawl in 
+order to find the desired documents. Link priorities are determined by their anchor 
+text. Additionally, the crawler also gets an Ignore List, that is the file types that should 
+22
+be ignored (e.g. JPEG files), an Allow List, that is a set of domain names that the 
+crawler is bounded to crawl and any other document outside these domain names is 
+ignored and a Priority List, that is a set of keywords along with their weights that are 
+used to compute the priority of the extracted links. The weights of the keywords are 
+determined by a classifier who is trained on the relation of the link graph with the 
+anchor texts of the links. The anchor text of the link is then compared against the set 
+of the weighted keywords. Additionally to the weight of the anchor text, the priority 
+of the link is also determined by the weight of its parent since an anchor text with 
+medium weight might also lead to the document, provided that the link is part of the 
+right path.
+2.9 Language focused crawling
+In [52] a language classifier which determines whether a page is worth preserving, is 
+incorporated into the crawling process. The crawler is build for the creation of topic 
+specific corpora of a given language in two steps. During the first step, a training set 
+of documents which satisfy the language and topic requirements is created in order to 
+extract the most distinguishing ngrams (the ngrams with the highest tf-idf values). 
+These ngrams are used as queries to a standard search engine and the results are used 
+as the seed links. In the second phase, a classifier is incorporated in the crawler. The 
+classifier  is  trained by the training set  and domain models  are  created.  A page is 
+considered relevant if it belongs to the desired language and domain model. 
+2.10 Document Object Model based focused crawling
+The Document Object Model (DOM) crawler [61] uses the information of the tag tree 
+representation of a page to determine the priority of its out links. The crawler builds 
+aggregation nodes for each link of the page and estimates the possibility that the link 
+leads to a relevant page, by the textual information of the aggregation node. When a 
+page is downloaded, the crawler constructs its tag tree representation. A node that is 
+on the path from the root of the tree to an out link of a page is considered to be the 
+23
+aggregation node and all  the text that appears to the aggregation node sub tree is 
+treated  as  the  context  of  the  link.  In  Figure's  6  specific  implementation,  the 
+aggregation node is the parent of the link. A special case, is when the aggregation 
+node is the root of the tree, where the DOM crawler is equal to a Naïve Best First 
+crawler (Section 2.1). 
+The context score of the link l, cs(l) is the cosine similarity of the link’s context with 
+the given category description (i.e.  a  set  of keywords).  The crawler  also uses the 
+Naïve Best First method to estimate the relevance of the whole page by assigning the 
+link a NBF score, NBF(l). The overall link score score(l), is determined by combining 
+the link’s context score and the page’s score.
+scoredom(l) = a∙NBF(l) + (1-a) ∙ cs(l) (8)
+Constant a, determines the importance of the link context over the importance of the 
+content  of  the  whole  page.  The  links  are  ordered  in  the  crawler’s  priority  queue 
+according to their overall link score. 
+24
+Figure 6: From HTML to tag tree representation
+<html>
+<p>
+<strong>Example</stro
+ng>
+This is an example of 
+tag tree 
+representation 
+according to <a 
+href=http://www.w3.or
+g/DOM/> DOM</a> </p>
+html
+text
+strong text
+text
+a
+p
+aggregation 
+node
+2.11 Hub seeking DOM crawler
+An extension of  the DOM crawler  that  takes into account  the concept  of  hubs is 
+proposed by [61]. The crawler is not only interested in relevant pages but in pages that 
+link to many relevant pages. In order to determine the priority of a link l, the crawler 
+combines the scoredom(l) with the hub score of the page h(p). It has to be noted that the 
+calculation  of  the  hub  score  is  quite  simpler  than  the  calculations  of  the  HITS 
+algorithm and is computed as:
+21
+)1()(
+n
+nnph
++
+−⋅= , (9)
+where n, is the number of seed host the page points to, and gets the scorehub(l) for each 
+link according to:
+scorehub(l) = max(scoredom(l), h(p)), (10)
+2.12 Context Graph Crawling
+Most of the focused crawling techniques follow the links in a best first order. The 
+links  are  prioritised  according  to  their  possibility  that  the  corresponding  page  is 
+relevant.  However,  that  might  lead to the  low ranking of  a  link which  might  not 
+directly lead to a desired page but could be part of the path that leads to one [Figure 
+7]. For example, a link to a page of a university most probably does not directly links 
+to a page relevant to focused crawling. It could lead though, to a page of a Computer 
+Systems department which consequently possibly leads to a homepage of a researcher 
+interested in focused crawling. 
+Additionally,  many implementations  of  focused  crawling can move only forward, 
+following only the out links of a page. It could be useful though, to move backwards 
+and  examine  the  pages  that  link  to  the  current  page  as  well.  Such  a  movement 
+upwards in the link hierarchy could facilitate crawling when for example the crawler 
+25
+is found at a leaf of the university link hierarchy. Moving backward would lead the 
+crawler to the central node of the university which could be the source of paths to 
+other relevant documents.
+In  order  to  overcome these limitations,  [27]  proposed  the  construction of  context  
+graphs combined with backward crawling. The algorithm uses the search results of 
+backward link tracking of simple search engines in order to find pages that link to a 
+specified document. This information is used for the construction of a web graph and 
+the  training  of  classifiers  who  try  to  categorise  the  documents  according  to  the 
+estimated distance of the current page to the desired page. In Figure 8, a context graph 
+with two layers is  presented. The construction of the graph aims at extracting the 
+context within which relevant documents are found. The algorithm follows two steps: 
+the initialisation and the crawling phase.
+In the initialisation phase the context graphs are created and the classifiers are trained. 
+A context graph is created for each page of the seed group, which is added as the core 
+node at the corresponding graph. The extension of the graph is done by querying a 
+search engine for pages that point to the seed. These pages, the parent pages of the 
+seed, are added to the graph forming the graph’s layer 1 and are linked with an edge 
+with the seed page. Backwards crawling is repeated for each page at layer 1 and the 
+new respective pages form layer 2 of the graph. The number of layers d (iterations of 
+backward crawling), is called  depth of the graph, and is specified by the user. The 
+context graph represents the various paths that a relevant document can be accessed at 
+26
+Figure 7: Indirect linkage of relative pages
+relative 
+page
+irrelative 
+page
+the web. The crawler can get knowledge about topics that are connected directly or 
+indirectly to the target topic and about the models of the paths that lead to relevant 
+documents.  This knowledge can be used to direct crawling even from pages that are 
+irrelevant with the topic but belong to a path that leads to target documents.
+The context graphs are used for training the classifiers which assign the documents 
+fetched from the web to one of the layers of the graph or, if the document does not 
+match  any layer,  to  the  ‘other’ layer.  The  representation  of  the  documents  in  the 
+implementation  proposed  is  done  with  a  slightly  modified  version  of  tf-idf 
+representation while classifying is done using the Naïve Bayes approach. A classifier 
+is build for each layer and the page is assigned to the layer where the correspondent 
+classifier computes the highest  probability that the page belongs to its layer.
+During the crawling phase, the crawler maintains  d+2 queues where the pages are 
+stored according to their layer. The number of queues is d+2 since there are d layers, 
+the 0 (target) layer and the ‘other’ layer. If the page belongs to the i-th class it will be 
+inserted in the i-th queue. Crawling starts with all the queues empty except the d+1 
+queue which has the seed page. The crawler examines the seed’s children and imports 
+27
+Figure 8: A two-layer context graph. Source: [27] 
+layer 2
+layer 1
+seed
+the fetched pages to the corresponding queue. The pages in the queues are sorted 
+according to their likelihood of belonging to the specific layer. Crawling is done with 
+a best  first  manner,  since the next page to be examined comes from the first  non 
+empty queue of the minimum layer. Therefore, a page that is estimated to be closer to 
+a  relevant  document  is  examined before the pages that  are  away from the  target. 
+Ultimately, all the relevant pages will be in the 0-th queue. Also, new context graphs 
+can be built for every new document in the 0-th layer.
+2.13 Combining context graphs with tag trees
+The information provided by a context graph and the tag tree representation of a page 
+was combined in [17]. The crawling scheme incorporates two classifiers, a  baseline 
+and  an  apprentice.  The  baseline  classifier  evaluates  the  relevance  of  the  pages 
+retrieved, providing the apprentice with training instances and feedback. On the other 
+hand, the apprentice guides the crawl by determining the priorities of unvisited links 
+based on the tag tree structure of the page. In other words, the baseline clarifies what 
+type  of  information  is  required  by  the  user,  while  the  apprentice  based  on  the 
+outcomes of the baseline, deals with how to track the right pages that are related to the 
+required topic.
+The baseline is similar to the classifier used at context graph crawling [27]. The input 
+to the crawler is a topic taxonomy along with examples of each topic (usually taken 
+from the Open Directory Project4 - ODP) and the set of the topics of interest. The 
+baseline crawler acts as a best first crawler, visiting the links according to a priority 
+queue  (determined  by the  apprentice),  and  for  each  category  of  the  taxonomy,  it 
+calculates the probabilities of a page belonging to the category, according to the Naïve 
+Bayes scheme. It is then feeding the apprentice with a vector of the probabilities that 
+the page belongs to each category. 
+These  probabilities,  are  used  as  training  data  by  the  apprentice,  by  allowing  the 
+construction of linkage patterns. The apprentice also uses the tag tree representation of 
+4 For more information on the Open Directory Project visit: http://dmoz.org/
+28
+the page to determine the priorities of the out links. The learning process is based on 
+the relation between the target page and the textual content of the link pointing to the 
+target. However, there is no predefined text window that is taken under consideration; 
+instead,  the text window is learnt  automatically by the classifier.  Additionally,  the 
+distance of the text that is examined by the apprentice, is calculated according to the 
+distance within the tag tree representation, and not to the distance of the terms from 
+the link. The apprentice builds pairs of tokens t and the tag tree distance d of the token 
+with respect to the link,  [t,d] and uses these pairs as the main classification feature, 
+along with the class probabilities provided by the baseline. The apprentice classifier is 
+also based on Naïve Bayes. The main difference with the implementation in [27] is 
+that  the  classifier  processes  text  tokens  in  the  vicinity  of  the  link  instead  of  the 
+aggregation node of the tag tree hierarchy. 
+2.14 Focused crawling with classification and distillation
+In [15] the crawler is administrated by a classifier and a distiller. Based on a topic 
+taxonomy of  the  web and respective  examples,  as  well  as  the  user  feedback,  the 
+classifier  learns  to  estimate  the relevance of  the  crawled pages  while  the  distiller 
+identifies pages which are the main nodes of a specific topic.
+To begin, the system is fed with a topical taxonomy of the web such as the Yahoo! or 
+the ODP and is trained by a respective set of examples. The user also provides a set of 
+pages of his interest such as the links of his bookmark files. The system automatically 
+classifies  these  pages  and  through  an  interactive  process,  the  user  can  refine  the 
+categories  and  correct  the  systems  decisions.  Additionally,  the  user  chooses  the 
+categories of his interest and marks them as ‘good’. After refinement, an interactive 
+exploration  of  the  web  takes  place.  The  system  proposes  some  pages  in  the 
+neighbourhood of the examples that are considered to be similar and the user may 
+include some of these pages to the examples. The system’s classifier is trained upon 
+the  examples  and  crawls  the  web  looking  for  pages  of  the  ‘good’  categories. 
+Throughout the page discovery process the system distils the pages, identifying the 
+ones that link to many relevant pages. It then increases the visiting priority of the hub 
+29
+pages and their neighbourhood. The user has the capability of monitoring the pages 
+that are considered popular and give his positive or negative feedback to the system. 
+This feedback is then used for the further refinement of the classifier and distiller.
+The relevance of a page is determined with a Naïve Bayes classifier which can find 
+the probability that  a page  p belongs to category  c,  Pr(c|p),  based on the training 
+examples. The relevance of p, R(p), is computed as:
+∑
+∈
+=
+goodc
+pcpR )|Pr()(  (11)
+The crawler can operate in a soft and a hard mode. When in soft mode, the crawler 
+uses the R(p) to rank the out links of p. In the hard mode, the classifier determines the 
+leaf node c* in the categories taxonomy with the maximum probability of including p. 
+The out links of p are added to the visit queue of the crawler, if any of c* parents are 
+marked as good, otherwise the out links of p are not considered for crawling.
+Since relevant pages may contain links to irrelevant pages, the crawler is also using a 
+procedure for determining topical hubs and ranks them with high scores in the visit 
+queue. The distillation procedure is using an algorithm similar to the HITS algorithm 
+for determining pages that are resources for many relevant documents. During crawl, 
+the  distiller  is  activated  at  various  times.  It  assigns  two  scores  for  each  link  the 
+forward LF and the backward LB. The forward weight of link from page u to page v 
+LF(u,v) is the relevance of  v,  R(v), and prevents the leakage of scores form hubs to 
+irrelevant  pages.  Similarly,  the  backward  link  weight  from  u to  v,  LB(u,v),  is  the 
+relevance of u, R(u), so that relevant authorities do not enhance the score of irrelevant 
+hubs. Additionally, the authorities set is restricted by a relevance threshold. 
+2.15 InfoSpiders 
+One of the features of the web is its dynamic nature, characterised by the  constant 
+changing and rapid growing rate.  As mentioned,  a  typical  search  engine  needs to 
+30
+incorporate special recrawling policies in order to keep its index updated and include 
+the  documents  created  after  the  last  crawl.  An  alternative  solution  is  real  time 
+searching. InfoSpiders is a dynamic web search multi agent system proposed by [60]. 
+InfoSpiders complement traditional index based search engines using agents at the 
+user side. These agents act autonomously with each other and they try to achieve a 
+good coverage of the relative documents.
+When the user submits a query, InfoSpiders obtain a set of seed links which are the 
+search results of a traditional search engine. An agent is initialised for every link and 
+analyses the corresponding page’s links looking for the next one to follow. The agent 
+analyses the links by computing the similarity of the text around the link with the 
+query, with the help of a neural net. The next link to be followed is chosen with a 
+probability proportional to the similarity score. The neural net weights are adjusted by 
+the relevance of the new page’s content so that the agent updates its knowledge. The 
+agent has an energy value which causes its death if it runs out and its reproduction if it 
+surmounts  a  threshold  (similarly to  Fish and Shark algorithms).  Agents  that  fetch 
+relevant pages quickly are contributing to both the efficiency and the effectiveness of 
+the system. Therefore, the energy value depends on both the quality and the cost of 
+the pages fetched. The quality is determined by the cosine similarity of the page with 
+the query and the cost is determined by the network resources consumed to download 
+the  page.  The  algorithm  returns  to  the  user  a  set  of  links  ranked  by  estimated 
+relevance  on  a  real  time  flow.  InfoSpiders  algorithm  is  implemented  in  a 
+multithreaded Java applet called MySpiders.
+2.16 Concept graph focused crawling
+In [50] the analysis of the link structure and the construction of a concept graph of the 
+semantic  content  of  relevant  pages  with  the  help  of  Hidden  Markov  Models  is 
+proposed.  Here,  the user  of  the search engine has  a  more active role,  since he is 
+required to browse the web and train the system, by providing the set of the pages he 
+considered  interesting.  The  system  aims  at  analysing  and  detecting  the  semantic 
+31
+relationships that exist within the paths leading to a relative page.  It has three main 
+steps: user modelling, pattern learning and crawling. 
+During user modelling, the user is asked to browse the web for pages he is interested 
+in and mark them. The browsing paths are then analysed and transformed into web 
+graphs in order to exploit not only the content of the pages but the link structure as 
+well. Each node is a page and the links between pages are the edges of the graph 
+[Figure 9]. It  is worth noting that the user is asked to mark the interesting pages, 
+which are not restricted to only the targeted topic.
+In the next step the system is trained to recognise the user’s browsing patterns. The 
+documents  are  represented  using  the  Latent  Semantic  Indexing.  This  technique 
+exploits the semantic relationships between words, by analysing the occurrences of 
+the  same  words  in  the  document  set.  The  documents  are  split  into  clusters  that 
+represent the topics of pages that the user browsed and the relationships between these 
+clusters are shown in a concept graph. In order to calculate the probabilities of each 
+cluster leading to the target topic directly or indirectly, Hidden Markov Models are 
+32
+Figure 9: Web graph, concept graph and State graph
+a
+b c
+d
+e
+web graph
+a
+c
+b
+d
+e
+hidden states graph
+0
+1
+2
+3
+target cluster
+rest clusters 
+concept graph
+a
+b c
+d
+e
+used.  In  the  resulting  model,  each  document  belongs  to  a  visible  state  (the  topic 
+cluster) and in a hidden state. The hidden state represents the link distance of the 
+document from the target document.
+Crawling is done in the traditional way using a priority queue of the unvisited pages. 
+The page with the highest priority, which depends on its relevancy and on its hidden 
+state (distance from a desired document) will be crawled first and its children pages 
+will be assigned to a cluster. A document is considered relevant if its cosine similarity 
+to the target set overcomes a defined threshold.
+2.17 Decision trees
+Another method taking into account the anchor text of the links is proposed by [49]. 
+Their method is not suitable for large scale focused crawling; instead, it is designed to 
+crawl into a limited portion of the web, e.g.  the website of a university.  The link 
+prioritisation is done with the help of a decision tree which is trained by a web graph 
+provided by the user. The user also indicates positive and negative examples (relevant 
+and irrelevant pages) which are used for the training of a Support Vector Machine 
+classifier. This classifier is used for computing the relevance of the pages in the graph. 
+The decision tree construction is done by the ID3 method, analysing the terms of the 
+anchor text of all the links in the graph and the shortest paths of an entry page to the 
+positive examples. Therefore, the tree distinguishes the ‘promising’ anchor text, which 
+is the anchor text of both relevant and irrelevant pages that lead to relevant pages and 
+classifies the links into promising and not promising. Crawling is done in a best first 
+manner, by examining the promising links first.
+2.18 Tunnelling
+The patterns existing within the document relation paths are exploited by tunnelling, a 
+method  proposed  by [7].  The  crawling  architecture  concerned the  construction  of 
+33
+large scale digital libraries, which is similar to the objectives of focused crawling. 
+However,  digital  libraries  require  high  levels  of  precision while  they can tolerate 
+lower levels of efficiency in terms of irrelevant downloaded pages. As in [27] the 
+crawler is not only interested in following the best link that is considered to point 
+immediately to a relative page; instead it is interested in following the links that are on 
+the  path  to  relative  documents,  even  if  this  path  contains  some  pages  off  topic. 
+Tunnelling is a technique that takes account the path history of the crawl
+The  crawling  phase  starts  with  the  definition  of  the  topic  hierarchy  and  the 
+construction of the respective  centroids. A centroid is a vector with weighted terms, 
+describing a category. In order to build the centroid, the system queries Google and 
+collects the first k first results on each category, for a number of categories. Since the 
+representation of a subject can be done with a small set of representative documents 
+but for categories with sufficient presence, k is bounded between [4,7] (Google should 
+return at leas 4 documents while the results after the 7th document are ignored).  The 
+vectors are constructed by using the tf-idf scheme, concatenating the k documents of 
+each  category  and  comparing  the  term  frequencies  in  a  category  with  the  term 
+frequencies within all the categories.
+In  order  to  prioritise  the  links  to  be  followed,  the  system  uses  two  scores,  the 
+threshold and the cutoff. The threshold determines the level by which a document is 
+considered relative to a category, based on its correlation with the respective centroid. 
+The  correlation  score  s of  the  document  d with  the  respect  to  the  centroids  c is 
+calculated according the standard cosine correlation:
+
+
+
+
+
+
+
+ ⋅
+= ∑
+i
+i ii
+c
+cd
+cs
+22maxarg
+}{ , (12)
+where  argmax (c)  is  the  category  whose  centroid  maximises  s; di and  ci are  the 
+weights  of  term  i in  the  document  and  centroid  vectors  respectively.  The  cutoff 
+34
+defines the distance that the crawler may move form a page whose score is above the 
+threshold.
+Tunnelling introduces two more concepts, the  nugget and the  dud. The nugget is a 
+document  considered  relative  to  a  category,  having  a  cosine  correlation  with  the 
+respective centroid higher than a given threshold. Opposite to the nugget, a dud is a 
+document with score above the threshold. The path defines the sequence of pages and 
+links between two nuggets. The length of the path is the number of the pages within 
+this path (2 + number of duds). The distance show how far from the closest nugget the 
+current document is unless it is a nugget itself (where the distance = 0). However, the 
+distance grows exponentially as the parent’s distance approaches the cutoff and is also 
+dependent on the score of a node, the less the score, the higher the distance:
+distancedud = min(1, (1-s) Cd pe /2 ), (13)
+where s is the correlation score of the current document, dp is its parent’s distance and 
+C is the set cutoff. The decision on weather a path is worth following or not is based 
+on the adaptive distance of the current node hence using an adaptive cutoff distance 
+value. 
+2.19 Reinforcement Learning
+Another  approach  for  prioritising  the  links  to  be  followed  by  the  crawler  is  the 
+incorporation of a Reinforcement Learning (RL) [76] agent . That agent can recognise 
+the state  st of the environment from the set of possible states  S and can choose an 
+action  αt from  the  set  of  actions  A according  to  a  policy  π that  will  move  the 
+environment to state st+1. The agent is rewarded by the environment according to the 
+sequence of actions it chooses and based on the reward, the agent learns the optimal 
+policy  π* which  maximises  the  total  reward  over  time.  In  order  to  maximise the 
+accumulated  reward,  each  state  is  evaluated  by  a  state  value  function  V,  which 
+corresponds to the probability that a page is part of a successful path. Given a factor γ 
+35
+which determines the importance of the rewards of previous transitions, the value V(s) 
+of state s, over t time steps, following policy π is defined as:
+∑
+∞
+=
+=
+0
+)(
+t
+t
+t rsV γπ  (14)
+Note that opposite to Supervised Learning, the RL agent is not told which the correct 
+action was but how good the action it chose was, expressed by the reward. In order to 
+map the RL approach to the focused crawling problem, assume that the crawler is at a 
+page and has to choose a link to follow among a list of links. If the crawler chooses a 
+link that  brings  it  closer  to  a  relevant  page,  all  the decisions it  made take credit, 
+allowing the  agent  to  learn  path  patterns  that  lead to  target  pages.  Therefore,  the 
+crawler is not interested in only the immediate benefit but also in the long term and 
+possibly greater benefit. More formally, every web page is a state  s and the set of 
+possible actions A consists of the links that are present in the current page st. When the 
+agent chooses an action it is transferred to another page of the web graph st+1 and takes 
+a reward with value r t+1 depending on the relevance of the state st+1. 
+Obviously, pages with high state value are preferred as the next states. The agent, can 
+choose an action, either by calculating the value of the next stages (it downloads all 
+the pages pointed by the current page) or by calculating the value of the links. As the 
+experience increases, the agent is expected to decide more effectively and efficiently. 
+However, the RL agent should find ways to overcome the huge state space, since each 
+page of the web graph represents a state and the huge action space which is the set of 
+the out links each page has. 
+2.19.1 Neural Networks
+The RL method for focused crawling is proposed by [38]. In their approach, each web 
+page is  represented by a  set  of  500 binary values,  and the  state  of  each page  is 
+determined by Temporal Difference Learning, in order to minimise the state space. 
+The relevance of the page depends on the presence of a set of keywords within the 
+36
+page. A neural network is used for the estimation of the values of the different stages. 
+During training session, the crawler randomly follows pages for a defined number of 
+steps or until it reaches a relevant page. Each step represents the implementation of 
+action αt which moves the agent from state st to state st+1. The respective reward rt+1 
+and the features of the state st are used as input to the neural network, which is trained 
+to evaluate a state’s potential of belonging to a successful path. 
+During crawling mode, the crawler maintains a priority list of links to be followed, 
+where the priorities are computed by the neural network. Since it is ineffective to 
+download the children pages of the current page the crawler is at, the state value of a 
+children page is  inherited by the  value  of  its  parent  (the  current  page)  or  by the 
+average value of its parents, in case the page is pointed by more than one page. 
+2.19.2 Naïve Bayes
+A simpler approach was proposed by [51][66]. In order to overcome the sate space 
+complexity, they assumed that the current state does not depend on which relevant 
+documents have already been visited. Additionally they determine the value of the 
+possible next states by analysing the contents of the current page, the anchor text of 
+the link and portions of the link itself. The agent is trained by providing examples of 
+the relation between the links and the documents they link to. The mapping of the 
+words into state values is done with Naïve Bayes classifiers.
+2.20 Implementing the naïve Best First Algorithm
+For the purposed of this thesis,  the content similarity algorithm used by the naïve 
+Bayes was implemented in Java. The weight of the document term  k,wk,  in cosine 
+similarity (Equation 1) is computed as [61]:
+wk = 0.5
+0.5⋅tf k , d
+maxtf d
+⋅ln  N
+nk
+ (15),
+37
+where  tfk,d is the term frequency of term  k  in document  d,  maxtfd is the maximum 
+frequency that appears in d, N is the total number of documents in the collection and 
+nk is the number of documents in the collection that k is present.
+The  main  implementation  problem  faced  is  that  the  algorithm  needs  a  priori 
+knowledge about the words distribution within the documents of the whole collection. 
+This is impossible to achieve, since in the case of the search engine, the collection is 
+whole  the  web.  In  order  to  overcome  this  problem,  the  algorithm  knowledge  is 
+augmented with the data of each page it downloads. Each time a new page is visited, 
+its contents are added to the collection. That way, the algorithm has more and more 
+knowledge  as  it  crawls  the  web.  However,  new pages  that  belong  to  the  desired 
+subject should stop augmenting the collection set after a point, since the collection 
+will be over affected by this subject and the algorithm will loose its effectiveness, 
+because it will not be able to identify the discriminating elements/terms. Therefore, it 
+is quite important to define the initial collection set ans unbiased as possible.  The 
+algorithm implemented here can be inserted to the crawler  of  a traditional  search 
+engine, in order to sort the frontier of the links, according to their parent's similarity 
+with the targeted topic. The specific algorithm was selected for implementation since 
+it can be added to the crawler with the minimum effort, and does not require special 
+manipulation of the crawled page, thus having a low computational overhead.
+38
+3 The genre parameter
+3.1 Introduction to genre
+Search engines aim to provide their users accurate and complete information found on 
+the web collection, based on a query. The user query is usually topic driven and the 
+results should be topic driven as well. Most of the searchers use content similarity and 
+popularity based algorithms to define if the page worth to be proposed to the user. 
+Therefore the user gets a list of pages that are relevant to a topic and are generally 
+appreciated by the web community. However, a page is not only characterised by its 
+topic and its esteem. A third important, but neglected, feature of a document is its 
+genre. 
+There is no static and absolute definition of genre. According to Proust [73] the genre 
+is for the writer, what colour is for the painter, “not a matter of method but a way of  
+conception”. A different definition of genre by [37] is: “genre is  the way that words  
+and phrases  are combined,  the  personal  way of  expression  in  written and verbal  
+speech”. A different approach of genre is its conception as choice. Based on the fact 
+that the author has a variety of choices with which he can be equally expressed, genre 
+is the result of the authors choices. Generally, genre is defined as  the form and the 
+communicative purpose of  this document. The way that the document is organised, 
+the  amount  of  information  presented,  the  level  of  expertise  and  details  of  that 
+information, are indicative of the functional role that the document has and define its 
+genre [9][23][26][45][58][65][69][73][79]. For example, this thesis has an academic 
+genre. Its purpose is to contribute to the academic society and the content is organised 
+by the  common pattern  for  master  theses:  it  has  a  title,  an  abstract,  an  analysis, 
+conclusions, bibliography and so on. 
+39
+It is obvious that genre is not related to the topic of the document. A set of documents 
+about the same topic may have different genres while documents having the same 
+genre may be thematically unrelated. The topic represents answers to the 'what' is the 
+document about, while the genre answers  'how' and 'why' information is presented. 
+Even the above definitions of genre have different genres, while they refer exactly to 
+the same topic. Some can be characterised as 'formal' while other are more 'poetic'. A 
+document might have more than one genres since it might have multiple purposes and 
+its form could be composed by different genre forms. For example, it is sometimes 
+difficult to distinguish a reportage from an editorial which are the media coverage 
+about an event and the opinion of the author about an event respectively, because the 
+coverage of news could be biased by the point of view of the reporter. 
+3.2 Applications for genre classification
+The genre classification schemes have three main components: the parameters set, the 
+genres set and the classification algorithm. As noted in [70] all three parameters affect 
+the performance of the classification scheme.
+The first step to genre classification is the definition of a set of parameters that could 
+represent  a  document  and  reveal  its  genre.  According  to  computational  stylistics, 
+genre may be extracted from the text by measuring and analysing these parameters 
+with  statistical  methods.  The  parameters  proposed  vary  significantly  among  the 
+studies and concern structural (such as the length of the phrases),  syntactic/lexical 
+(such as part  of speech frequencies),  textual (such as word frequencies)  and even 
+character level properties (such as the ngram analysis) of the document. 
+Genre  classification  is  supplemented  with  the  definition  of  a  set  containing  the 
+possible genres, that the documents will be classified to. This set should contain the 
+genres of all the function roles the documents may have in the documents set. For 
+example,  a  library's  documents  genre  classification  scheme,  would  not  consider 
+genres  that  are  found only in  web,  such as  the  blogs.  There  have  been proposed 
+various genre sets, containing from 116 genres [69] to 6 genres [45]. Additionally, 
+40
+genres can be organised in a tree hierarchy, where main genre classes are analysed in 
+subclasses. For example, academic papers can be further categorised in PhD theses, 
+Master theses,  journal papers, conference papers, books and so on.
+The last component of a genre classification  is the definition of a method that will 
+correlate the text's representation with the various genres profiles (from the genres 
+set), proposing the most appropriate genre(s) for the specific text. The vague nature of 
+the genre, makes soft classification schemes more appropriate than the hard schemes, 
+since they provide flexibility. Instead of proposing one absolute genre that the text 
+has, the scheme may propose the level of certainty that the text belongs to each of the 
+genres  in  the  genre set,  or  the various genres  that  may be found in  the text.  For 
+example, a blog that contain how-to instructions at a big proportion of its contents 
+could be proposed to have 60% blog and 40% how-to genres embodied.
+3.3 Motives for genre classification
+One of  the  main  problems that  genre  based  classification is  applied  in,  is  author 
+identification [44][73][74][75]. Given a document with none known author, or with its 
+authorship in doubt, and a set of authors profiles (which correspond to the genres set), 
+the author classifier tries to determine the author of the document. Such methods are 
+also be applied in cases of plagiarism, for the determination of the real author of the 
+examined document or even for the determination the author of source code [34]. In 
+[5] genre is used to identify the gender of the author. The methods rely on the fact that 
+the authorship style is unconsciously applied by the author[44].
+Knowing the genre of a document can be useful to various tools that analyse, process 
+or edit  a text document such as parsers,  text  editors,  translators,  summarisers and 
+natural language processing tools.  The genre of the document is closely connected 
+with  the  use  of   idioms,  special  use  of  words,  word  disambiguation,  therefore 
+knowledge about the genre of the examined document can augment the performance 
+of such tools.
+41
+Text  genre  identification  can  also  be  utilised  by  a  search  engine.  As  already 
+mentioned, the size of the web dictate the use of a search engine in order to locate the 
+information needed, unless the user that has a need for a specific document already 
+know the location of the document itself or the location that could easily lead to the 
+desired document.  However, the results of the search engines, so far, concern only the 
+topic relevance of the query with the web repository. Therefore, the user can express 
+the topic of his need and not the purpose of his search that can be associated to the 
+functional  purpose  of  the  documents.  For  example,  a  medical  student  searching 
+information about malaria for his thesis,  gets exactly the same results as a tourist 
+looking for malaria, in order to get prepared for a trip. While the student needs papers 
+from  academia  the  tourist  needs  simpler  information,  such  as  malaria  protection 
+methods. The results for the term 'malaria' exceeded 20.000.000 in a query at Google 
+and both users would have to find the information they want from the same result set. 
+It is up to the user internet capabilities and familiarity with the search engines to filter 
+the results and guide the search engine to the specified genre of documents. Genre 
+based  search  can  match  the  need  of  the  user  with  the  purpose  of  the  document, 
+providing specialised results to different information needs, therefore it can be seen as 
+a filter mechanism between the topic relevant results and the user [Figure 10].
+In  some cases,  the  user  is  provided with  options that  can imply the  genre of  the 
+needed documents. For example the medical student could limit his search to pages 
+42
+Figure 10: Traditional results page versus genre based results page
+UserUser
+Genre enhanced search engine
+Query for topic T Query for topic T and genre w
+Genre wGenre f
+Genre s
+Genre a
+Genre k
+Genre w
+Genre u
+Result page
+Result page
+Traditional search engine
+from  the  .edu  domain  and  search  only  for  .pdf  type  documents,  assuming  that 
+academic  papers  usually have these characteristics.  That  type of  search  limits  the 
+effectiveness of the search engine since documents that meet the information needs of 
+the user but have other other file type and/or belong to different domains would never 
+be presented. Additionally, the results would still have pages that do not belong to the 
+desired genre. 
+3.4 Difficulties in genre classification
+The most clear and important obstacle towards genre classification is the concept of 
+genre. It is a vague concept which can not be strictly defined and therefore it can not 
+be measured in absolute terms. The absence of a semantic foundation of genre is the 
+reason that  the  approaches  based  on  statistical  methods  are  not  based  on  a  solid 
+linguistics  theory but  they are rather  based on assumptions,  evidences  and search 
+results. However, the statistical approaches are quite effective and achieve high levels 
+of performance, considering that even human experts find it difficult to define the 
+genre of a  document,  their  judgements are subjective,  many times contradict  with 
+each  other  and depend not  only on  the  properties  of  the  documents  but  on  their 
+familiarisation with the topic of the document as well.
+The complexity of genre classification applications is enhanced for web documents, 
+due to the special characteristics of the web. The lack of a central point of control, the 
+absence of standards, the ability of anybody to upload web documents and the rate of 
+expansion make the web an extremely dynamic concept.  Within this environment, 
+new genres are arising, allowing people to communicate and express in new ways. 
+Others are merged or divided, while genres applied in the printed world may not be 
+useful, or may be evolved, exploiting the web's features and capabilities, such as the 
+linkage structure and hypertext nature [9][22]. Additionally, documents of the same 
+genre  category  may  be  characterised  by  great  differentiation  due  to  the  author's 
+personal 'touch'.  
+43
+For example a new web trend, blogs, that are now expanding in a very high rate, do 
+not exist in the printed world  and did not existed (in such a massive rate) a few years 
+ago. However, while blogs can be seen as one genre category, the differentiation in 
+style within these documents is quite high, considering that there is no standardisation 
+in creating a blog and  their authors apply their own personal style, or styles, in case 
+they have multiple blogs. On the other hand, the form of a printed document such as a 
+dictionary may be quite different from a web based dictionary which probably has 
+advertisements,  videos, links to external sources,  navigational capabilities (such as 
+suggestion of similar terms) and other features, applied only in web documents. In 
+[22] it is argued that while links used for facilitating a multi page separation of a 
+(huge)  document  do  not  affect  the  genre  of  a  document,  but  links  that  provide 
+navigation and external sources are changing the form of the document. Weather this 
+new form is able to constitute a new category of genre is a subjective matter and 
+depends on the 'magnitude' of change, compared to the original genre.
+3.5 Web genre classification approaches
+Classifying  web  documents  according  to  their  genre  is  not  fully  covered  by  the 
+traditional genre classification methods, due to the new challenges arising from the 
+hypertext nature of web documents. While text is the only property that it's considered 
+to  the  traditional  genre  classification  methods,  a  web  document  could  provide 
+information about  its  genre  that  is  not  directly  connected  to  its  text  but  to  other 
+properties of the page. These properties could be the font of the characters, the HTML 
+tags, the presence of images and sound, the presence of advertisements, and generally 
+all these attributes that separate the text from the hyper text. Therefore, the genre of a 
+page is not only affected by the author of the text but by the web designer and perhaps 
+the  wed page  owner  as  well.   Additionally,  the  web is  characterised  by the  high 
+differentiation  of  the  form  of  pages  with  the  same  communicative  purpose.  For 
+example, the home pages of two companies are most likely to have a quite different 
+form.  Studies of web genre include [9][23][32].
+44
+A framework for facing the challenges of web genres was proposed in [23]. The key 
+component  of this framework are the end users  of the classification scheme since 
+genres are determined by their specific informational needs. In order to overcome the 
+problem of  different  genres  conceptions  in  different  user  communities,  users  are 
+divided in groups according to their interests (such as lawyers, teachers, ...) so that the 
+particular genres of interest of the different communities are determined and analysed. 
+This approach is also useful for identifying the emerging web genres as well as the 
+differentiation of the traditional genres when transferred to the web. Classification is 
+proposed to be based on faceted analysis of the documents therefore defining multiple 
+dimensions along which genre depends on. 
+In [9] a web document is considered to have multi genre nature, therefore allowing the 
+classification of a document in multiple categories, however, in respective research 
+only one genre was assigned to each document. Genre was defined as a taxonomy 
+including the style (structural features), the form (layout) and the content (term and 
+hypertext object frequencies) of a document. The genre set was a combination of the 
+most commonly identified and proposed web genres by the search community.  In 
+consisted  of  10  genres:  Abstract,  Call  for  papers,  FAQ,  How-to,  Job  description, 
+Resume/CV, Statistics, Syllabus, and Technical paper. Similarly, the 75 features used 
+for  the  classification were a  compilation of  the suggested  features  throughout  the 
+respective research on genre classification. 
+A traditional genre classification approach proposed by [43] was optimised for digital 
+documents  in  [31].  While the original  approach calculated Parts  of  Speech (POS) 
+frequencies,  the approach proposed reduces the computational  overhead of  such a 
+method,  by  estimating  the  POS  frequencies  instead  of  actually  calculating  them. 
+However, this study does not take into account the special genres arising in the web.
+3.5.1 Including genre in search results
+The ability to classify documents according to their genre would improve the quality 
+of the results of a search engine and would reduce the user effort for reaching the 
+45
+appropriate/desired  pages.  In  [69]  it  is  argued  that  the  genre  was  among  the 
+document's  attributes  that  web  users  used  to  assess  its  relevance,  quality,  and 
+usefulness. One important aspect in web genre classification beyond the performance 
+of the classifier, is the way this feature will be included in the search engine providing 
+the optimal visualisation of the results. However, there are not many studies in the 
+academia  dealing  with  adding  the  genre  parameter  in  search  engines,  probably 
+because the search engine applications are considered as company secrets and the 
+relative  research  for  the  improvement  and upgrade  of  their  functions  is  remained 
+unknown.
+In [29] genre is related to the amount and expertise of information and the documents 
+are classified along two dimensions: expert level and amount of detail, hence they can 
+be characterised form brief technical to brief popular and from extended technical to 
+extended popular. The parameters used for genre analysis are based on the long words 
+and HTML tags frequencies. Their assumption is that the absence of infrequent long 
+words  imply  that  the  document  is  targeting  a  wide  audience,  as  opposed  to  the 
+presence of infrequent long words which is met to more technical documents.
+The proposed visualisation of the results is a plot of the documents' genre in two axes, 
+one  depicting  the  expertise  and  the  other  the  amount  of  information  respectively 
+[Figure 11].This visualisation can easily be understood by the end user and is suitable 
+for classifiers that categorise inputs in a range of values that in specific categories. It 
+can overcome the problem of classifying a document in only one category since the 
+result can be anywhere between the two dimensions. Therefore, when one document 
+has medium amount of information and is medium expertise level, it can be drawn in 
+the middle of the plotted area. However, this approach can not work when more than 
+three dimensions are involved. Even with three dimensions, the result  page would 
+look rather fuzzy. Additionally, it can not handle more than a few results at a time, 
+unless many levels of depth are involved. In that case, the user would have to 'zoom 
+in' at the area of interest.
+46
+In [69] the genres set was adjusted to the genres that appear in web documents. The 
+purposes of the users searching the web were studied and the genres of the documents 
+were emerged from these search purposes. The idea behind it was to create a genre set 
+which would contain the genres relative to the informational needs of search engine 
+users.  The  most  common  search  purposes  were  found  to  be:  scholarly  research, 
+shopping, cultural arts  activities, health, and news. The study concerned people in 
+campus computer labs, public libraries and workplaces, so the results do not take into 
+account the informational needs of other groups of web users such as the home based 
+web users,  however,  they indicate  the  main  purposes  of  search  engine  usages.  A 
+hierarchy of genres was identified and grouped in five main sets: topics, publications, 
+products,  educational  material,  and  Frequently  Asked  Questions  (FAQs).  The 
+indicators used for genre classification considered the properties of the web page such 
+as the URL text,  the page's  size,  the presence of graphics and advertisements,  the 
+popularity (incoming links), the page structure and the vocabulary used.
+The proposed result visualisation exploits the hierarchy of the genres. The usual result 
+page of a topic based search engine is augmented with the tree hierarchy of the genres 
+of the result pages. The user searches for a topic but also has the choice to navigate 
+47
+Figure 11: An extended technical document presented in a two dimensional search 
+result page. Source:[29]
+through the genre tree and choose the genres of his interest or indicate the genres that 
+he considers more and less important. The results are then prioritised according to 
+user choices [Figure 12]. This visualisation can leverage genre based search and is 
+easily understood by the user. However, in case the genre hierarchy tree has many 
+levels, it might be awkward for the user to navigate through the tree and chose the 
+genres of his interest. Additionally, the result page contains the suggested pages which 
+belong to the chosen genres, but there is no indication about which genre category 
+each result belongs to.
+In  one  of  the  first  implementation  of  genre  based  search  [10]  the  set  of  genres 
+consisted of: informal/private, pubic/commercial, journalistic material, reports, other 
+texts,  interactive  pages,  discussions,  link  collections,  FAQs  and  other  listing  and 
+tables, were defined by interviewing 102 web users. The classification algorithm was 
+done with C4.5 method, based on structural and syntactic properties of the documents, 
+such  as  the  frequency  of  HREF  tags,  the  average  word  length  and  the  relative 
+frequencies of classes of words. 
+The search interface, called Easify was designed as a MxN  matrix, were M are the 
+contents  of  interest  and N the  genres  [Figure  13].  In  each  cell  of  the  matrix  the 
+48
+Figure 12: The result page with a tree based genre set. Source:[69]
+number of documents that belong to the specific topic and genre are presented. The 
+user explores the results by choosing the cell he's interested in. A pop up window is 
+presented with the list of the respective pages. A single click to a document of the list 
+presents the abstract,  while a double click opens the web page in a new window. 
+Additionally the user is able to regroup a specified group of pages according to their 
+subject.  This  representation  proposal  could  easily  handle  a  genre  hierarchy  by 
+allowing the users to zoom in in the desired genre branch. However, it is up to the 
+user to define the M dimensions of the matrix, which could be a complex task for 
+ordinary search engines users. 
+In a quite recent study [68] the relation between search engines and web genres was 
+analysed in depth. The genres set consisted of 18 categories (17 different genres and 
+the 'other' category) and was defined after interviews with 10 users and in subsequent 
+user studies, the discriminating power of these set was analysed. The  users' consensus 
+on the genres of the test pages varied between 50% and 94% with an average value of 
+78.5%. The next step to this study was to evaluate the effectiveness of including the 
+genre in search engine results, regarding the relevance judgements, the decision time 
+and the user's impression on results including the genre. Genre annotation was done 
+49
+Figure 13: The Easify interface. Source: [10]
+by adding 'Webpage Type: (page's genre)' text to the the common result representation 
+[Figure 14].
+While this type of annotation reports directly the genre of the web page, as mentioned 
+in the study only 17 out of 32 participants actually noticed that genre description was 
+present.  Additionally,  the performance of  those noticing the genre label  and those 
+ignoring it did not vary significantly, however, people that noticed the label reported 
+that  it  helped  them  at  their  decisions.  The  study  did  not  propose  a  method  for 
+automatic classification of the web genres.
+3.6 Approach proposed
+3.6.1 Defining genre set
+As already mentioned, the genres appearing in the web collection inherit the dynamic 
+nature of the web. New genres are emerging, old ones disappear, evolve, merge or get 
+divided in different genres. In this environment, a full and extensive research for the 
+definition of all  the web genres would be useful  only if  it  included a method for 
+continuously updating the genres set. As argued  in [23], fully defining the various 
+web  genres  would  require  the  identification  of  the  user  groups  and  the  separate 
+definition of the genre concepts used by each group. Such a method, considering that 
+the same procedure should be regularly updated to capture both the evolution of the 
+user groups and the evolution of the genres set, is practically unachievable.
+50
+Figure 14: Search results enhanced with 'Webpage Type' . Source:[68]
+Additionally, the purpose of a web genre classification scheme is not to fully identify 
+the genres of the web document, but to identify these genres that could potentially 
+help the end users locate the information they need. Therefore, the definition of the 
+main genres occurring in the web and are useful for search purposes can effectively 
+leverage search mechanisms. On the other hand, genres that are not common, or rarely 
+used for search purposes, can be considered as non important. Identifying the main set 
+only, can also facilitate the usability of such a system, since it is easier for its users to 
+choose from a small concrete set of genres than a big and potentially fuzzy one. 
+In this thesis, the approach taken for the definition of the genre set, first identifies the 
+main informational goals of the search engine users and then determines the document 
+genres that  could potentially leverage the search process,  based on the belief  that 
+users can search more effectively if they can narrow their query to the genre that fits 
+their need. Therefore, first we need to know why people search the web and then align 
+these purposes with the various genres. 
+The goals of the search engine users were analysed in [2][12][31]. In [31], the queries 
+of three of the main search engines were mapped in ten page categories, according to 
+their  informational  content.  The  content  based  categorisation  can  not  provide 
+sufficient  information  for  identifying  the  main  genres  users  look  for,  since  the 
+thematic category of a page is not related to its genre. However, it can provide the 
+major trends in the behaviour of the search engine users. These trends can be used for 
+focusing the genres set in the genres that occur in these main thematic categories, 
+which concern mostly the needs of the users. In such a study [2], based on the log of a 
+search engine, seven groups of web pages were identified according to what the users 
+are searching for in terms of informational purpose  while in [12] the needs of search 
+engine users where grouped in three categories [Table 1]. 
+ User need [12]  Informational purpose [2]  Content [31]
+1. navigational 
+(particular 
+page)
+1. definitions or learning 
+how and why something 
+happens
+1. people, places or 
+things
+2. commerce, travel, 
+51
+2. informational 
+(information 
+about a topic) 
+3. transactional 
+(web based 
+activity)
+2. how to do something
+3. presentations and surveys 
+on a topic
+4. news on a subject
+5. information about a 
+person or a 
+company/organisation
+6. a specific web page
+7. pages with specific 
+services
+employment
+3. technology
+4. health and sciences
+5. education
+6. entertainment
+7. sex
+8. society, culture, 
+religion
+9. government
+10. arts
+Table 1: The user needs, informational purpose and content of pages under search
+Additionally, similarly to [9], the basic genres set under consideration, is composed by 
+some of the most commonly genres used by the scientific community,  researching 
+genre analysis. While there are many genres proposed, the ones used in this thesis 
+should serve the major informational purposes, hence their pages should belong to the 
+main page groups found in Table 1. Obviously, the sixth need in (need for specific 
+web pages) is leveraged by the respective genre of the particular page. The genres set 
+proposed in this thesis is presented in Table 2. The main purposes each genre serves, 
+is respective to the second column of Table 1.
+Genre Description Purpose Also used in
+1. Non Commercial 
+Homepage
+The home page of an individual or an 
+organisation, with not immediate 
+commercial purposes (e.g. personal 
+homepage, homepage of a university)
+5, 7 [70][48][68] 
+[21][10][9] 
+2.Academic source A document providing academic 
+knowledge (e.g. PhD/Master thesis, 
+scientific journal paper)
+1, 2, 3 [68][48][5] 
+[10][43][69] 
+[44][74][77]
+3. Blog A web diary of a person/organisation 3, 5 [68][70]
+4. Forum A web discussion board 1,  2,  3, 
+4, 5
+[10][69][21] 
+[68]
+52
+5. News A news report document (e.g. 
+reportage, event news coverage) 
+3, 4 [48][10][43] 
+[69][68][45] 
+[21][70][77]
+6. FAQ Frequently Asked Questions on a 
+subject
+1,  2,  3, 
+4, 5
+[9][48][10]
+[22][69][70] 
+[68][21]
+7.Commercial 
+Homepage
+A page with commercial purpose (e.g. 
+company's home page, e-shop, product 
+overview etc) 
+5, 7 [68][70]
+8.Official 
+documents
+An official document, by an 
+organisation/authority (e.g. laws, 
+decisions)
+2, 3, 5 [43][74][77]
+Table 2: The proposed genres group
+Pages in the constructed corpus used for training and measuring the performance of he 
+proposed  classifier,  were  fetched  from  the  web  through  queries  at  major  search 
+engines. The pages were selected from various depths of the search results. Special 
+attention was given to fetching pages of different domains and topics and with a  high 
+variety in the possible layouts of pages in the same genre category. The pages were 
+saved as HTML files or, whenever these pages were other type of files (.pdf, .doc), 
+their content was saved in a text file (.txt). Only approximately the first 5 pages of 
+content  were  saved,  in  case  of  documents  that  were  bigger  than  that  (e.g.  some 
+academic papers), in order to reduce the unnecessary processor consumption during 
+the performance measurements. The genres profiles were constructed by 10 pages, 
+while the test corpus was composed by 15 pages of each genre.
+3.6.2 Genre classification algorithm
+The common approaches in genre classification represent the document at structural 
+and syntactic level. These approaches have two main disadvantages [44]:
+● The document has to be processed by special tagger and parser mechanisms in 
+order to extract the genre defining parameters
+53
+● The  parameters  extraction  methods  are  language  specific  hence  they  are 
+applied only to documents of a specific language. 
+The genre  classification  method  used  in  this  thesis  is  based  on  common ngrams, 
+proposed for authorship attribution by [44] and had up to 94% performance in genre 
+classification [77] of 'printed world' documents. This method represents the document 
+as an array of ngrams and uses only character level information. An ngram is a string 
+with length n. Considering that a document is a huge string, the representation process 
+extracts one ngram a time, moving towards the end of the document with one byte 
+steps. This approach does not consider the language of the text and takes into account 
+all the characters of the text (e.g. letters, punctuation marks, spaces). The input to the 
+classification scheme, is the document as is, without any type of preprocessing (such 
+as tagging).  Therefore,  this method is  language independent  and does  not  employ 
+document processing tools. For example, the phrase 'one ngram!' contains 8 3grams 
+and is represented as an the following array of 3grams: 
+['one', 'ne ', 'e n', ' ng', 'ngr', 'gra','ram', 'am!']
+More specifically, the document is represented as an array of the ngrams it contains 
+and their respective frequencies. While this representation is quite simple and is done 
+with  minimal  processing  and  memory  consumption,  it  is  quite  powerful.  The 
+information that is 'hidden' in ngrams frequencies could concern important style and 
+form attributes of the document such as its lexical variety, frequencies distribution of 
+word endings (e.g. -ed, -ing), roots of words, use of articles (e.g. the, a, an) line brakes 
+and  use  of  special  characters  and  punctuation  marks.  Additionally,  in  the  web 
+documents the information captured by the ngram representation can be extended to 
+HTML tags and hence, to the layout of a web page.
+The classification process begins with the representation of the genres in the genres 
+set (genres profiles) and the document which is to be classified in ngrams-frequencies 
+arrays.  These  arrays  contain  the  m most  frequent  ngrams  and  their  respective 
+frequency. The frequency f' of the ngram ng is calculated as the times ng appears in 
+54
+the document divided by the total  number of the document's ngrams.  It  has to be 
+stressed that the total number of ngrams is different from the number of the different 
+ngrams.  Frequencies  are  normalised  so  that  they  are  not  biased  towards  long 
+documents.  For  example  the  phrase  'ngram  ngram'  has  7  5grams  in  total  and  6 
+different grams [Table 3]
+Different ngrams occurrences f'
+'ngram' 2 2/7
+'gram ' 1 1/7
+'ram n' 1 1/7
+'am ng' 1 1/7
+'m ngr' 1 1/7
+' ngra' 1 1/7
+Table 3: Example of the ngrams computation
+The  next  step  after  creating  the  arrays,  is  to  calculate  the  similarity  between  the 
+document and the various genre profiles. To be precise, the algorithm takes as input 
+the  profiles  (ngram-frequencies  arrays)  of  two  documents  and  calculates  the 
+dissimilarity measure between them. The dissimilarity measure is computed as [44]:
+2
+21
+21
+2
+)()(
+)()(∑
+∈ 
+
+
+
+
+
+
+
+
+
+
+
++
+−
+profilen nfnf
+nfnf
+ = 
+2
+21
+21
+)()(
+))()((2∑
+∈
+
+
+
+
++
+−
+profilen nfnf
+nfnf
+ (16)
+where fd(n) is the frequency of ngram n in document d. Documents that are identical 
+have 0 dissimilarity measure because, since they have the same ngram frequencies, 
+the numerator and subsequently the sum of Equation 16 is  zero.  Additionally,  the 
+differences  in  the  frequencies  are  normalised  by  the  average  frequency  of  the 
+respective ngram, capturing the 'importance'  of  the difference.  For example,    the 
+difference in the case the frequencies are 0.9 and 0.8 and 0.2 and 0.1 is 0.1, however, 
+in the second case it has a bigger weight.
+ 
+55
+The categorisation algorithm computes the dissimilarity between the document that 
+has to be categorised and each one of genre profiles. The document is classified to the 
+genre with which it has the minimum dissimilarity. However, this is not a hard based 
+classification scheme, since the algorithm actually computes a dissimilarity measure 
+for each of the genres in the genre set, which can be seen as a rank of the genres that 
+are present in the document. In case the user is interested in the most m genres that 
+characterise the document, the classifier can return the first m genres in the measure 
+rank,  that  is  the  first  m genres  with  which  the  document  had  the  minimum 
+dissimilarity score. The results could also be the dissimilarity of the document with 
+each of the genres,  in case the user is interested on the degree that each genre is 
+present to the document.
+3.6.3 Measurements
+The common ngrams approach has two parameters that have to be tuned:
+● the length of the ngram (the n). Choosing a long ngram (big n) would produce 
+representations that contain words and even common phrases. Smaller lengths 
+capture information within words and the frequencies of small words.
+● the  number  of  ngrams  that  are  considered  for  the  representation  of  the 
+documents and genre profiles.
+The experiments  conducted in this  thesis  considered a  wide area  of  combinations 
+between  the  ngram  length  and  the  ngrams  considered.  More  specifically 
+measurements where taken with the combinations of the following sets:
+● ngram length: 3, 4, 5, 6, 7, 8,9 
+● number of ngrams: 500 - 10000, with a hop of 500 ngrams
+Since the actual  outcome of the classifier  is  not  the genre category that  the page 
+belongs to, but a score for each genre, the performance of the classifier in this thesis, 
+is measured with two ways:
+● The  blue  line  (with  squares)  of  each  result  diagram  [Figures  15-21], 
+represents the correct answers of the classifier, where only the most dominant 
+56
+genre is regarded as answer. The most dominant genre is the genre which got 
+the lowest score of the dissimilarity measure. 
+● The purple line (with rhombuses) is the performance of the classifier where 
+an answer was considered correct if the actual genre of the page was amongst 
+the first two genres in the measure rank.
+57
+Figure 15: The performance of the 3gram classifier
+Figure 16: The performance of the 4gram classifier
+50
+0
+10
+00
+15
+00
+20
+00
+25
+00
+30
+00
+35
+00
+40
+00
+45
+00
+50
+00
+55
+00
+60
+00
+65
+00
+70
+00
+75
+00
+80
+00
+85
+00
+90
+00
+95
+00
+10
+00
+0
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+3grams
+1st answer
+1st & 2nd answer
+ngrams kept
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+50
+0
+10
+00
+15
+00
+20
+00
+25
+00
+30
+00
+35
+00
+40
+00
+45
+00
+50
+00
+55
+00
+60
+00
+65
+00
+70
+00
+75
+00
+80
+00
+85
+00
+90
+00
+95
+00
+10
+00
+0
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+4grams
+1st answer
+1st & 2nd answer
+ngrams kept
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+58
+Figure 17: The performance of the 5gram classifier
+Figure 18: The performance of the 6gram classifier
+50
+0
+10
+00
+15
+00
+20
+00
+25
+00
+30
+00
+35
+00
+40
+00
+45
+00
+50
+00
+55
+00
+60
+00
+65
+00
+70
+00
+75
+00
+80
+00
+85
+00
+90
+00
+95
+00
+10
+00
+0
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+5grams
+1st answer
+1st & 2nd answer
+ngrams kept
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+50
+0
+10
+00
+15
+00
+20
+00
+25
+00
+30
+00
+35
+00
+40
+00
+45
+00
+50
+00
+55
+00
+60
+00
+65
+00
+70
+00
+75
+00
+80
+00
+85
+00
+90
+00
+95
+00
+10
+00
+0
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+6grams
+1st answer
+1st & 2nd answer
+ngrams kept
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+59
+Figure 19: The performance of the 7gram classifier
+50
+0
+10
+00
+15
+00
+20
+00
+25
+00
+30
+00
+35
+00
+40
+00
+45
+00
+50
+00
+55
+00
+60
+00
+65
+00
+70
+00
+75
+00
+80
+00
+85
+00
+90
+00
+95
+00
+10
+00
+0
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+7grams
+1st answer
+1st & 2nd answer
+ngrams kept
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+Figure 20: The performance of the 8gram classifier
+50
+0
+10
+00
+15
+00
+20
+00
+25
+00
+30
+00
+35
+00
+40
+00
+45
+00
+50
+00
+55
+00
+60
+00
+65
+00
+70
+00
+75
+00
+80
+00
+85
+00
+90
+00
+95
+00
+10
+00
+0
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+8grams
+1st answer
+1st & 2nd answer
+ngrams kept
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+The best performance was achieved with 9500 kept 8grams, where 80% of the pages 
+were  classified  under  the  correct  genre,  This  performance  is  slightly  better  than 
+human  based  genre  classification  [69].  However,  there  can  not  be  an  immediate 
+comparison  between  these  two  methods  since  they  use  different  genres  sets  and 
+different test corpus. In the case where the answer was considered to be correct, if the 
+correct genre was either the first or the second classifier's answer the performance 
+reached 89% in various measurements with 7grams and 8grams [Figures 19-20].
+Additionally,  the  original  algorithm  by  [44]  was  modified  to  consider  different 
+weights on the common and non-common ngrams.. More specifically, the weight of 
+the non-common ngrams between the page and the genre profile was reduced to half 
+(x0.5) for one set of experiments and was doubled (x2) for an other experiments set. 
+The results  did not  change significantly,  positively or negatively,  compared to the 
+original neutral weight (x1) [Figure 22].
+60
+Figure 21: The performance of the 9gram classifier
+50
+0
+10
+00
+15
+00
+20
+00
+25
+00
+30
+00
+35
+00
+40
+00
+45
+00
+50
+00
+55
+00
+60
+00
+65
+00
+70
+00
+75
+00
+80
+00
+85
+00
+90
+00
+95
+00
+10
+00
+0
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+9grams
+1st answer
+1st & 2nd answer
+ngrams kept
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+The overall  results seem to improve as the ngram length and the ngrams kept are 
+increased, with a peak at 9500 8grams [Figure 20]. Around this area, the performance 
+is stabilised at the approximately 78% [Figure 23]. Therefore, the information that is 
+discriminating mostly the genres is therefore strings with length 8, which includes 
+HTML tags and average length words. 
+61
+Figure 23: The performance of the classifier with 8000 kept ngrams
+3grams 4grams 5grams 6grams 7grams 8grams 9grams
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+Performane with 8000 ngrams
+1st answer
+1st &2nd answer
+ngram length
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+Figure 22: The performance of the 7gram classifier with different weights on the non 
+common ngrams between the page and the genre profile
+50
+0
+10
+00
+15
+00
+20
+00
+25
+00
+30
+00
+35
+00
+40
+00
+45
+00
+50
+00
+55
+00
+60
+00
+65
+00
+70
+00
+75
+00
+80
+00
+85
+00
+90
+00
+95
+00
+10
+00
+0
+0
+5
+10
+15
+20
+25
+30
+35
+40
+45
+50
+55
+60
+65
+70
+75
+80
+Performance of 7gram classifier
+x0.5
+x1
+x2
+ngrams kept
+pe
+rfo
+rm
+an
+ce
+ (%
+)
+3.6.4 Including genre to search engine
+The parameter of the genre can be utilised in both phases of the interaction between 
+the user and the search engine: the query submission and the results representation. 
+Users that already know what types of documents they look for obviously desire to 
+specify them within their query, so that the results correspond to their specific need. 
+On the other hand, genre can complement the description of a page, in the results of a 
+general query. As mentioned, it was shown that genre annotation in the results page 
+was found helpful by web users [68]. 
+In this study, three user interfaces of a genre augmented search engine were designed. 
+The interfaces are based on the open source search engine Nutch5. In both phases of 
+the search (query and results page), the proposed interfaces were build on the ordinary 
+search  engine  interface.  Building  on  the  existing  interface  was  preferred  over 
+designing it from scratch, since it is quite simple and users are familiar with it.  A 
+totally radical  approach would probably require time for  users  to  get  familiarised 
+which might turn them back to the usual search engine. 
+Two different templates are proposed for the genre annotation in the query page of the 
+search engine. In template 1 [Figure 24], the possible genres that are considered by 
+the  search  engine  are  presented  by  a  selection  box.  The  menu  prompts  the  user 
+formulate the sentence 'I'm looking for  [genre] about  [topic]', therefore encouraging 
+the user to identify the genres of his interest. Additionally, the user has the choice of 
+searching  for  all  types  of  documents  on  a  topic,  by  choosing  'I'm  looking  for...  
+[anything] ...about [topic]'. This dialogue is divided in two lines so that it is not long.
+The approach of template 1 allows the user to search for documents of only one or all 
+the genres. However, it is also common that the informational need  includes more 
+than one genre.  The interface of  template 2  [Figure  25]  allows the  user  to  select 
+multiple genres during one query on a topic. Genres are annotated in a two lines list 
+with corresponding check boxes under the text box where the topic is entered. In that 
+interface, the option for 'all genres' is not available, but the check boxes of all the 
+5 Visit http://lucene.apache.org/nutch/ for more information about Nutch
+62
+genres are checked by default, so that a user who is not interested in selecting genres 
+does not change his behaviour during the submission of his query. 
+63
+Figure 25: Genre selection at the query page, template 2
+Figure 24: Genre selection at the query page, template 1
+The genre annotation in the results page had more challenges. As noted in [68] only 
+around 50% of the users actually noticed the genre description of a page as provided 
+by text above the page link, within the page description [Figure 14]. It is therefore 
+necessary to include genre in a way that it's noticeable but does not override the rest 
+of the page description, which might be more useful in the user's judgements on the 
+value  of  a  page.  The  user  should  not  be  disturbed  from the  genre  enhancement, 
+reversely he should be able to improve his performance by viewing the page's genre 
+immediately in the description.
+The result page proposed is augmented with genre descriptions of the pages in a two 
+level approach (in the whole results page and within the page description snippets 
+respectively).  First,  the  page  has  a  tabbed  based  menu  on  the  top.  Each  tab 
+corresponds to a genre, in alphabetical order, while the most left tab corresponds to 
+the ordinary result page, labelled as 'All pages'. The tabbed menu is used in a variety 
+of applications and lately to the most web browsers, therefore web users are familiar 
+with it.  The selected tab with the corresponding results  are in  light  orange colour 
+while the rest tabs have a strong orange colour, similar to Nutch's logo, which makes 
+them noticeable to the user. The user can navigate through the various genres of pages 
+on a topic by simply switching to the desired tab. Again, the default tab is the 'All  
+pages' so that the interface provides  its ordinary functionality to users who do not 
+desire  genre  classification.  On the  second level,  genres  are  included in  the  pages 
+snippets. The 'strongest' two genres of a document are presented under the title of the 
+page, in green colour. The dominant genre has the strongest font while the second 
+genre has less strong font [Figure 26].
+64
+65
+Figure 26: Annotation of genre in the search results page
+4 Conclusions
+The huge expansion of the available information and the growth of web users with 
+different needs and backgrounds are  two main challenges that search engines need to 
+face. A general purpose search engine, with the typical term based query interface 
+usually  produces  pages  with  million  results.  This  reduced  the  productivity  of  the 
+users, who are assigned with the complexity of filtering these result pages, in order to 
+find the required page.
+Search  engines  should  follow  the  trend  that  characterises  our  age:  personalised 
+solutions. The next step to one size fits all, general search engines, is search engines 
+that will try to meet the needs of individual users.  While complete personalisation 
+today is utopia, topic search engines are one step closer to that. They are targeting 
+people  with  information  needs  on  a  particular  topic,  that  can  be  seen  as  a  niche 
+market, transferring the complexity of filtering the 'garbage' from the desired pages 
+form the users to the search engine. The deployment of such a service has benefits for 
+both the search engines administrators and the users. The administrators are relieved 
+from designing and implementing systems with page indexes of billions of pages, and 
+instant searching through these indexes. On the other end, the users face result pages 
+coming  from an  index  of  a  particular  topic,  therefore  they  are  most  likely to  be 
+relevant on this topic. Topic crawling is proven to be possible with various algorithms 
+of different levels of complexity, which are analysed in this thesis.
+Focusing the crawler on a particular topic is not the only way to refine the search 
+engine  effectiveness.  Genre  based  search  can  improve  the  user's  experience  by 
+allowing the user  to  narrow his  search  to specific  genre(s)  of  pages. Genre is  an 
+attribute of a document that is not related to its topic. Pages on the same topic might 
+have the different genre and of course, pages with the same genre might consider 
+different topics. While research on genre discrimination of documents of the 'printed 
+world' has produced classifiers with quite high performance, the web genre classifiers 
+66
+are still under research and development, which many times is kept as secret by the 
+companies  that  develop  such  mechanisms,  since  they  are  considered  as  valuable 
+assets..
+Web documents  have certain differences with the 'printed'  documents.  In the web 
+environment there are usually no rules applied while creating a page, contrarily to the 
+printed world,  where some short of rules/editing is applied. In some types of web 
+genres, it is even desired to create pages with radical/different layout, such as the web 
+pages of companies and the personal home pages, where their author creates the page 
+according  to  their  own  feeling.  Additionally,  a  web  page  might  have  multiple 
+communicative purposes,  hence genres.  Another important challenge in web genre 
+classification is the definition of the genres set, upon pages will be classified, since 
+new genres arise and old genres vanish or evolve, following the dynamic nature of the 
+web itself. Therefore, a genre classification algorithm should support the classification 
+of a page in multiple genres and the easy redefinition of the genres set. 
+The  ngrams  method  is  appropriate  for  genre  classification  since  it  is  a  soft 
+classification method and the refinement of the genres set is a simple process without 
+requiring huge amounts of data. In the experiments of this thesis, the profile of each 
+genre category was build by 10 randomly selected web pages of this genre achieving 
+performance  similar  to  classification  done  by  humans.  However,  it  has  a  lower 
+performance, compared to the  'printed'  documents, which could be a sign for better 
+definition of the genres set. The highest overall performance achieved was 80%, using 
+an eight genres set, which was extended up to 89% if the second most dominant genre 
+was also considered as a correct answer. The most 'difficult' genres were the two types 
+of home pages, commercial and non-commercial, having the worst performance with 
+0.6%  and  0.67%  respectively.  This  was  expected,  since  these  pages  have  high 
+differentiation within their genre group. The proposed incorporation of genre in search 
+engines includes the genre in a way that it can be used immediately in the query page 
+and the results page, but does not disrupt the user.
+67
+The enhancement of a search engine with the attributes proposed in this thesis is not a 
+demanding task for a search engine/software expert. The modifications that should be 
+implemented concern only the management of the frontier, for the case of the topic 
+crawler and the enhancement of the page representation in the index with the genre 
+parameter. 
+Further research is required to improve the effectiveness in both the focused crawling 
+and the web genre classification algorithms. The similarity based algorithm that is 
+used in naïve Best First topic crawling and was implemented in this thesis should be 
+enhanced, with more attributes of the web page considered by the crawler, since it is 
+based on on textual similarity with the topic. That excludes important pages from the 
+crawlers  frontier  pages  that  are  not  directly  linked  by  other  pages  of  the  topic. 
+Focused  crawling  techniques  can  also  be  combined  with  automatic  translation 
+methods,  producing  an  'ultimate'  inter-language  topic  crawler.  This  crawler  could 
+search documents on specific topic written on various languages, while the results 
+presented could be translated in a user defined language. 
+Concerning genre classification, further refinement of the genres set is required, since 
+the set proposed in this thesis was based only on secondary research data. Therefore, a 
+study that will identify the basic genres of the web and the basic genres that people 
+are interested in, is important for the success of a genre based search engine. The 
+ngrams method can be enhanced with page attributes that can not be captured by the 
+ngrams representation, such as the text in the page URL. Additionally, special weights 
+on specific HTML tags might prove to enhance the performance of the ngram based 
+web genre classifier.
+68
+5 References
+Important note: All links were accessed on 30 January 2007
+[1] Aggarwal, C., Al-Garawi, F. & Yu, P., 2001.  Intelligent Crawling on the World 
+Wide Web with Arbitrary Predicates, In Proceedings of the 10th international 
+conference on World Wide Web, Hong Kong, Hong Kong, pp. 96 – 105. 
+http://www.www10.org/cdrom/papers/pdf/p110.pdf
+[2] Aires, R., Aluísio, S. & Santos, D., 2005. User-aware page classification in a 
+search engine. In Proceedings of Stylistic Analysis Of Text For Information 
+Access, SIGIR 2005 Workshop, Salvador, Bahia, Brazil. 
+http://www.linguateca.pt/documentos/AiresetalSIGIR2005.pdf 
+[3] Anagnostopoulos, I, 2004. Course Notes on Information Retrieval. University of 
+the Aegean
+[4] Anthony, T. and Garcia-Molina, H., 1993. Performance of inverted indices in 
+sharednothing distributed text document informatioon retrieval systems. In 
+Proceedings of the second international conference on Parallel and distributed 
+information systems, pp. 8–17. IEEE Computer Society Press. 
+http://dbpubs.stanford.edu:8090/pub/showDoc.Fulltext?lang=en&doc=1993-
+4&format=pdf&compression=&name=1993-4.pdf
+[5] Argamon, S., Koppel, M., Fine, J. & Shimoni,A. R., 2003. Gender, Genre, and 
+Writing Style in Formal Written Texts. In Text, 23(3). 
+http://lingcog.iit.edu/doc/gendertext04.pdf
+[6] Bergman, M., 2001. The Deep Web: Surfacing Hidden Value. In The Journal of  
+Electronic Publishing, University of Michigan, August, 2001, 7(1). 
+http://www.press.umich.edu/jep/07-01/bergman.html
+[7] Bergmark, D., Lagoze, C. & Sbityakov, A., 2002. Focused Crawls, Tunneling, and 
+Digital Libraries. In Proceedings of the 6th European Conference on Research 
+and Advanced Technology for Digital Libraries, pp. 91-106. 
+http://mercator.comm.nsdlib.org/CollectionBuilding/ECDLpaper.pdf 
+[8] Bharat, K. and Henzinger M. R., 1998.  Improved Algorithms for Topic Distillation 
+in a Hyperlinked Environment. In Proceedings of the 21st annual international 
+ACM SIGIR conference on Research and development in information retrieval, 
+pp. 104–111 
+http://gatekeeper.dec.com/pub/DEC/SRC/publications/monika/sigir98.pdf
+[9] Boese, E. S., 2005. Stereotyping the web: genre classification of web documents. 
+MSc Thesis, Colorado State University. 
+http://www.cs.colostate.edu/~boese/Research/masters.pdf
+[10]Bretan, I., Dewe, J., Hallberg, A., Wolkert, N. & Karlgren, J., 1998. Web-Specific 
+Genre Visualization. In Proceedings of WebNet '98. 
+http://www.sics.se/humle/projects/DropJaw/dropjaw_webnet98.pdf 
+69
+[11]Brin, S. and Page, L., 1998. The Anatomy of a Large-Scale Hypertextual Web 
+Search Engine. In Proceedings of the seventh international conference on World 
+Wide Web 7.Brisbane, Australia pp. 107 - 117. 
+http://infolab.stanford.edu/~backrub/google.html 
+[12]Broder, A., 2002. A taxonomy of web search, In ACM SIGIR Forum, 36(2), pp. 3-
+10. http://www.acm.org/sigs/sigir/forum/F2002/broder.pdf
+[13]Castillo, C., 2004. Effective Web Crawling. Ph. D., University of Chile. 
+http://www.dcc.uchile.cl/~ccastill/crawling_thesis/effective_web_crawling.pdf
+[14]Chakrabarti, S., Dom, B., Gibson, D., Kleinberg, J., Raghavan, P. & Rajagopalan, 
+S, 1998. Automatic resource list compilation by analyzing hyperlink structure and 
+associated text. In Proceedings of the  7th International World Wide Web 
+Conference, http://www.cs.cornell.edu/home/kleinber/www98-arc.pdf
+[15]Chakrabarti, S., van den Berg, M. & Dom, B., 1999a. Focused crawling: a new 
+approach to topic-specific Web resource discovery. In Proceeding of the 8th 
+International conference on World Wide Web, Toronto, Canada, pp.1623 – 1640. 
+http://www.cse.iitb.ac.in/~soumen/doc/www1999f/pdf/www1999f.pdf
+[16]Chakrabarti, S., Dom, B., Gibson, D., Kleinberg, J., Kumar, S. R., Raghavan, P., 
+Rajagopalan, S. & Tomkins, A., 1999b. Mining the Link Structure of the World 
+Wide Web. In IEEE Computer, 32(8) August 1999. 
+http://www.cs.cornell.edu/home/kleinber/ieee99-web.pdf
+[17]Chakrabarti, S., Punera, K. & Subramanyam, M., 2002.  Accelerated Focused 
+Crawling through Online Relevance Feedback. In Proceedings of the 11th 
+International World Wide Web Conference, pp. 148–159. 
+http://www2002.org/CDROM/refereed/336/
+[18]Cho, J., Garcia-Molina, H., & Page, L., 1998. Efficient Crawling Through URL 
+Ordering. In Proceedings of the Seventh International World-Wide Web 
+Conference, Brisbane, Australia, 
+http://dbpubs.stanford.edu:8090/pub/showDoc.Fulltext?lang=en&doc=1998-
+51&format=pdf&compression=&name=1998-51.pdf
+[19]Cho, J. and Garcia-Molina, H., 2000. The evolution of the web and implications 
+for an incremental crawler. In Proceedings of the Twenty-sixth International 
+Conference on Very Large Databases, Cairo, Egypt. 
+http://oak.cs.ucla.edu/~cho/papers/cho-evol.pdf
+[20]Cho, J., 2001. Crawling the web: Discovery and maintenance of large-scale web 
+data. Ph. D., Stanford University.  http://www.webir.org/resources/phd/Cho_2001-
+thesis.pdf 
+[21]Crowston, K. and Williams, M. 1997. Reproduced and emergent genres of 
+communication on the World-Wide Web. In Thirtieth Hawaii International 
+Conference on Systems Science (HICSS–30), Maui. 
+http://crowston.syr.edu/papers/hicss97.html
+70
+[22]Crowston, K. and Williams,M., 1999. The Effects of Linking on Genres of Web 
+Documents. In Proceedings of the Thirty-Second Annual Hawaii International 
+Conference on System Sciences, 2. 
+http://csdl2.computer.org/comp/proceedings/hicss/1999/0001/02/00012006.PDF
+[23]Crowston, K. and Kwasnik,B. H., 2003.  Can document-genre metadata improve 
+information access to large digital collections? In Library trends,  52(2), pp. 345-
+362, University of Illinois.  http://crowston.syr.edu/papers/libtrends03.pdf
+[24]De Bra, P. and Post, R., 1994 .  Information Retrieval in the World−Wide Web: 
+Making Client−based searching feasible. In Journal on Computer Networks and 
+ISDN Systems, 27, pp. 183-192, Elsevier Science BV, 
+http://citeseer.ist.psu.edu/cache/papers/cs/299/http:zSzzSzwww.cern.chzSzPape
+rsWWW94zSzreinpost.pdf/information-retrieval-in-the.pdf 
+[25]Dean, J. and Henzinger, M. R., 1999. Finding Related Pages in the World Wide 
+Web. In Proceedings of the eighth international conference on World Wide Web, 
+Toronto, Canada, pp. 1467 - 147. 
+http://citeseer.ist.psu.edu/cache/papers/cs/7949/http:zSzzSzwww.research.digital
+.comzSzSRCzSzpersonalzSzmonikazSzpaperszSzmonika-www8-
+1.pdf/dean99finding.pdf
+[26]Dewdney, N., Dykema, C.V. & McMillan, R., 2001. The form is the substance: 
+Classification of genres in text. In ACL Workshop on Human Language 
+Technology and Knowledge Management, 
+http://www.elsnet.org/km2001/dewdney.pdf
+[27]Diligenti, M., Coetzee, F.M., Lawrence, S., Giles, C.L. & Gori, M., 2000. Focused 
+Crawling Using Context Graphs. In 26th International Conference on Very Large 
+Database, http://clgiles.ist.psu.edu/papers/VLDB-2000-focused-crawling.pdf
+[28]Diligenti, M., Maggini, M., Pucci, F. M. & Scarselli,F., 2004. Design of a Crawler 
+with Bounded Bandwidth. In Proceedings of the Alternate track papers and poster 
+session of the World Wide Web conference, pp. 292-293. 
+http://www2004.org/proceedings/docs/2p292.pdf
+[29]Dimitrova M. and Kushmerick, N., 2003. Dimensions of Web Genre, In Twelfth 
+International World Wide Web Conference, Budapest,  Hungary 
+http://www2003.org/cdrom/papers/poster/p143/p143-dimitrova.htm
+[30]Ehrig, M. and Maedche, A., 2003. Ontology-Focused Crawling of Web 
+Documents. In Proceedings of the Symposium on Applied Computing 2003 (SAC 
+2003), Melbourne, Florida, USA, pp. 1174-1178.  http://www.aifb.uni-
+karlsruhe.de/WBS/meh/publications/ehrig03ontology.pdf
+[31]Fallows, D., 2005. Search Engine Users, Pew/Internet report. 
+http://www.pewinternet.org/pdfs/PIP_Searchengine_users.pdf
+[32]Ferizis, G. and Bailey, P., 2006. Towards Practical Genre Classification of Web 
+Documents, In Proceedings of the 15th international conference on World Wide 
+Web, pp. 1013-1014. 
+http://www2006.org/programme/files/xhtml/p18/xhtml/pp018-ferizis.html
+71
+[33]Finding Information on the Internet: A Tutorial, UC Berkeley - Teaching Library 
+Internet Workshops 
+http://www.lib.berkeley.edu/TeachingLib/Guides/Internet/FindInfo.html
+[34]Frantzeskou, G., Stamatatos, E., Gritzalis & S., Katsikas S., 2006. Source Code 
+Author Identification Based on N-gram Author Profiles. In Proceedings of 3rd IFIP 
+Conference on Artificial Intelligence Applications & Innovations (AIAI'06), pp. 508-
+515, http://www.icsd.aegean.gr/lecturers/stamatatos/papers/AIA06.pdf
+[35]Garfield, E., 1995. New international professional society signals the maturing of 
+sciento-metrics and informetrics. In The Scientist, 9(16), Aug 1995. 
+http://www.garfield.library.upenn.edu/commentaries/tsv09(16)p11y19950821.pdf
+[36]Goffman, W., 1971. A mathematical method for analyzing the growth of a 
+scientific discipline. In Journal of the the ACM, 18(2) 
+http://delivery.acm.org/10.1145/330000/321640/p173-
+goffman.pdf?key1=321640&key2=2285989611&coll=&dl=ACM&CFID=15151515
+&CFTOKEN=6184618
+[37]Great Greek Dictionary, Electronic edition
+[38]Grigoriadis, A. and Paliouras, G., 2004. Focused Crawling using Temporal 
+Difference-Learning. In Proceedings of the Panhellenic Conference in Artificial  
+Intelligence (SETN), Samos, Greece, pp. 142-153. 
+http://www.iit.demokritos.gr/~paliourg/papers/SETN2004b.pdf
+[39]Gulli, A. & Signorini, A., 2005.  The Indexable Web is More than 11.5 billion 
+pages, In International World Wide Web Conference, Special interest tracks and 
+posters of the 14th international conference on World Wide Web, Chiba, Japan. 
+http://www.cs.uiowa.edu/~asignori/web-size/size-indexable-web.pdf
+[40]Haveliwala, T. H., 2003. Topic-Sensitive PageRank: A Context-Sensitive Ranking 
+Algorithm for Web Search. In IEEE Transactions on Knowledge and Data 
+Engineering 
+http://dbpubs.stanford.edu:8090/pub/showDoc.Fulltext?lang=en&doc=2003-
+29&format=pdf&compression=&name=2003-29.pdf 
+[41]Hersovici, M., Jacovi, M., Maarek, Y. S., Pelleg, D.,  Shtalhaim, M. & Ur, S., 
+1998. The shark-search algorithm — An application: tailored Web site mapping. In 
+Proceedings of the seventh international conference on World Wide Web 7, 
+Brisbane, Australia pp. 317 – 326.  http://www.cs.cmu.edu/~dpelleg/bin/360.html
+[42]Joho, H. and Jose, J. M., 2006. A Comparative Study of the Effectiveness of 
+Search Result Presentation on the Web, In Lalmas, M., et al. ed. Advances in 
+Information Retrieval, 28th European Conference on Information Retrieval, pp. 
+302-313. London, UK.  http://www.dcs.gla.ac.uk/~hideo/pub/ecir06/ecir06.pdf
+[43]Karlgren, J., Cutting, D., 1994.Recognizing Text Genres with Simple Metrics 
+Using Discriminant Analysis. In Proceedings of COLING94, Kyoto. 
+http://eprints.sics.se/56/01/cmplglixcol.pdf
+72
+[44]Keselj, P., Peng F., Cercone, N., Thomas, C., 2003. Ngram Based Author 
+Profiles for Authorship Attribution, In Pacific Association for Computational 
+Linguistics, 2003, http://users.cs.dal.ca/~vlado/papers/pacling03.pdf
+[45]Kessler, B., Nunberg, G. & Schutze, H., 1997. Automatic detection of text genre. 
+In P.R. Cohen & W. Wahlster ed., Proceedings of ACL-97, 35th Annual Meeting 
+of the Associationfor Computational Linguistics, Madrid, ES, pp. 32–38. 
+http://acl.ldc.upenn.edu/P/P97/P97-1005.pdf
+[46]Kleinberg, M. J., 1997. Authoritative Sources in a Hyperlinked Environment, In 
+Proceedings of the 9th ACM-SIAM Symposium on Discrete Algorithm. 
+http://www.cs.cornell.edu/home/kleinber/auth.pdf
+[47]Kumar, R., Raghavan, P., Rajagopalan, S., Sivakumar, D., Tomkins, A. &  Upfal, 
+E., 2000. Stochastic models for the web graph. In Proceedings of the 41st IEEE 
+Symposium on Foundations of Computer Science, 
+http://www.cs.brown.edu/research/webagent/focs-2000.pdf
+[48]Lee, Y.B. and Myaeng, S.H., 2004. Automatic Identification of Text Genres and 
+Their Roles in Subject-Based Categorization. In Proceedings of the 37th Hawaii  
+International Conference on System Sciences.
+[49]Li, J., Furuse, K. & Yamaguchi, K., 2005. Focused Crawling by Exploiting Anchor 
+Text Using Decision Tree. In Special interest tracks and posters of the 14th 
+international conference on World Wide Web, Chiba, Japan. 
+http://delivery.acm.org/10.1145/1070000/1062933/p1190-
+li.pdf?key1=1062933&key2=2405199611&coll=&dl=acm&CFID=15151515&CFT
+OKEN=6184618
+[50]Liu, H., Milios, E. & Janssen, J., 2004. Focused Crawling by Learning HMM from 
+User's Topic-specific Browsing. In Proceedings of 2004 IEEE/WIC/ACM 
+international Conference on Web Intelligence, Beijing, China, pp. 732-735. 
+http://users.cs.dal.ca/~eem/res/pubs/pubs/WI2004_2341_liu_h.pdf
+[51]McCallum, A., Nigam, K., Rennie, J. & Seymore, K., 1999. Building Domain-
+Specific Search Engines with Machine Learning Techniques. In Proceedings of 
+AAAI-99 Spring Symposium on Intelligent Agents in Cyberspace. 
+http://people.csail.mit.edu/jrennie/papers/cora-aaaiss99.pdf
+[52]Medelyan, O., Schulz, S., Paetzold, J., Poprat, M. & Markó, K., 2006. Language 
+Specific and Topic Focused Web Crawling. In Proceedings of the Language 
+Resources Conference LREC 2006, Genoa, Italy. 
+http://www.cs.waikato.ac.nz/~olena/publications/lrec2006_focused_crawler.pdf
+[53]Miller, J. C., Rae, G. & Schaefer F., 2001. Modifications of Kleinberg’s HITS 
+Algorithm Using Matrix Exponentiation and Web Log Records. In Proceedings of 
+the 24th Annual International ACM SIGIR Conference on Research and 
+Development in Information Retrieval, pp. 444-445. 
+http://delivery.acm.org/10.1145/390000/384086/p444-
+miller.pdf?key1=384086&key2=1146989611&coll=&dl=acm&CFID=15151515&C
+FTOKEN=6184618
+73
+[54]Najork, M. and Wiener, J., L., 2001. Breadth-First Search Crawling Yields High-
+Quality Pages. In 10th International World Wide Web Conference, pp. 114-118. 
+http://www10.org/cdrom/papers/pdf/p208.pdf
+[55]Nomura, S., Oyama S., Hayamizu, T. & Ishida T., 2002, Analysis and 
+Improvement of HITS Algorithm for Detecting Web Communities. In Proceedings 
+of the 2002 International Symposium on Applications and the Internet, pp. 132-
+140. 
+http://citeseer.ist.psu.edu/cache/papers/cs2/668/http:zSzzSzwww.dl.kuis.kyoto-
+u.ac.jpzSz~oyamazSzpdfzSzsaint2002.pdf/analysis-and-improvement-of.pdf
+[56]Novak, B., 2004. A survey of focused web crawling algorithms, In SIKDD 2004 at 
+multiconference IS 2004, Ljubljana, Slovenia,  http://eprints.pascal-
+network.org/archive/00000738/01/BlazNovak-FocusedCrawling.pdf
+[57]Ntoulas, A., Zerfos P., & Cho J., 2005. Downloading Hidden Web Content. In 
+Proceedings of the Joint Conference on Digital Libraries (JCDL), Denver, USA. 
+http://oak.cs.ucla.edu/~cho/papers/ntoulas-hidden.pdf
+[58]Orlikowski, W. J. and Yates, J. Genre repertoire: The structuring of 
+communicative practices in organizations. In Administrative Sciences Quarterly, 
+33, pp. 541-574.
+[59]Page, L., Brin, S., Motwani, R. & Winograd, T., 1998. The PageRank Citation 
+Ranking: Bringing Order to the Web.  Stanford Digital Library Technologies 
+Project. 
+http://dbpubs.stanford.edu:8090/pub/showDoc.Fulltext?lang=en&doc=1999-
+66&format=pdf&compression=&name=1999-66.pdf 
+[60]Pant, G. and Menczer, F., 2002. MySpiders: Evolve Your Own Intelligent Web 
+Crawlers. In Autonomous Agents and Multi-Agent Systems, 5(2): pp. 221-229. 
+http://dollar.biz.uiowa.edu/~pant/Papers/jaamas.pdf
+[61]Pant, G. and Menczer, F., 2003. Topical Crawling for Business Intelligence. In 
+Proceedings of the  7th European Conference on Research and Advanced 
+Technology for Digital Libraries. 
+http://dollar.biz.uiowa.edu/~pant/Papers/BizIntelECDL.pdf
+[62]Pant, G., 2004a. Learning to crawl: Classifier-guided topical crawlers.  Ph. D. The 
+University of Iowa.  http://homer.informatics.indiana.edu/~nan/theses/thesis-
+gautam-pant.pdf
+[63]Pant G., Srinivasan P. & Menczer F., 2004b. Crawling the Web. In M. Levene & 
+A. Poulovassilis ed. Web Dynamics: Adapting to Change in Content, Size, 
+Topology and Use. pp. 153-178, Springer-Verlag, 2004. http://mingo.info-
+science.uiowa.edu/padmini/Papers/crawlingFinal.pdf
+[64]Raghavan, S. and Garcia-Molina H., 2001. Crawling the hidden web. In 
+Proceedings of the Twenty-seventh International Conference on Very Large 
+Databases,  Roma, Italy. http://www.dia.uniroma3.it/~vldbproc/017_129.pdf
+74
+[65]Rauber, A. and Müller-Kögler,A., 2001. Integrating Automatic Genre Analysis into 
+Digital Libraries. In ACM/IEEE Joint Conference on Digital Libraries. 
+http://citeseer.ist.psu.edu/cache/papers/cs/22301/http:zSzzSzwww.ifs.tuwien.ac.a
+tzSzifszSzresearchzSzpub_pszSzrau_jcdl01.pdf/rauber01integrating.pdf
+[66]Rennie, J. and McCallum, A., 1999. Using Reinforcement Learning to Spider the 
+Web Efficiently. In Proceedings of the 16th International Conference on Machine 
+Learning, pp. 335-343. http://people.csail.mit.edu/jrennie/papers/icml99-text.pdf
+[67]Richardson, M. and Domingos P., 2002. The Intelligent Surfer: Probabilistic 
+Combination of Link and Content Information in PageRank, In Advances in 
+Neural Information Processing Systems, 14, pp. 1441-1448, Cambridge, MIT 
+Press.  http://www.cs.washington.edu/homes/pedrod/papers/nips01b.pdf
+[68]Rosso, M. A., 2005. Using genre to improve web search. Ph.D. University of 
+North Carolina. http://ils.unc.edu/~rossm/Rosso_dissertation.pdf
+[69]Roussinov, D., Crowston, K., Nilan, M., Kwasnik, B., Cai J. & Liu, X.,  Genre 
+Based Navigation on the Web, 2001. In Proceedings of the 34th Hawaii  
+International Conference on System Sciences, 
+http://csdl2.computer.org/comp/proceedings/hicss/2001/0981/04/09814013.pdf
+[70]Santini M., 2006.  Some Issues in Automatic Genre Classification of Web Pages, 
+In JADT 06 – Actes des 8 Journées internationales d’analyse statistiques des 
+donnés textuelles, 2, pp. 865-876. 
+http://www.itri.brighton.ac.uk/~Marina.Santini/06_04_d_MSantini_JADT_2006.pdf
+[71]Selberg, E. W., 1999. Towards Comprehensive Web Search. Ph. D., University of 
+Washington.  http://www.webir.org/resources/phd/Selberg_1999.pdf
+[72]Shkapenyuk, V. and Suel, T., 2002. Design and Implementation of a High-
+Performance Distributed Web Crawler. In Proceedings of the International.  
+Conference on Data Engineering,  http://cis.poly.edu/suel/papers/crawl.pdf
+[73]Stamatatos, E., 2000a. Statistical Identification of Genre and Author in 
+Unrestricted Modern Greek Text. Ph. D., University of Patras. 
+http://www.wcl.ee.upatras.gr/ai/Stamatatos/thesis.html
+[74]Stamatatos, E., Fakotakis, N. & Kokkinakis, G., 2000b. Automatic text 
+categorization in terms of genre and author’. In Computational Linguistics, 26(4), 
+pp. 471–495 2000. http://www.wcl.ee.upatras.gr/ai/papers/stamatatos7.pdf
+[75]Stamatatos E., 2006. Ensemble-based Author Identification Using Character N-
+grams, In Proceedings of the International Workshop on Text-based Information 
+Retrieval (TIR'06), 
+pp. 41-46. http://www.icsd.aegean.gr/lecturers/stamatatos/papers/TIR2006.pdf
+[76]Sutton, R. and Barto, A. 2002. Reinforcement Learning. An Introduction. MIT 
+Press, Cambridge, MA.
+[77]Tsoutsias, D., 2005. Text Genre Identification with machine learning approaches. 
+Msc Thesis, University of the Aegean.
+75
+[78]Yang, C. C. and Chan, K. Y., 2005. Retrieving Multimedia Web Objects Based on 
+Page Rank Algorithm. In Proceedings of the International World Wide Web 
+Conference, Chiba, Japan. 
+http://delivery.acm.org/10.1145/1070000/1062791/p906-
+yang.pdf?key1=1062791&key2=5459989611&coll=&dl=acm&CFID=15151515&C
+FTOKEN=6184618
+[79]Yoshioka, T. and Herman, G., 1999. Genre Taxonomy: A Knowledge Repository 
+of Communicative Actions. In ACM Transactions on Information Systems, 19, pp. 
+431-456, 2001 http://ccs.mit.edu/papers/pdf/wp209.pdf
+[80]Zhuang, Z., Wagle, R. & Giles, C. L., 2005. What’s There and What’s Not? 
+Focused Crawling for Missing Documents in Digital Libraries. In Joint Conference 
+on Digital Libraries, (JCDL 2005) pp. 301-310. 
+http://clgiles.ist.psu.edu/papers/JCDL-2005-Focused-Crawling.pdf
+76
