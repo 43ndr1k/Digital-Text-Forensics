@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DocQueryDao extends JpaRepository<Query, Long> {
 
-	List<Query> findByQueryStartingWith(String query);
+	List<Query> findTop10ByQueryStartingWith(String query);
 
 }

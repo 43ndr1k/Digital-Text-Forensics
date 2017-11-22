@@ -14,6 +14,6 @@ public class DocQueryServiceImpl implements DocQueryService {
 
 	@Override
 	public List<Query> findByQueryStartingWith(String query) {
-		return docQueryDao.findByQueryStartingWith(query);
+		return docQueryDao.findTop10ByQueryStartingWith(query);
 	}
 }
