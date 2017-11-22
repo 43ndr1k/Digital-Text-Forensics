@@ -1,0 +1,367 @@
+Towards Scalable Data-Driven Authorship Attribution
+Marc-Allen Cartright and Michael Bendersky
+Center for Intelligent Information Retrieval
+University of Massachusetts, Amherst
+Amherst, MA 01003
+{irmarc,bemike}@cs.umass.edu
+Abstract
+Traditional authorship attribution approaches
+have made attempts at capturing features
+that were designed heuristically – researchers
+guessed at which aspects of language would
+best separate one author from another and then
+performed experiments to see how valid their
+assumptions were. While this approach has
+met some success, it also proves to be un-
+scalable – most test collections to date have
+been on the size of 10 or less authors, which
+in the age of internet-style publication is an
+unrealistically low quantity. We believe that
+this approach to feature selection for author-
+ship attribution adds unnecessary complexity
+to what the task really seems to be: a multi-
+class classification problem, and one where
+the most useful features can be easily discov-
+ered using a standard dimensionality reduc-
+tion technique. We demonstrate the use of
+such a technique to dramatically reduce the
+number of used features for authorship attribu-
+tion using an implementation of Support Vec-
+tor Machines.
+1 Introduction
+The task of authorship attribution (henceforth, AA)
+is assigning an author to a particular document or
+work. While the number of plausible authors has
+ballooned due to the advent of the internet, the col-
+lections used for AA research have more or less re-
+mained static. Multiple approaches to AA have been
+developed, and many have been shown to be exper-
+imentally successful, however relatively little work
+has been done towards demonstrating the effective-
+ness of these approaches to large-scale data sets. In
+this work we test the plausibility of using statistical
+inference to automatically select a sufficient subset
+of all possible features to use in a standard machine-
+learning approach to AA. We use a corpus of works
+from various time periods and multiple languages to
+provide a realistic, heterogeneous representation of
+the AA problem.
+2 Previous Work
+Throughout most of its history, researchers typi-
+cally approach the task of AA by manually select-
+ing a subset of stylometric features such as function
+words (Zhao et al., 2006), POS counts (Stamatatos
+et al., 2001), punctuation and sentence length (Sta-
+matatos et al., 2001; Holmes, 1998) or letter n-grams
+(Khmelev and Tweedie, 2003; Keselj et al., 2003).
+Despite several studies that attempt to evaluate these
+kinds of features (Stamatatos et al., 2001; Holmes,
+1998; Koppel and Schler, 2003), the evaluation has
+been mainly performed on collections that pale in
+comparison to what we would consider standard-
+sized collections today.
+More recent work such as (Diederich et al., 2000)
+and (Koppel et al., 2006) has provided us with some
+empirical basis for our investigation; the former
+work makes a compelling argument for SVMs be-
+ing the most appropriate technique to approach this
+task, while the latter introduces what we feel to be
+the most realistic setting for the AA task to date.
+3 Our Approach
+3.1 Corpus
+Our source data comes from Project Gutenberg1 , an
+online source of free electronic books. Currently
+the project contains over 17, 000 books in various
+languages. We selected 100 authors with multiple
+works contained in the collection. Table 1 shows
+some of the statistics of the collection. For our
+experiments, we partitioned the collection into 10
+overlapping data sets, ranging from 10 to 100 au-
+thors.
+# # books # unique # terms
+authors per author terms/author per book
+100 30 5,367 58,240
+Table 1: Collection statistics. Average counts of books
+per authors and terms per book are presented.
+In addition to the size of the collection, which
+distinguishes it from collections previously used for
+AA, there are several interesting observations that
+differentiate the data sets studied here from other
+data sets that are typically used for text classifica-
+tion:
+• High dimensionality. The richness of lan-
+guage in our setting leads to even larger num-
+ber of unique terms than is usual in text classifi-
+cation. A classical Reuters-21578 set contains
+27, 658 distinct terms, almost 3 times less than
+the smallest of our data sets (73, 743 unique
+terms for 10 authors).
+• Small number of large documents. Collec-
+tions used for text classification evaluation typ-
+ically consist of large number of relatively short
+documents (e.g., newswire, academic paper ab-
+stracts, etc.). Our data sets, on the other hand
+consist of a small number of very long docu-
+ments (books). Again, compared to Reuters-
+21578 that contains above 21, 578 documents,
+our largest data set contains only 3, 003 docu-
+ments. When considering the semi-supervised
+classification task, this leads to an intriguing
+setting, where train examples are scarce, but
+each example is semantically rich.
+1http://www.gutenberg.org/wiki/Main Page
+• Non-topical class relations. Typically, docu-
+ment classification is based on document top-
+icality. In our data sets, we instead assume
+that each author can be associated with a dis-
+tinct term distribution, but this distribution is
+not necessarily topic-driven.
+3.2 Data Normalization and Preparation
+To normalize the data for feature extraction the fol-
+lowing steps were taken:
+• Anonymization. Any mention of the author’s
+name was removed from the text of the book.
+In addition, the book header (first 50 lines of
+the book) was removed in order to prevent
+any metadata from influencing the classifica-
+tion process.
+• Stemming and Stopwords removal. We used
+the standard INQUERY (Allan et al., 2000)
+stopwords list and the well-known Porter stem-
+ming algorithm2.
+• Indexing. To facilitate efficient feature extrac-
+tion, the normalized book collection was in-
+dexed using the INDRI search engine3 .
+3.3 Feature Construction and Selection
+We take the bag of words approach, which was
+proven to be successful in both information retrieval
+(Salton et al., 1975) and document classification
+(Joachims, 2002) settings. In other words, we rep-
+resent each book as a vector of length-normalized
+term counts. As term vectors are highly-dimensional
+and sparse, classification using all features becomes
+intractable for large datasets. Instead, we consider
+feature selection based on mutual information.
+Mutual Information. Feature selection based on
+mutual information of the features is a common pro-
+cedure in document classification (Joachims, 2002).
+In our case, term t is ranked by mutual information
+with the author class variable a, or formally
+MI(t) =
+∑
+a∈A
+P (a)P (t|a) log
+P (t|a)
+P (t)
+, (1)
+2http://www.tartarus. org/martin/PorterStemmer
+3http://www.lemurproject.org/indri/
+where A is the set of all possible author classes,
+and probabilities are computed using maximum-
+likelihood estimates.
+Number of features. We initially used a standard
+approach, where the number of features to use in
+the learning algorithm is set a priori to some con-
+stant C . However, we observe that as the number
+of possible classes (authors) grows, so does the per-
+plexity of a distribution over the terms in the col-
+lection (note that each new author adds on average
+more than 5, 000 unique terms to the collection –
+see Table 1). If we assume Zipf’s Law (Zipf, 1949)
+holds for our collection, the number of potential fea-
+tures will monotonically increase sublinearly as the
+number of authors increases. Hence, we assume that
+number of features to use in the learning algorithm
+should increase log-linearly with the number of po-
+tential authors. That is, for collection containing na
+authors, the number of features used in the learning
+algorithm will be
+ν(na) = C(1 + α log na), (2)
+where α ∈ [0, 1] is a damping factor.
+4 Experimental Results
+As described above, in our experiments we consider
+10 overlapping data sets, the smallest containing 162
+books from 10 authors, and the largest containing
+3, 003 books from 100 authors, all normalized ac-
+cording to the procedure outlined in Section 3.2.
+All authorship attribution experiments are done
+using SV Mmulticlass. For a linear kernel, used in
+our experiments, SV Mmulticlass is quite efficient,
+and its runtime scales linearly with the number of
+training examples4. We use a 5-fold cross-validation
+to evaluate an average accuracy of the AA task on the
+various data sets.
+We run three types of classification experiments:
+SVM[all], SVM[C] and SVM[ν(na)]. SVM[all] uses
+all features (terms) to perform the AA task, while
+SVM[C] and SVM[ν(na)] use a subset of C and
+ν(na) (Equation 2) features, respectively, selected
+by the mutual information metric (Equation 1). We
+set C = 500, α = 0.64 in our experiments.
+4http://svmlight.joachims.org/
+Runtime cpu/sec
+# authors 10 20 30
+SVM[all] 93.72 434.16 871.38
+SVM[C] 9.99 28.32 148.48
+SVM[ν(na)] 10.65 46.28 248.80
+% Accuracy
+# authors 10 20 30
+SVM[all] 97.54 93.22 93.59
+SVM[C] 92.58 90.25 88.17
+SVM[ν(na)] 95.07 92.79 92.31
+Table 2: Comparison of AA task performance for 10, 20
+and 30 author data sets. The top table compares runtime
+in seconds/cpu, while the bottom table compares average
+accuracy.
+SVM[all] vs. SVM[C] and SVM[ν(na)] Table 2
+illustrates the performance in terms of runtime and
+accuracy for all three classification methods on the
+three of our smallest datasets. We note that the re-
+sults of our experiments seem to support the hypoth-
+esis that a limited number of features helps to sus-
+tain a reasonable accuracy across growing data sets,
+while dramatically reducing the runtime. Encour-
+aged by these results we turn to examine the per-
+formance of SVM[C] and SVM[ν(na)] on the larger
+data sets.
+SVM[C] vs. SVM[ν(na)] In terms of average ac-
+curacy (right-hand graph at Figure 1), the perfor-
+mance of both SVM[C] and SVM[ν(na)] remains
+quite stable as the number of authors goes up: in
+both cases, accuracy drops only 10%, when mov-
+ing from 10 to 100 authors data set. When jux-
+taposing the relative performance of SVM[C] vs.
+SVM[ν(na)], we note that adding more features uni-
+formly improves accuracy, as expected. Comparing
+the accuracy results vectors for these two methods
+using Wilcoxon rank-sum test, shows that this im-
+provement is statistically significant (p < 0.02).
+The left-hand graph at Figure 1 demonstrates that
+both for SVM[C] and SVM[ν(na)] the runtime of
+the classification procedure does not scale too well
+as the number of possible classes (authors) grows.
+SVM[ν(na)] seems to be especially sensitive to this
+— note the sharp runtime increase when number of
+authors grows from 70 to 80.
+10 20 30 40 50 60 70 80 90 100
+0
+1
+2
+3
+4
+5
+6
+x 10
+4
+Number of authors
+R
+un
+tim
+e 
+[c
+pu
+/s
+ec
+]
+C
+ν(n
+a
+)
+10 20 30 40 50 60 70 80 90 100
+80
+82
+84
+86
+88
+90
+92
+94
+96
+98
+100
+Number of authors
+%
+ A
+cc
+ur
+ac
+y
+C
+ν(n
+a
+)
+Figure 1: Comparison of SVM[C] and SVM[ν(na)] performance.
+5 Conclusions
+We have shown that a machine learning approach to
+AA need not fall victim to the curse of dimensional-
+ity when encountering large data sets. A simple fea-
+ture selection procedure using techniques from in-
+formation theory can reduce the number of possible
+features by orders of magnitude while still maintain-
+ing classification accuracy to within a few percent of
+using all of the available features.
+We believe that the future direction of feature se-
+lection for AA will be necessarily driven by methods
+that can adjust to the changing characteristics of the
+data, and therefore require methods that emphasize
+certain features using statistical information present
+in those data sets.
+Another important direction in AA research is
+tackling the problem of scaling the performance of
+exisitng multi-class categorization models for large-
+scale corpora with hundreds or thousands of candi-
+date classes.
+Acknowledgments
+This work was supported in part by the Center for
+Intelligent Information Retrieval and in part by NSF
+grant #IIS-0534383. Any opinions, findings and
+conclusions or recommendations expressed in this
+material are the authors’ and do not necessarily re-
+flect those of the sponsor.
+References
+J. Allan, M.E. Connell, W.B. Croft, F.F. Feng, D. Fisher,
+and X. Li. 2000. INQUERY and TREC-9. Proceed-
+ings of the Ninth Text Retrieval Conference (TREC-9),
+pages 551–562.
+J. Diederich, J. Kindermann, E. Leopold, and G. Paass.
+2000. Authorship attribution with support vector ma-
+chines. Applied Intelligence, pages 109–123.
+D. I. Holmes. 1998. The evolution of stylometry in hu-
+manities computing. Literary and Linguistic Comput-
+ing, 13(3):111–7.
+T. Joachims. 2002. Learning to Classify Text Using Sup-
+port Vector Machines. Kluwer Academic Publishers.
+Vlado Keselj, Fuchun Peng, Nick Cercone, , and Calvin
+Thomas. 2003. N-gram-based author profiles for au-
+thorship attribution. In PACLING’03: Proceedings
+of the Conference Pacific Association for Computa-
+tional Linguistics, pages 255–264. Pacific Association
+for Computational Linguistics.
+D. V. Khmelev and F. J. Tweedie. 2003. Using Markov
+Chains for Identification of Writer. Literary and Lin-
+guistic Computing, 16(3):299–307.
+M. Koppel and J. Schler. 2003. Exploiting stylistic id-
+iosyncrasies for authorship attribution. In Proceedings
+of IJCAI’03 Workshop on Computational Approaches
+to Style Analysis and Synthesis. International Joint
+Conferences on Artificial Intelligence.
+Moshe Koppel, Jonathan Schler, Shlomo Argamon, and
+Eran Messeri. 2006. Authorship attribution with thou-
+sands of candidate authors. In SIGIR ’06: Proceedings
+of the 29th annual international ACM SIGIR confer-
+ence on Research and development in information re-
+trieval, pages 659–660, New York, NY, USA. ACM.
+G. Salton, A. Wong, and C. S. Yang. 1975. A vector
+space model for automatic indexing. Commun. ACM,
+18(11):613–620.
+E. Stamatatos, N. Fakotakis, and G. Kokkinakis. 2001.
+Computer-Based Authorship Attribution Without Lex-
+ical Measures. Computers and the Humanities,
+35(2):193–214.
+Y. Zhao, J. Zobel, and P. Vines. 2006. Using relative en-
+tropy for authorship attribution. Proc. 3rd AIRS Asian
+Information Retrieval Symposium, Springer, pages
+92–105.
+George K. Zipf. 1949. Human Behavior and the Princi-
+ple of Least Effort. Addison-Wesley, Cambridge, Mas-
+sachusetts.

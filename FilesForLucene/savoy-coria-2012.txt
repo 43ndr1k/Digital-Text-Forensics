@@ -1,0 +1,682 @@
+Etude comparative de stratgies de slection 
+de prdicteurs pour lÕattribution dÕauteur 
+ 
+ 
+Jacques Savoy 
+ 
+ 
+Institut d'informatique, Universit de Neuchtel 
+rue Emile Argand 11, 2000 Neuchtel (Suisse) 
+Jacques.Savoy@unine.ch 
+ 
+RSUM.  LÕattribution d'auteur peut tre vue comme une tche en catgorisation de textes qui 
+se subdivise en deux tapes.  DÕabord nous devons slectionner les mots les plus 
+discriminants puis appliquer un modle de classification.  Afin de bien choisir les meilleurs 
+termes, nous avons valu sept fonctions de slection dont lÕinformation mutuelle ponctuelle, 
+le gain dÕinformation, le rapport de cotes, le !2 ou le coefficient de corrlation.  Nous avons 
+galement retenu deux stratgies de slection proposes dans le cadre dÕattribution dÕauteur.  
+Afin de comparer ces mthodes, nous avons repris un corpus de 5 408 articles de presse 
+(Glasgow Herald) crits par vingt journalistes diffrents.  Bas sur la performance obtenue 
+par la mthode de divergence KLD (Zhao & Zobel, 2007) et Delta (Burrows, 2002), nous 
+remarquons que des stratgies simples proposent des rsultats aussi performants que des 
+approches plus complexes.   
+ABSTRACT.  The authorship attribution problem can be viewed as a categorization problem.  
+To determine the most effective features to discriminate between different writers (or 
+categories), we have evaluated seven feature selection functions (e.g., pointwise mutual 
+information, information gain, odds ratio, !2, or correlation coefficient).  We have also 
+considered two selection functions proposed in the context of authorship attribution.  To 
+compare these approaches, we have selected a newspaper corpus (Glasgow Herald) 
+composed of 5,408 articles written by twenty columnists.  Using the KLD (Zhao & Zobel, 
+2007) and the Delta (Burrows, 2002) attribution scheme, we found that some simple selection 
+functions tend to produce results comparable to more complex ones.   
+MOTS-CLS : Slection de prdicteurs, attribution d'auteur, catgorisation de textes. 
+KEYWORDS: Feature selection, authorship attribution, text categorization. 
+ 
+1.  Introduction 
+LÕattribution dÕauteur cherche  dterminer lÕauteur dÕun crit anonyme ou dont 
+lÕattribution reste incertaine (Love, 2002).  Comme objet dÕtude, on rencontre des 
+lettres, des Ïuvres littraires (voir le dbat Molire-Corneille (Labb, 2009)), ou des 
+fragments de celles-ci (pour dterminer les passages vraiment crits par Shakespeare 
+(Craig & Kinney, 2009)) voire des discours politiques (T. Sorensen dans l'ombre du 
+CORIA 2012, pp. 215–228, Bordeaux, 21-23 mars 2012
+216 Jacques Savoy
+Prsident Kennedy (Carpenter & Seltzer, 1970) (Monire & Labb, 2006)) ou des 
+courriels.   
+Afin de rsoudre cette question, une premire famille dÕapproches dsire recourir 
+ un nombre limit de mots fonctionnels frquents afin de cerner le style de lÕauteur 
+de manire indpendante des thmes abords.  Dans un second paradigme,  
+l'attribution d'auteur peut tre analyse sous l'angle de la catgorisation de textes 
+(Sebastiani, 2002), (Manning et al., 2008) dans laquelle chaque auteur potentiel 
+correspond  une catgorie.  Dans cette optique, les textes doivent tre reprsents 
+par des caractristiques (mots, n-grammes de caractres, lemmes, parties du 
+discours, brves squences de ces dernires, etc.) ayant la capacit de discriminer 
+entre les diverses catgories.  Sur ces reprsentations, on entraine un classifieur afin 
+quÕil puisse dtecter les particularits propres  chaque auteur.   
+Proposer de rsoudre automatiquement lÕattribution dÕauteur en recourant  des 
+techniques de catgorisation automatique implique lÕide que les deux domaines 
+partagent des caractristiques communes.  En effet, dans les deux cas les textes 
+doivent tre reprsents en sÕappuyant sur les mots prsents, leurs frquences, voire 
+leurs positions.  De mme, la taille trs importante du vocabulaire ncessite un 
+lagage et une slection des termes les plus adquats pour distinguer les diverses 
+catgories sous-jacentes.  Toutefois, lÕattribution dÕauteur possde ses traits propres.  
+Ainsi, la distinction entre auteurs devrait sÕappuyer sur les diffrences de style et, 
+dans cette perspective, la prise en compte de la ponctuation ou des mots outils 
+sÕavre pertinente.  Enfin, le recours  un sparateur gnral sÕavre, pour certains 
+auteurs, peu efficace compar  une rgle de dcision plus simple fonde 
+uniquement sur un nombre restreint de formes trs frquentes.   
+LÕobjectif de cet article est de comparer les diverses stratgies de slection des 
+prdicteurs en attribution dÕauteur afin de dterminer si la spcificit de cette tche 
+permet de baser une dcision uniquement sur un nombre restreint de mots trs 
+frquents.  De plus, nous souhaitons connatre la variation de lÕefficience par la prise 
+en compte dÕun nombre plus important de termes.  Dans la suite de cet article, nous 
+prsenterons les principales stratgies suggres dans la slection des vocables pour 
+l'attribution d'auteur (section 2).  La troisime section expose les grandes lignes du 
+corpus utilis dans nos expriences.  La quatrime section dcrit quelques mthodes 
+utilises pour la slection de prdicteurs.  La cinquime section prsente deux 
+modles de classification performants en attribution dÕauteur et la sixime rsume 
+lÕvaluation  des fonctions de slection avec nos deux sparateurs.  Finalement, une 
+conclusion dresse les principales contributions de cette tude.   
+2.  tat des connaissances 
+Afin de proposer une solution automatique en attribution d'auteur (Juola, 2006), 
+les premires tudes ont cherch  dfinir une mesure stylomtrique devant tre 
+constante pour un auteur et diffrente d'un crivain  l'autre (Holmes, 1998).  Ainsi, 
+Stratégies de sélection de prédicteurs pour l’attribution d’auteur 217
+on a propos de tenir compte de la longueur moyenne des mots ou des phrases, du 
+nombre moyen de syllabes par mots, voire de la taille du vocabulaire V (note |V|) 
+par rapport  la longueur du document.  Comme alternative, on a propos la valeur R 
+= |V| / sqrt(n)) de Guiraud avec |V| indiquant la taille du vocabulaire, le rapport entre 
+le nombre de hapax legomena (note V1) et la taille du vocabulaire (soit |V1| / |V|), 
+ou le rapport entre le nombre de mots apparaissant deux fois (not |V2|) et la taille du 
+vocabulaire (Sichel, 1975).  Toutefois, ces mesures ont l'inconvnient d'tre assez 
+instables (Baayen, 2008), en particulier face  des documents relativement courts (de 
+taille infrieure  mille mots).  De plus, le genre (posie, pice de thtre, roman, 
+texte en vers ou en prose) influence de telles mesures.   
+Afin de fonder les dcisions dÕattribution sur le vocabulaire, Mosteller & 
+Wallace (1964) proposent de slectionner de manire semi-automatique les vocables 
+les plus pertinents.  Cette tude met en lumire lÕimportance des mots frquents et, 
+en particulier, des mots fonctionnels (dterminants, prpositions, conjonctions, 
+pronoms et quelques auxiliaires).  Par exemple, les auteurs remarquent que le terme 
+language est utilis deux fois par Hamilton mais dix fois par Madison.  Dans ce 
+raisonnement, on admet que la frquence d'apparition de certains mots ne sont pas 
+sous le contrle conscient de l'auteur et qu'ils varient d'une personne  l'autre.   
+En poursuivant cette voie, Burrows (2002) propose de slectionner les mots 
+pouvant reflter le style d'un auteur et qui soient indpendants du thme trait.  Dans 
+cette perspective, le critre de slection retenu se limite  la frquence dÕoccurrence.  
+Ainsi le vocabulaire  retenir comprendra les 50  150 vocables les plus frquents, 
+ensemble comprenant une forte proportion de mots fonctionnels.  Ce seuil sera 
+repouss  800 (Hoover, 2004) puis  4 000 (Hoover, 2007) avec lÕinclusion de mots 
+lexicaux frquents (noms, adjectifs, adverbes et verbes).   
+Les tudes menes par Zhao & Zobel (2005, 2007) proposent de dfinir a priori 
+les vocables  retenir.  Dans ce cas, on retient essentiellement les mots fonctionnels 
+en ignorant les mots lexicaux lis aux thmatiques.  Pour la langue anglaise, ces 
+auteurs suggrent une liste de 363 formes, un ensemble correspondant au contenu 
+dÕune liste de mots outils dÕun moteur de recherche.   
+Finalement, dÕautres auteurs proposent de sÕappuyer sur des techniques 
+dveloppes dans le cadre de la catgorisation thmatique (Stamatatos, 2009).  Dans 
+cette perspective, nous devons dÕabord slectionner les termes possdant le meilleur 
+pouvoir discriminant puis entraner un sparateur.  Dans cette tude, nous nous 
+intressons  la premire phase.  Dans ce cadre, lÕtude comparative de Yang & 
+Pedersen (1999) value six mesures de slection, sur deux corpus et  lÕaide de deux 
+classifieurs (k-Nearest Neighbors et Linear Least Squares Fit).  Leurs rsultats 
+indiquent quÕun lagage bas sur la frquence documentaire (df) apporte des 
+rsultats similaires  des mthodes plus complexes bases sur le gain dÕinformation 
+(nomm aussi expected mutual information) ou du !2.  Pour Sebastiani (2002), le 
+rapport de cotes (odds ratio) et la mtrique du !2 permettent dÕobtenir gnralement 
+les meilleures performances.   
+218 Jacques Savoy
+Toutefois, une diffrence importante persiste entre lÕattribution dÕauteur et la 
+catgorisation thmatique.  En effet, dans cette dernire, on propose dÕliminer les 
+mots trs frquents et peu ou pas porteurs de sens (Yang, 1999) (Sebastiani, 2002), 
+tandis que ces derniers sont valoriss comme marqueurs de style.  Enfin, des tudes 
+plus rcentes en attribution dÕauteur tendent  se fonder sur dÕautres lments que le 
+lexique comme la prsence dÕune signature, la mise en pages, le type et la frquence 
+des csures ou lÕusage dÕtiquettes HTML (Zheng et al., 2006).  Avec lÕadjonction 
+de ces caractristiques augmentant lÕespace de reprsentation, la ncessit dÕune 
+bonne stratgie de slection se trouve renforce.   
+3.  Corpus d'valuation 
+Grce  des collections tests, nous pouvons valuer et comparer divers 
+reprsentations et classifieurs.  Contrairement  la catgorisation automatique, les 
+tudes en attribution d'auteur disposent d'un nombre restreint de corpus.  De plus, les 
+corpus disponibles comprennent un nombre limit de documents et seulement 
+quelques auteurs potentiels (par exemple, les Federalist Papers (Mosteller & 
+Wallace, 1964) comprennent 85 articles et la paternit de 12 dÕentre eux demeure 
+incertaine (on hsite essentiellement entre deux auteurs possibles)).  
+Dsirant fonder nos conclusions sur une base plus large et au moyen dÕune 
+collection stable et facilement accessible, nous avons slectionn un sous-ensemble 
+de la collection CLEF- 2003 (Peters et al., 2004).  Cette partie comprend les articles 
+publis durant lÕanne 1995 dans le journal Glasgow Herald.  Si le corpus complet 
+compte 56 472 documents, nous ne connaissons le ou les auteur(s) que pour 28 687  
+dÕentre eux.  De ce dernier sous-ensemble, nous avons slectionn les articles 
+rdigs par un seul auteur et cart les journalistes ayant crit peu dÕarticles durant 
+lÕanne 1995.  Finalement, nous avons obtenu un corpus de 5 408 articles crits par 
+vingt auteurs diffrents.   
+Dans le tableau 1 nous avons indiqu le nom des journalistes, le thme principal 
+correspond  chaque auteur, puis le nombre dÕarticles rdigs.  On constate que le 
+nombre dÕarticles par journaliste varie fortement entre le minimum de 30 (J. Fowler) 
+et le maximum de 433 (A. Wilson).  En dernire colonne, nous avons indiqu la 
+longueur moyenne (en nombre de mots) des articles rdigs, subdiviss par auteur.  
+Sur cette base, on constate que cette moyenne varie fortement entre auteurs, avec 
+une valeur minimale de 452 (A. Wilson) jusqu' un maximum de 1 301 (J. 
+Davidson).   
+Si nous attribuons de manire alatoire entre les vingt auteurs chaque document, 
+nous obtiendrons un taux de russite proche des 5 %.  Si nous tenons compte du fait 
+que les vingt journalistes nÕont pas t le mme nombre de documents, nous 
+pouvons choisir systmatiquement lÕauteur du plus grand nombre dÕarticles (A. 
+Wilson).  Dans ce cas de figure, la taux de russite sÕlverait  8 % (433 / 5408).  
+Cette valeur limite reprsente la performance minimale dÕun systme dÕattribution.  
+Stratégies de sélection de prédicteurs pour l’attribution d’auteur 219
+Les sparateurs tudis vont nous permettre dÕobtenir des performances suprieures 
+en sÕappuyant sur une reprsentation adquate des divers textes et profil dÕauteur.   
+Afin de reprsenter un article, nous devons nous fonder sur des termes 
+relativement frquents.  Ainsi, lÕapparition dÕun mot usit une seule fois dans un 
+corpus (hapax legomena) doit tre ignore.  Cette technique dÕlagage permet de 
+rduire le vocabulaire des articles du Glasgow Herald de 79 220 vocables  45 402 
+(diminution relative de 42,7 %).  Ensuite, nous avons limin les termes prsents 
+uniquement chez lÕun des journalistes considrs.  Certes la Ç signature È dÕune 
+personne peut se relever par un usage exclusif de certaines formes (par exemple, la 
+chienlit de C. de Gaulle ou le abracadabrantesque de J. Chirac).  Par contre, le 
+systme peut galement tre plus facilement tromp par lÕemploi dÕune telle forme.  
+LÕapplication de cette rgle rduit encore notre vocabulaire dont la taille sÕlve  
+36 773 vocables (soit 46,4 % du volume initial).  Enfin, afin de garantir une 
+reprsentation des crits se basant plus sur des lments de style, nous avons dcid 
+de ne retenir que les vocables apparaissant deux fois au moins dans un article.  
+Aprs ce dernier lagage, la taille du vocabulaire possible comprendra 10 994 
+entres, soit 13,9 % de la taille initiale.   
+La question que lÕon dsire rsoudre est de savoir quelle stratgie de slection 
+permettra dÕextraire de cet ensemble relativement important de 10 994 termes, un 
+nombre plus restreint de prdicteurs efficients.   
+ Nom Thme 
+Nombre 
+dÕarticles 
+Longueur 
+moyenne 
+1 Davidson Julie arts & cinma 57 1 310 
+2 Douglas Derek sports 410 808 
+3 Fowler John arts & cinma 30 890 
+4 Gallacher Ken sports 408 727 
+5 Gillon Doug sports 368 713 
+6 Johnstone Anne politique 72 1 258 
+7 McConnell Ian business 374 455 
+9 McLean Jack social 118 1 008 
+9 Paul Ian sports 418 842 
+11 Reeves Nicola business 370 531 
+11 Russell William arts & cinma 291 1 019 
+12 Shields Tom politique 173 1 001 
+13 Sims Christopher business 390 471 
+14 Smith Ken social 212 616 
+15 Smith Graeme social 329 520 
+16 Traynor James sports 339 983 
+17 Trotter Stuart politique 336 666 
+18 Wilson Andrew business 433 452 
+19 Wishart Ruth politique 72 1 137 
+20 Young Alf business 208 1 013 
+Tableau 1.  Rpartition des articles slectionns par journaliste 
+(Glasgow Herald, 5 408 articles) 
+220 Jacques Savoy
+Stratégies de sélection de prédicteurs pour l’attribution d’auteur 221
+Driv de la mesure !
+2
+, le coefficient de corrlation CC(tk, ci) (Ng et al. 1997) 
+correspond  la sixime fonction retenue.  Dans ce cas, une association positive se 
+signale par une valeur positive, tandis quÕune opposition sera signale par une valeur 
+ngative.  Une valeur proche de zro symbolise lÕabsence de lien entre le terme et la 
+catgorie.  Finalement et suivant la mme interprtation, le coefficient GSS peut 
+galement servir  slectionner les meilleurs termes (Gavalotti et al., 2000).   
+En plus de ces sept fonctions de slection, nous pouvons galement retenir la 
+frquence documentaire (df) indiquant le nombre de documents indexs par le terme 
+tk.  Cette stratgie apporte de bons rsultats (Yang & Pedersen, 1997) et a dj t 
+propose en attribution dÕauteur (Grieve, 2007).  De plus, le style dÕun crivain peut 
+se signaler par lÕemploi de mots fonctionnels ou par lÕusage frquent de certaines 
+formes.  Dans cette perspective, nous pourrions ainsi suivre Burrows (2002) et 
+recourir  la frquence dÕoccurrence absolue (tfa) pour slectionner les termes les 
+plus utiles et pour distinguer les divers styles.   
+En appliquant lÕune des fonctions dcrites ci-dessus, nous obtenons une valeur 
+dÕutilit locale, note f(tk, ci), pour chaque terme tk et catgorie ci.  En prsence 
+dÕune catgorisation binaire, cette fonction suffit pour dfinir une valeur slective  
+chaque terme.  En rgle gnrale, nous devons faire face  un nombre plus lev de 
+catgories (ou auteurs dans notre cas).  Afin de comparer de manire globale les 
+termes entre eux, nous devons agrger les valeurs locales sur lÕensemble des |C| 
+catgories.  Pour dfinir une telle valeur dÕutilit globale dÕun terme tk (note U(tk)), 
+on peut calculer le maximum sur toutes les catgories ou la somme pondre (en 
+fonction de lÕimportance de chaque catgorie) comme lÕindique lÕquation 1.   
+     U (t
+k
+)  = Max
+i
+f (t
+k
+,c
+i
+) ,       U (t
+k
+)  = Prob[c
+i
+]! f (t
+k
+,c
+i
+)
+i=1
+|C|
+"  (1) 
+Afin de sectionner les m termes les plus adapts  discriminer entre les 
+catgories, nous prendrons les m termes ayant les valeurs dÕutilit U(tk) les plus 
+leves selon la formule dÕagrgation (maximum ou somme pondre).   
+5.  Mthodes dÕattribution 
+Comme mthode dÕattribution dÕun texte  un auteur, nous avons retenu 
+lÕapproche propose par Zhao & Zobel (2005, 2007).  Ces derniers suggrent de 
+mesurer la distance entre le profil dÕun auteur Aj (concatnation de tous ses crits) et 
+un texte requte (not Q) en utilisant la divergence Kullback-Leibler (KLD) 
+(nomme aussi entropie relative (Maning & Schtze, 1999)).  Cette mesure est 
+exprime dans lÕquation 2 dans laquelle Probq[tk] et Probaj(tk) indiquent la 
+probabilit dÕoccurrence du terme tk dans la requte ou le j
+e
+ profil dÕauteur Aj.  Lors 
+du calcul, nous imposons que 0. log2[0/p] = 0, et p. log2[p/0] = ".  
+222 Jacques Savoy
+      KLD(Q || A
+j
+) = Prob
+q
+[t
+k
+] ! log
+2
+Prob
+q
+[t
+k
+]
+Prob
+aj
+[t
+k
+]
+"
+#
+$
+$
+%
+&
+'
+'k=1
+m
+(  (2) 
+Lorsque deux distributions sont identiques, la valeur KLD sera nulle.  Dans tous 
+les autres cas, la valeur retourne sera positive, et dÕautant plus importante si la 
+distance entre les distributions drives du document Q et du profil Aj est leve.   
+Pour estimer les probabilits sous-jacentes, nous avons appliqu le principe du 
+maximum de vraisemblance en estimant que Prob[tk] = tfak/n, avec tfak indiquant la 
+frquence dÕoccurrence du terme et n la taille du document concern.  Cette 
+estimation peut tre lisse afin dÕliminer la prsence de probabilits nulles 
+(Manning & Schtze, 1999).  Dans nos valuations, nous avons adopt lÕapproche 
+de Lidstone en estimant les probabilits par (tfak+#) / (n+#.|V|), avec |V| indiquant la 
+taille du vocabulaire retenue.  Nous avons fix la valeur du paramtre #  0,01 car 
+cette dernire retourne la meilleure performance.   
+Comme seconde mthode dÕattribution, nous avons retenu le modle Delta 
+(Burrows, 2002) mesurant la distance entre deux textes par des frquences 
+standardises (score Z).  Cette valeur est obtenue depuis la frquence relative (note 
+tfrkj pour le terme tk dans le document Dj) par soustraction de la moyenne (note 
+meank) et division par lÕcart-type (sdk), moyenne et cart-type estims en 
+considrant le corpus sous-jacent (Hoover, 2004).   
+      Z score(t
+kj
+) = 
+tfr
+kj
+ ! mean
+k
+sd
+k
+  (3) 
+Cette valeur est associe  chaque vocable retenu pour chaque document ou 
+profil dÕauteur.  A lÕaide de ces valeurs, on peut calculer la distance Delta $ entre un 
+document requte not Q et un profil dÕauteur not Aj selon la formule 4.   
+      !(Q,A
+j
+) = 1
+m
+"   Z score(t
+kq
+)# Z score(t
+kj
+) 
+k=1
+m
+$   (4) 
+Dans cette formulation, nous attachons la mme importance  chaque terme tk.  
+Une diffrence importante entre Q et Aj apparat lorsque, pour un vocable donn, les 
+deux scores Z sont levs et de signe oppos.  A lÕinverse, si le terme est usit avec 
+la mme frquence relative dans les deux textes, la diffrence des scores Z sera 
+faible, indiquant un rapprochement possible des deux textes.  Finalement, si pour les 
+m termes retenus les diffrences entre les scores Z demeurent faibles, la distance $ 
+rsultante sera minime, indiquant que les deux textes sont probablement crits par la 
+mme personne.   
+  
+Stratégies de sélection de prédicteurs pour l’attribution d’auteur 223
+6.  Evaluation 
+Avec notre corpus Glasgow Herald (5 408 articles, 20 auteurs), nous avons 
+valu lÕapproche KLD en utilisant les 363 mots dfinis a priori par Zhao & Zobel 
+(2007).  Cette liste contient essentiellement des mots fonctionnels (the, in, but, not, 
+am, of, can, É), de mme que des termes frquents (became, nothing, É).  
+Quelques entres sÕavrent peu frquentes (howbeit, whereafter, whereupon), 
+indiquent le comportement attendu lors de la segmentation (doesn, weren) ou 
+correspondent  un choix plus arbitraire (indicate, missing, specifying, seemed).  
+Comme 19 mots nÕapparaissent pas dans notre corpus, le nombre de mots rellement 
+utiliss sera de 363 Ð 19 = 344. 
+Afin dÕvaluer la performance de nos sparateurs, nous devons rserver des 
+instances pour lÕapprentissage et des exemples distincts pour le test.  Pour respecter 
+cette contrainte, nous pourrions adopter la validation croise comme stratgie 
+dÕvaluation (Hastie et al. 2009).  Dans le cas prsent, nous avons choisi lÕapproche 
+leaving-one-out attribuant toutes les instances, sauf une, pour lÕentranement et la 
+dernire pour le test.  Enfin, nous itrons cette dmarche sur lÕensemble des 5 408 
+articles, chacun  tour de rle est exclu de lÕensemble destin  lÕapprentissage.   
+En appliquant cette stratgie dÕvaluation et sur la base des 344 termes dfinis a 
+priori, le taux de russite (micro-average) de lÕapproche KLD correspond  70,8 %, 
+valeur que nous avons indique en premire ligne du tableau 3.  Cette slection faite 
+manuellement et a priori peut tre compare aux neuf autres approches 
+automatiques de slection, avec la fonction agrgation maximum ou somme 
+pondre.  Le tableau 3 redonne, pour chaque fonction de slection, la meilleure 
+combinaison du nombre de termes  slectionner et la fonction dÕagrgation.   
+ KLD Delta 
+ Paramtre Perform. Paramtre Perform. 
+ 344 mots  70,8 %   400 63,7 %   
+df(tk,ci) 1 500 / max 85,2 %   300 / max 62,9 %   
+tfa(tk,ci) 2 000 / somme 85,6 %   300 / somme 61,2 %   
+DIA(tk,ci) 2 000 / somme 85,1 %   150 / somme 58,3 %   
+!2(tk,ci) 5 000 / somme 84,4 %   150 / max 38,7 %   
+GSS(tk,ci) 2 000 / max 82,3 %   150 / max 34,0 %   
+GI(tk,ci) 3 000 / somme 84,6 %   150 / max 35,4 %   
+CC(tk,ci) 2 000 / somme 78,0 %   3 000 / max 15,4 %   
+IMP(tk,ci) 4 000 / somme 78,9 %   2 000 / max 15,1 %   
+OR(tk,ci) 4 000 / somme 64,7 %   3 000 / max 12,6 %   
+Tableau 3.  valuation des diverses stratgies de slection avec les approches 
+KLD (Zhao & Zobel, 2007) ou Delta (Burrows, 2002) 
+224 Jacques Savoy
+Afin de comparaison, nous avons repris la meilleure performance de la mthode 
+Delta (Burrows, 2002) qui sÕobtient en considrant les 400 termes les plus frquents 
+dans le corpus.  Le taux de russite sÕlve alors  63,7 %.  Dans la quatrime 
+colonne du tableau 3, nous avons repris les neuf fonctions de slection pour 
+dterminer le nombre optimum de termes  retenir de mme que la fonction 
+dÕagrgation avec la mthode Delta.   
+Les rsultats obtenus dans ce tableau indiquent que les meilleures stratgies de 
+slection reposent sur des mthodes simples comme le DIA, la frquence 
+documentaire (df) ou dÕoccurrence (tfa).  Ces deux dernires se rencontrent 
+frquemment dans les tudes empiriques en attribution dÕauteur.   
+Comme deuxime choix, nous rencontrons la mtrique du !
+2
+, la fonction GSS et 
+le gain dÕinformation (GI).  On notera toutefois que dans le cadre du modle KLD, 
+la diffrence de performance avec les slections simples (df, tfa ou DIA) ne sÕavre 
+pas trs importante.  Le coefficient de corrlation CC, le rapport de cotes (OR) ou 
+lÕinformation mutuelle ponctuelle (IMP) sÕavrent des choix peu intressants, dans 
+le cadre de lÕattribution dÕauteur pour le moins.   
+Afin de savoir si une diffrence de performance entre deux approches sÕavre 
+statistiquement significative, nous avons opt pour le test du signe (Conover, 1971), 
+(Yang & Liu, 1999) (test bilatral) avec un seuil de signification % = 1 %.  En 
+appliquant ce test, lÕhypothse H0 admet que les deux modles possdent des 
+niveaux de performance similaire.  Dans la table 3, nous avons retenu la premire 
+ligne comme modle de rfrence et les diffrences de performance statistiquement 
+significatives sont indiques par une croix Ô Õ.  Comme on le constate, les 
+performances obtenues aprs slection des termes sont trs souvent 
+significativement diffrents du modle de dpart. 
+Au niveau du nombre de termes  retenir pour reprsenter les documents et le 
+profil dÕauteur, nous constatons que la mthode Delta ncessite un nombre restreint 
+de mots (entre 150 et 400).  Dans le cadre de ce modle, la slection des bons 
+prdicteurs se limite  la frquence documentaire (df) ou dÕoccurrence (tfa).  Les 
+autres mthodes de slection tendent  pnaliser plus ou moins fortement la 
+performance globale.   
+Pour lÕapproche KLD base sur 344 mots, nous constatons que la prise en 
+compte dÕun nombre plus lev (environ 1 500  3 000 termes) permet dÕaccrotre 
+de manire significative la performance (de 70,8 %  environ 85 %).  De plus, 
+diverses mthodes de slection offrent des gains de performance assez similaire.  
+Afin de mieux comprendre les diffrences entre les mthodes de slection, nous 
+avons calcul le pourcentage de termes communs slectionns par deux fonctions de 
+slection.  En nous limitant  la fonction dÕagrgation somme et en faisant varier le 
+nombre de termes entre 150 et 3 000, nous avons constat que les fonctions DIA, df 
+et tfa retournent, en moyenne, les ensembles de termes fortement similaires (entre 
+92 %  100 % identique).  De mme, les ensembles de mots slectionns par les 
+Stratégies de sélection de prédicteurs pour l’attribution d’auteur 225
+fonctions CC et !
+2
+ sont trs similaires, ce qui sÕexplique par le fait que la fonction 
+CC est drive du calcul de la mesure !
+2
+.  Il existe un rapprochement possible entre 
+les fonctions GSS et GI dont les ensembles de termes slectionns disposent, en 
+moyenne, dÕun recouvrement de lÕordre de 77 %.  Enfin, les fonctions OR et IMP ne 
+se rapprochent clairement dÕaucune autre, oprant des slections fort distinctes.   
+7.  Conclusion 
+ Dans le cadre de cette communication, nous avons prsent lÕattribution 
+dÕauteur comme une tche particulire en catgorisation de textes.  Dans ce cadre, la 
+slection des termes pouvant tre discriminatoires entre les diverses catgories 
+reprsente une composante centrale pour atteindre une bonne qualit de rponses.   
+Afin de pouvoir valuer et comparer diffrentes fonctions de slection, nous 
+avons retenu sept fonctions ainsi que deux stratgies de slection couramment 
+usites en attribution dÕauteur.  Comme mthode dÕattribution, nous avons repris la 
+divergence Kleiber-Leibner propose par Zhao & Zobel (2005 ; 2007) ainsi que la 
+rgle Delta (Burrows, 2002), deux mthodes proposant de trs bonnes performances.   
+Sur la base dÕun corpus dÕarticles de presse (Glasgow Herard) comprenant 5 408 
+articles, crits par vingt journalistes, nos valuations indiquent que des stratgies de 
+slection bases sur la frquence documentaire (df) ou dÕoccurrence (tfa) tendent  
+fournir de trs bons rsultats, comparables  la fonction DIA.  Dans une deuxime 
+classe de performance on retrouve la mtrique du !
+2
+, la fonction GSS et celle du 
+gain dÕinformation (GI).  LÕemploi de lÕinformation mutuelle ponctuelle (IMP), du 
+coefficient de corrlation (CC) ou du rapport de cotes (OR) ne permettent pas 
+dÕapporter une slection efficace des termes, dans le cadre de lÕattribution dÕauteur 
+pour le moins.   
+Contrairement  lÕtude de Yang & Pedersen (1997) conduite dans le cadre de la 
+catgorisation thmatique, les mesures de gain dÕinformation (GI) ou !
+2
+ ne 
+correspondent pas aux meilleures stratgies de slection en attribution dÕauteur.   De 
+mme, Sebastiani (2002) indique que les meilleures fonctions de slection sont le 
+rapport des cotes avec lÕoprateur dÕagrgation somme (ORsum) ou le GSSmax.  Notre 
+tude indique que dans le cadre de lÕattribution dÕauteur pour le moins, ces choix ne 
+sÕavrent pas pertinents.   
+Remerciements 
+LÕauteur tient  remercier les trois relecteurs anonymes pour leurs commentaires 
+constructifs dans la rdaction de cette communication.   
+  
+226 Jacques Savoy
+8.  Bibliographie 
+Baayen R.H.  Analyzing Linguistic Data.  A Practical Introduction to Statistics using R.  
+Cambridge, Cambridge University Press, Cambridge, 2008. 
+Burrows J.F.  Ç Delta: A measure of stylistic difference and a guide to likely authorship È, 
+Literary and Linguistic Computing, vol. 17, n¡ 3, 2002, p. 267-287.   
+Caropreso M.F., Matwin S.  & Sebastiani F.  Ç A learner-independent evaluation of the 
+usefulness of statistical phrases for automated text categorization È, In A.G. Chin, Text 
+Databases and Document management: Theory and Practice.  Hershey, Idea 2001, p. 78-
+102. 
+Carpenter R.H. & Seltzer R.V.   Ç On Nixon's Kennedy style È, Speaker and Gavel, 7(41), 
+1970.  
+Church K.W. & Hanks P.  Ç Word association norms, mutual information and lexicography È, 
+Proceedings ACL, 1989, p. 76-83. 
+Conover W.J.  Practical Nonparametric Statistics, 2nd Ed., New York, John Wiley & Sons, 
+1971.   
+Craig H. & Kinney A.F. Shakespeare, Computers, and the Mystery of Authorship, Cambridge, 
+Cambridge University Press, 2009. 
+Dunning T.E.  Ç Accurate methods for the statistics of surprise and coincidence È, 
+Computational Linguistics, vol. 19, n¡ 1, 1993, p. 61-74. 
+Fuhr N., Hartmann S., Knorz G., Lustig G., Schwantner M. & Tzeras K.  Ç AIR/X a rule-
+based multi-stage indexing system for large subject fields È, Proceedings RIAO, 1991, p. 
+606-623. 
+Gavalotti L., Sebastiani F.  & Simi M.  Ç Experiments on the use of feature selection and 
+negative evidence in automated text categorization È, Proceedings ECDL, 2000, p. 59-68. 
+Grieve J.  Ç Quantitative authorship attribution:  An evaluation of techniques È, Literary and 
+Linguistic Computing, vol. 22, n¡ 3, 2007, p. 251-270.  
+Hastie T., Tibshirani R. & Friedman J.  The Elements of Statistical Learning.  Data Mining, 
+Inference, and Prediction,  2
+nd
+ Ed., New York, Springer, 2009.   
+Holmes D.I.  Ç The evolution of stylometry in humanities scholarship È, Literary and 
+Linguistic Computing, vol. 13, n¡ 3, 1998, p. 111-117.   
+Hoover D.L.  Ç Testing Burrows's delta È, Literary and Linguistic Computing, vol. 19, n¡ 4, 
+2004, p. 453-475. 
+Hoover D.L.  Ç Corpus Stylistics, Stylometry, and the styles of Henry James È, Style, vol. 41, 
+n¡ 2, 2007, p. 160-189. 
+Juola P.  Ç Authorship attribution È, Foundations and Trends in Information Retrieval, vol. 1, 
+n¡ 3, 2006.   
+Labb D. Si deux et deux font quatre, Molire n'a pas crit Dom Juan, Paris, Max Milo, 2009. 
+Love H.  Attributing Authorship: An Introduction, Cambridge University Press, Cambridge, 
+2002. 
+Manning C.D., Raghavan P. & Schtze H.  Introduction to Information Retrieval, Cambridge, 
+Cambridge University Press, 2008. 
+Manning C.D. & Schtze H.  Foundations of Statistical Natural Language Processing, 
+Cambridge, The MIT Press, 1999. 
+Monire D. & Labb D. Ç L'influence des plumes de l'ombre sur les discours des politiciens È, 
+Actes JADT, Besanon, 2006, pp. 687-696 
+Mosteller F. & Wallace D.L.  Applied Bayesian and Classical Inference: The Case of the 
+Federalist Papers, Reading (MA), Addison-Wesley, 1964. 
+Stratégies de sélection de prédicteurs pour l’attribution d’auteur 227
+Ng H.T., Goh W.B. & Low K.L.  Ç Feature selection, perceptron learning, and a usability case 
+study for text categorization È,  Proceedings ACM-SIGIR, 1997, p. 67-73. 
+Peters C., Braschler M., Gonzalo J. & Kluck M. (Eds).  Comparative Evaluation of 
+Multilingual Information Access Systems.  Berlin, Springer-Verlag, LNCS #3237, 2004. 
+Sebastiani F.  Ç Machine learning in automatic text categorization È, ACM Computing Survey, 
+vol. 14, n¡ 1, 2002, p. 1-27. 
+Sichel H.S.  Ç On a distribution law for word frequencies È, Journal of the American 
+Statistical Association, vol. 70, n¡ 351, 1975, p. 542-547. 
+Stamatatos E.  Ç A survey of modern authorship attribution methods È, Journal American 
+Society for Information Science and Technology, vol. 60, n¡ 3, 2009, p. 433-214. 
+Yang Y. & Pedersen J.O.  Ç A comparative study of feature selection in text categorization È, 
+In Proceedings ICML, 1997, p. 412-420.   
+Yang Y.  Ç An evaluation of statistical approaches to text categorization È, Information 
+Retrieval, vol. 1, n¡ 1-2, 1999, p. 69-90.   
+Yang, Y., & Liu, JX.  Ç A re-examination of text categorization methods È, In Proceedings of 
+the ACM-SIGIR'1999, p. 42-49 
+Zhao Y. & Zobel J.  Ç Effective and scalable authorship attribution using function words È, 
+Proceedings of AIRS, 2005, Berlin, Springer-Verlag, p. 174-189. 
+Zhao Y. & Zobel J.  Ç Searching with style:  Authorship attribution in classic literature È, 
+Proceedings ACSC2007, 2007, Ballarat, p. 59-68. 
+Zheng R., Li J., Chen H. & Huang Z.  Ç A framework for authorship identification of online 
+messages: Writing-style features and classification techniques È,  Journal of the American 
+Society for Information Science & Technology, vol. 57, n¡ 3, 2006, p. 378-393.  
+  
+228 Jacques Savoy
+9.  Annexe 
+ 
+DIA(tk,ci) Prob[ci | tk] 
+IMP(tk,ci)  log2
+Prob[t
+k
+,c
+i
+]
+Prob[t
+k
+] ! Prob[c
+i
+]
+"
+#
+$
+%
+&
+' = log2 Prob[tk | ci ]
+"# %&( log2 Prob[tk ]
+"# %&  
+OR(tk,ci)  
+Prob[t
+k
+| c
+i
+] ! 1" Prob[t
+k
+|"c
+i
+])
+1" Prob[t
+k
+| c
+i
+]) ! Prob[tk |"ci ]
+  
+GI(tk,ci) Prob[t,c]! log2
+Prob[t,c]
+Prob[t] ! Prob[c]
+"
+#$
+%
+&'t ({t
+k
+,)t
+k
+}
+*
+c ({c
+i
+,)c
+i
+}
+*  
+!2(tk,ci) 
+n ! Prob[t
+k
+,c
+i
+]!Prob["t
+k
+,"c
+i
+]( )" Prob[tk ,"ci ]!Prob["tk ,ci ]( )#$ %&
+2
+Prob[ t
+k
+]! Prob["t
+k
+]!Prob[c
+i
+]!Prob["c
+i
+]
+ 
+CC(tk,ci) 
+n ! Prob[t
+k
+,c
+i
+]!Prob["t
+k
+,"c
+i
+]( )" Prob[tk ,"ci ]!Prob["tk ,ci ]( )#$ %&
+Prob[ t
+k
+]! Prob["t
+k
+]!Prob[c
+i
+]!Prob["c
+i
+]
+ 
+GSS(tk,ci) Prob[tk ,ci ]!Prob["tk ,!ci ]( )! Prob[tk ,!ci ]!Prob["tk ,ci ]( )  
+Tableau A.1.  Liste des fonctions utilises pour la slection des termes 
+avec leur quation correspondante 
+ 
+ Estimation Assoc. pos. Indp. 
+DIA(tk,ci) a / (a+b)   
+IMP(tk,ci) log2[a.n / (a+b).(a+c)] >> 0 ! 0 
+OR(tk,ci) (a . d) / (c . b) > 1 ! 1 
+GI(tk,ci) 
+    a/n . log2[a.n / (a+b)(a+c)] 
++ b/n . log2[b.n / (a+b)(b+d)] 
++ c/n . log2[c.n / (a+c)(c+d)] 
++ d/n . log2[d.n / (b+d)(c+d)] 
+>> 0 ! 0 
+!2(tk,ci) 
+n . (a.d - c.b)2 / 
+[(a+c).(b+d).(a+b).(c+d)] 
+>> 1 ! 0 
+CC(tk,ci) 
+sqrt(n) . (a.d - c.b) / 
+sqrt[(a+c).(b+d).(a+b).(c+d)] 
+>> 0 ! 0 
+GSS(tk,ci) [(a.d) - (c.d)] /n
+2 >> 0 ! 0 
+Tableau A.2.  Estimation des fonctions de slection et les indices permettant de 
+dfinir une association positive ou lÕindpendance 
+ 

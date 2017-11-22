@@ -1,0 +1,410 @@
+Nonparametric Distribution Analysis
+for Text Mining
+Alexandros Karatzoglou, Ingo Feinerer, and Kurt Hornik
+Abstract A number of new algorithms for nonparametric distribution analysis
+based on Maximum Mean Discrepancy measures have been recently introduced.
+These novel algorithms operate in Hilbert space and can be used for nonparamet-
+ric two-sample tests. Coupled with recent advances in string kernels, these methods
+extend the scope of kernel-based methods in the area of text mining.
+We review these kernel-based two-sample tests focusing on text mining where
+we will propose novel applications and present an efficient implementation in
+the kernlab package. We also present an efficient and integrated environment
+for applying modern machine learning methods to complex text mining problems
+through the combined use of the tm (for text mining) and the kernlab (for
+kernel-based learning) R packages.
+Keywords Kernel methods  R  Text mining.
+1 Introduction
+Recent advances in the field of machine learning provide an ever enhanced arsenal
+of methods that can be used for inference and analysis in the domain of text min-
+ing. Machine learning techniques are at the basis of many modern text applications
+such as document filtering and ranking. Kernel-based methods have been shown to
+perform strongly in this area, particularly in text classification with Support Vector
+Machines using either a simple “bag of words” representation (i.e., term frequencies
+with various normalizations) (Joachims, 2002), or more sophisticated approaches
+like string kernels (Lodhi, Saunders, Shawe-Taylor, Cristianini, & Watkins, 2002),
+or word-sequence kernels (Cancedda, Gaussier, Goutte, & Renders, 2003).
+Many advances in the area of kernel-based machine learning have not yet
+been introduced into the field of text mining. By taking advantage of the
+Alexandros Karatzoglou (B)
+INSA de Rouen, LITIS, Rouen, France, e-mail: alexis@ci.tuwien.ac.at
+A. Fink et al., (eds.), Advances in Data Analysis, Data Handling and Business
+Intelligence, Studies in Classification, Data Analysis, and Knowledge Organization,
+c
+295
+DOI 10.1007/978-3-642-01044-6 27, Springer-Verlag Berlin Heidelberg 2010
+296 A. Karatzoglou et al.
+R (R Development Core Team, 2008) statistical programming environment and the
+kernlab (Karatzoglou, Smola, Hornik, & Zeileis, 2004) package along with the
+tm (Feinerer, Hornik, & Meyer, 2008) package for text mining we will introduce
+novel applications of a new algorithm for the two-sample test in the area of text
+mining. This test combined with state-of-the-art kernels for text data can be highly
+useful for authorship attribution (Holmes, 1994; Malyutov, 2006), stylometry, and
+linguistic forensics. We will also introduce a fast and memory efficient implementa-
+tion of string kernels which allows for the application of any kernel method to very
+large text documents.
+2 Maximum Mean Discrepancy
+In Gretton, Borgwardt, Rasch, Schölkopf, and Smola (2007) a nonparametric test
+over two samples was introduced. The test is based on finding a smooth function
+that returns different values for samples drawn from different distributions. The test
+statistic that is used to compare the two samples is the difference of the means of
+a function from a function class F . If the test statistic exceeds a certain calculated
+bound then the samples are likely to have been drawn from different distributions.
+Test Statistic
+The test statistic that is used in Gretton et al. (2007) is the Maximum Mean Dis-
+crepancy (MMD) which depends on the function class of F . This function class is
+chosen to be the unit ball in Reproducing Kernel Hilbert Space (RKHS). Consider
+two samples X D fx1; : : : ; xmg and Y D fy1; : : : ; yng drawn independently and
+identically distributed (i.i.d) from distributions p and q respectively then if F is a
+function class with D ! R for a given domainD then the MMD is defined as
+MMDŒF ; p; q D sup
+f 2F
+
+ExpŒf .x/  EyqŒf .y/
+
+: (1)
+Selecting the unit ball in RKHS as the function class of F leads to
+MMD2ŒF ; p; q D Ex;x0pŒk.x; x0/
+ 2Exp;yqŒk.x; y/C Ey;y0qŒk.y; y0/; (2)
+where the kernel k implicitly defines the function class F . Given the set Z D
+fz1; : : : ; zmg for m i.i.d. random variables with zi D .xi ; yi / an empirical estimate
+of MMD2 is given by
+MMD2uŒF ; X; Y  D
+1
+m.m 1/
+mX
+i¤j
+h.zi ; zj / (3)
+Nonparametric Distribution Analysis for Text Mining 297
+which corresponds to a one sample U-statistic (Gretton et al., 2007) with h.zi ; zj / D
+k.xi ; xj /C k.yi ; yj / k.xi ; yj /  k.xj ; yi /.
+Bound
+The test statistic is used to distinguish between the null hypothesisH0 that the sam-
+ples come from the same distribution and the alternative hypothesis H1 where the
+samples come from different distributions. This is simply achieved by computing
+a bound for the test statistic above for which the H0 hypothesis is rejected. This
+bound is subject to an upper bound ˛ on the probability of a Type I error, i.e., the
+probability of rejecting the H0 hypothesis although it is true.
+As shown in Gretton et al. (2007) under the H1 hypothesis the MMD2u that is the
+MMD of the U-statistic converges asymptotically to a Gaussian distribution
+m
+1
+2 .MMD2u MMD2ŒF ; p; q/! N.0; 
+2u /; (4)
+where 
+2u D 4.EzŒ.Ez0h.z; z0//2  ŒEz;z0.h.z; z0//2/ while Ez0h.z; z0/ D 0 holds
+underH0 and MMD2u converges to
+mMMD2u !
+1X
+iD1
+i Œz
+2
+i  2; (5)
+where zi 	 N.0; 2/ i.i.d. and i are derived from the eigenvalue problem
+Z
+Nk.x; x0/ i .x/ dp.x/ D i i .x0/; (6)
+where Nk.x; x0/ is the centered kernel in feature space,  i.x0/ the eigenvectors and
+the integral is with respect to the distribution p.
+A way of computing a bound to the test statistic is by finding an approximation
+to the .1˛/ quantiles of the MMD2u under theH0 hypothesis. One asymptotic way
+to calculate this bound is by using bootstrapping on the original data and another by
+fitting Pearson curves to the first moments (Gretton et al., 2007).
+3 String Kernels
+One of the main advantages of kernel-based machine learning methods is the ability
+to apply such methods directly on structured data such as text documents without
+the need of a feature extracting step. Kernels used on text range from word-sequence
+kernels which directly compare the words between two documents to string kernels
+which are comparing strings appearing in the documents.
+298 A. Karatzoglou et al.
+String kernels work by calculating a weighted sum over the common substring
+between two strings, as shown in (7). Different types of kernels arise by the use of
+different weighting schemas. The generic form of string kernels between two sets
+of characters x and x0 is given by the equation
+k.x; x0/ D
+X
+svx;s0vx0
+sıs;s0 D
+X
+s2A
+nums.x/nums.x0/s; (7)
+where A represents the set of all non empty strings and s is a weight or decay
+factor which can be chosen to be fixed for all substrings or can be set to a different
+value for each substring. This generic representation includes a large number of
+special cases, e.g., setting s ¤ 0 only for substrings that start and end with a
+whitespace character gives the “bag of words” kernel. In this paper we consider
+four different types of string kernels:
+ Constant (constant): All common substrings are matched and weighted equally.
+ Exponential decay (exponential): All common substrings are matched but the
+substring weight decays as the matching substring gets shorter.
+ k-spectrum (spectrum): This kernel considers only matching substrings of exactly
+length k, i.e., s D 1 for all jsj D k.
+ Bounded range (boundrange) kernel where s D 0 for all jsj > n that is
+comparing all substrings of length less or equal to a given length n.
+String kernels can be computed by building the suffix tree of a string x and
+computing the matching statistics of a string x0 by traversing string x0 through the
+suffix tree of x. Given a suffix tree it can be proven that the occurrence of a certain
+substring y can be calculated by the number of nodes at the end of the path of y
+in the suffix tree. Auxiliary suffix links, linking identical suffixes in the tree are
+utilized to speed up the computations (Vishwanathan & Smola, 2003). Two main
+suffix tree operations are required to compute string kernels, a top down traversal
+for annotation and a suffix link traversal for computing matching statistics, both
+operations can be performed more efficiently on a suffix array.
+The enhanced suffix array (Abouelhoda, Kurtz, & Ohlebusch, 2004) of a string
+x, is an array of integers corresponding to the lexicographically sorted suffixes of
+x with additional information stored to allow for the reproduction of almost all
+operations available on a suffix tree. Suffix arrays bring the advantage of better
+memory use and locality thus most operations can be performed faster than on the
+original suffix trees (Teo & Vishwanathan, 2006).
+4 R Infrastructure
+R (R Development Core Team, 2008) provides a unique environment for text mining
+but has until recently lacked tools that would provide the necessary infrastructure in
+order to handle text and compute basic text related operations. Package tm provides
+this functionality.
+Nonparametric Distribution Analysis for Text Mining 299
+4.1 tm
+The tm (Feinerer, Hornik, & Meyer, 2008) package provides a framework for
+text mining applications in R. It offers functionality for managing text documents,
+abstracts the process of document manipulation and eases the usage of heteroge-
+neous text formats in R. The package has integrated database backend support to
+minimize memory demands. An advanced meta data management is implemented
+for collections of text documents to alleviate the usage of large and with meta data
+enriched document sets. Its data structures and algorithms can be extended to fit
+custom demands, since the package is designed in a modular way to enable easy
+integration of new file formats, readers, transformations and filter operations. tm
+provides easy access to preprocessing and manipulation mechanisms such as whites-
+pace removal, stemming, or conversion between file formats. Further a generic filter
+architecture is available in order to filter documents for certain criteria, or perform
+full text search.
+4.2 kernlab
+kernlab (Karatzoglou et al., 2004) is an extensible package for kernel-based
+machine learning methods in R. The package contains implementations of most
+popular kernels, including a fast suffix-array based implementation of string kernels
+and also provides a range of kernel methods for classification, regression (Support
+Vector Machine, Relevance Vector Machine), clustering (kernel k-means, Spectral
+Clustering), ranking, and Principal Component Analysis (PCA).
+4.3 Framework for Kernel Methods on Text in R
+During the development of tm interoperability between kernlab and tm was a
+major design goal. TextDocument collections are essentially lists of character
+vectors where each character vector contains a text document, and can be used
+directly as input data for all corresponding functions in kernlab. Functions in
+tm can be used to preprocess the text collections and perform operations such as
+stemming, part-of-speech tagging, or searches utilizing full text and meta data.
+In combination the two packages provide a unique framework in R for applying
+modern kernel-based Machine Learning methods to large text document collections.
+4.4 Kernel MMD
+A kernel-based implementation of MMD is provided in the kernlab kmmd()
+function. The implementation provides interfaces for data in matrix format, as a
+kernel matrix or as a list (e.g., a TextDocument collection). Since the algorithm
+300 A. Karatzoglou et al.
+is based on sums over terms in kernel matrices it is implemented by computing
+these kernel matrices in a block-wise manner and adding up the computed block to
+the final sum. This avoids any memory problems that might occur when calculating
+a whole kernel matrix of a large data set in memory.
+5 Experiments
+We evaluate the performance of the algorithm on on-line available text data. The
+experiments are performed either by drawing two samples from a single text collec-
+tion or topic or by comparing texts from different collections or topics, all with a
+confidence level of ˛ D 0:05.
+5.1 Data
+Our first data set is a subset of the Reuters-21578 data set (Lewis, 1997) containing
+stories collected by the Reuters news agency. The data set is publicly available and
+has been widely used in text mining research within the last decade. Our subset
+contains an excerpt of 800 documents in the category “acq” (articles on acquisitions
+and mergers) and an excerpt of 400 documents in the category “crude” (stories in
+the context of crude oil).
+The second data set is a subset of the SpamAssassin public mail corpus (http:
+//spamassassin.apache.org/publiccorpus/). It is freely available and offers authentic
+e-mail communication with classifications into normal (ham) and unsolicited (spam)
+mail. For the experiment we had 400 spam documents available.
+The third data set consists of books from the famous The Wizard of Oz series
+(freely downloadable via the Gutenberg Project at http://www.gutenberg.org/) which
+has been among the most popular children’s novels in the last century. The firsts
+book were created and written by Lyman Frank Baum, first published in 1900. A
+series of Oz books followed until Baum died in 1919. After his death Ruth Plumly
+Thompson continued the story of Oz books. We had 21 books available written from
+either of the two authors.
+5.2 Results
+We see that the test performs very well on all our experiment cases when using string
+kernels, almost irrelevant of the string kernel type and parameters. The tables depict
+the data sets that are being tested along with the kernel and length that is used. The
+test returns TRUE when the H0 hypothesis is rejected. The Asymptotic bound, the
+first and third order moments are also given in the tables. In detail with data that
+comes from the same topic (and hence we assume from the same distribution) we
+Nonparametric Distribution Analysis for Text Mining 301
+Table 1 Kernel MMD results for two identical data sets (using the Reuters “crude” corpus) under
+different string kernels
+Data Set Type Arg H0 rej. AsymBound 1st moment 3rd moment
+CrudeVsCrude Exponential FALSE 0:013 0:000 0:000
+CrudeVsCrude Constant FALSE 0:057 0:000 0:000
+CrudeVsCrude Spectrum 4 FALSE 0:048 0:026 0:001
+CrudeVsCrude Spectrum 6 FALSE 0:037 0:000 0:000
+CrudeVsCrude Spectrum 8 FALSE 0:053 0:010 0:000
+CrudeVsCrude Spectrum 10 FALSE 0:053 0:000 0:000
+CrudeVsCrude Boundrange 4 FALSE 0:005 0:000 0:000
+CrudeVsCrude Boundrange 6 FALSE 0:008 0:000 0:000
+CrudeVsCrude Boundrange 8 FALSE 0:008 0:000 0:000
+CrudeVsCrude Boundrange 10 FALSE 0:009 0:000 0:000
+Table 2 Kernel MMD results testing Reuters “crude” and “acq” data sets under different string
+kernels
+Data Set Type Arg H0 rej. AsymBound 1st moment 3rd moment
+CrudeVsAcq Exponential TRUE 0:011 0:190 0:015
+CrudeVsAcq Constant TRUE 0:032 0:304 0:006
+CrudeVsAcq Spectrum 4 TRUE 0:034 0:415 0:101
+CrudeVsAcq Spectrum 6 TRUE 0:041 0:406 0:076
+CrudeVsAcq Spectrum 8 TRUE 0:038 0:376 0:046
+CrudeVsAcq Spectrum 10 TRUE 0:042 0:356 0:029
+CrudeVsAcq Boundrange 4 TRUE 0:006 0:150 0:013
+CrudeVsAcq Boundrange 6 TRUE 0:008 0:173 0:016
+CrudeVsAcq Boundrange 8 TRUE 0:008 0:187 0:018
+CrudeVsAcq Boundrange 10 TRUE 0:010 0:196 0:019
+Table 3 KMMD results testing Reuters “crude” data set against SpamAssassin mail corpus under
+different string kernels
+Data Set Type Arg H0 rej. AsymBound 1st moment 3rd moment
+AcqVsSpam Exponential TRUE 0:010 0:392 0:138
+AcqVsSpam Constant TRUE 0:012 0:288 0:047
+AcqVsSpam Spectrum 4 TRUE 0:017 0:514 0:232
+AcqVsSpam Spectrum 6 TRUE 0:017 0:448 0:164
+AcqVsSpam Spectrum 8 TRUE 0:013 0:376 0:103
+AcqVsSpam Spectrum 10 TRUE 0:014 0:336 0:074
+AcqVsSpam Boundrange 4 TRUE 0:011 0:387 0:139
+AcqVsSpam Boundrange 6 TRUE 0:011 0:403 0:150
+AcqVsSpam Boundrange 8 TRUE 0:011 0:408 0:153
+AcqVsSpam Boundrange 10 TRUE 0:012 0:409 0:153
+have the H0 hypothesis not rejected (see Table 1) while data coming from differ-
+ent topics get the H0 hypothesis rejected by the test (see Tables 2, 3, and 4). It is
+especially interesting that the tests work both in cases where the data sets are rather
+similar (e.g., both corpora are from Reuters but on a different topic, as shown in
+302 A. Karatzoglou et al.
+Table 4 Kernel MMD results testing Reuters “crude” data set against Wizard of Oz books under
+different string kernels
+Data Set Type Arg H0 rej. AsymBound 1st moment 3rd moment
+CrudeVsOz Exponential TRUE 0:023 0:275 0:060
+CrudeVsOz Constant TRUE 0:097 0:427 0:010
+CrudeVsOz Spectrum 4 TRUE 0:120 0:747 0:485
+CrudeVsOz Spectrum 6 TRUE 0:161 0:869 0:640
+CrudeVsOz Spectrum 8 TRUE 0:156 0:783 0:466
+CrudeVsOz Spectrum 10 TRUE 0:134 0:691 0:309
+CrudeVsOz Boundrange 4 TRUE 0:017 0:253 0:057
+CrudeVsOz Boundrange 6 TRUE 0:017 0:270 0:063
+CrudeVsOz Boundrange 8 TRUE 0:018 0:280 0:066
+CrudeVsOz Boundrange 10 TRUE 0:018 0:286 0:067
+Table 5 MMD using term-document matrices along different weightings (term frequency, term
+frequency inverse document frequency, and binary)
+Data Set Type Arg H0 rej. AsymBound 1st moment 3rd moment
+CrudeVsCrude Linear tf FALSE 37:282 0:000 0:000
+CrudeVsCrude Linear tf-idf FALSE 208:305 0:000 0:000
+CrudeVsCrude Linear bin FALSE 6:739 0:000 0:000
+CrudeVsAcq Linear tf FALSE 39:918 9:117 51:368
+CrudeVsAcq Linear bin FALSE 5:163 3:807 7:389
+AcqVsSpam Linear tf FALSE 247:393 23:519 387:846
+AcqVsSpam Linear bin TRUE 1:463 4:605 17:574
+CrudeVsOz Linear tf FALSE 2; 206; 959:822 3; 986:405 15; 818; 506:600
+CrudeVsOz Linear bin FALSE 326:956 49:435 2; 253:067
+Table 2) but also for very different text collections (e.g., the novels on the Wizard of
+Oz compared to Reuters news article stories, as shown in Table 4).
+An important observation is that our good results clearly depend on the use
+of string kernels. We also implemented the MMD tests utilizing standard term-
+document matrices (see Table 5) leading to far inferior results compared to string
+kernels.
+We also conducted some experiments on using MMD for authorship attribution
+on the Wizard of Oz data set. However we were not able to clearly distinguish
+the stylometry between the two authors Baum and Thompson, especially for books
+where the authorship has also been unclear for literature experts for decades. Kernel
+Principal Component Analysis plots (see Figs. 1 and 2) confirms that the writing
+style is not easy distinguishable and that authorship attribution for the Wizard of Oz
+is a very hard problem in general (Binongo, 2003).
+Nonparametric Distribution Analysis for Text Mining 303
+−5 −4 −3 −2 −1 0 1 2
+−
+3
+−
+2
+−
+1
+0
+1
+2
+3
+4
+1st Principal Component
+2n
+d 
+P
+rin
+ci
+pa
+l C
+om
+po
+ne
+nt
+Fig. 1 Kernel Principal component plot of for five Oz books using 500 line chunks on two
+principal components
+1.00.50.0−0.5−1.0
+−
+2
+−
+1
+0
+1
+2
+1st Principal Component
+2n
+d 
+P
+rin
+ci
+pa
+l C
+om
+po
+ne
+nt
+Fig. 2 Kernel Principal component plot for five Oz books using 100 line chunks on two principal
+components
+304 A. Karatzoglou et al.
+Running Time
+For our experiments we ran our tests on a high-performance cluster (multi-core
+processors at each processing node, 8–16 GB RAM depending on the cluster node)
+resulting in a running time of only a few minutes for all of our data sets. The tests
+also run very fast on contemporary desktop or workstation computers. Single tests
+run within seconds for normal-sized data sets.
+6 Conclusion
+We presented a new way of applying the two-sample test to text data which can be
+very useful for tagging, authorship attribution, stylometry, and linguistic forensics.
+We also presented an efficient implementation of the algorithm in the kernlab
+package and a new set of fast string kernels. Using these kernels we showed that the
+algorithm performs strongly on a number of texts.
+References
+Abouelhoda, M. I., Kurtz, S., & Ohlebusch, E. (2004). Replacing suffix trees with enhanced suffix
+arrays. Journal of Discrete Algorithms, 2, 53–86.
+Binongo, J. N. G. (2003). Who wrote the 15th book of Oz? An application of multivariate analysis
+to authorship attribution. Chance, 16(2), 9–17.
+Cancedda, N., Gaussier, E., Goutte, C., & Renders, J.-M. (2003, August). Word-sequence kernels.
+Journal of Machine Learning Research, 3(6), 1059–1082 (special issue on machine learning
+methods for text and images).
+Feinerer, I., Hornik, K., & Meyer, D. (2008, March). Text mining infrastructure in R. Journal of
+Statistical Software, 25(5), 1–54.
+Gretton, A., Borgwardt, K. M., Rasch, M., Schölkopf, B., & Smola, A. J. (2007). A kernel method
+for the two-sample-problem. In Schölkopf, B., Platt, J., & Hofmann, T., (Eds.), Advances in
+neural information processing systems (Vol. 19). MIT Press: Cambridge, MA.
+Holmes, D. I. (1994). Authorship attribution. Computers and the Humanities, 28, 87–106.
+Joachims, T. (2002). Learning to classify text using support vector machines: Methods, theory, and
+algorithms. Boston: Kluwer Academic Publishers.
+Karatzoglou, A., Smola, A., Hornik, K., & Zeileis, A. (2004). kernlab – An S4 package for kernel
+methods in R. Journal of Statistical Software, 11(9), 1–20.
+Lewis, D. (1997). Reuters-21578 text categorization test collection.
+Lodhi, H., Saunders, C., Shawe-Taylor, J., Cristianini, N., & Watkins, C. (2002, February). Text
+classification using string kernels. Journal of Machine Learning Research, 2, 419–444.
+Malyutov, M. B. (2006). Authorship attribution of texts: A review. In R. Ahlswede, L. Bäumer,
+N. Cai, H. K. Aydinian, V. Blinovsky, C. Deppe, & H. Mashurian (Eds.), General theory
+of information transfer and combinatorics, Lecture Notes in Computer Science (Vol. 4123,
+pp. 362–380). Berlin: Springer.
+R Development Core Team. (2008). R: A language and environment for statistical computing.
+Vienna, Austria: R Foundation for Statistical Computing. ISBN 3-900051-07-0.
+Nonparametric Distribution Analysis for Text Mining 305
+Teo, C. H., & Vishwanathan, S. V. N. (2006). Fast and space efficient string kernels using suffix
+arrays. In Proceedings of the 23rd International Conference on Machine Learning (pp. 929–
+936). New York: ACM Press.
+Vishwanathan, S. V. N., & Smola, A. J. (2003). Fast kernels for string and tree matching. In
+S. Becker, S. Thrun, & K. Obermayer (Eds.), Advances in neural information processing
+systems (Vol. 15, pp. 569–576). Cambridge, MA: MIT Press.

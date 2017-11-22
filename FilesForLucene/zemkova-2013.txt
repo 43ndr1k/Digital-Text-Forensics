@@ -1,0 +1,1641 @@
+Masarykova univerzita
+Filozofická fakulta
+Ústav českého jazyka
+Český jazyk se specializací počítačová lingvistika
+Využití syntaktické informace při
+verifikaci autorství anonymních
+dokumentů
+Bakalářská diplomová práce
+Kristýna Zemková
+Vedoucí práce:
+Jaro 2013 RNDr. Vojtěch Kovář
+Prohlášení
+Prohlašuji a svým podpisem stvrzuji, že tato diplomová práce je mým původním
+autorským dílem, které jsem vypracovala samostatně. Všechny zdroje, prameny
+a literaturu, které jsem při vypracování používala nebo z nich čerpala, v práci řádně
+cituji s uvedením úplného odkazu na příslušný zdroj.
+Blansko, 19. června 2013
+Kristýna Zemková
+Konzultant: RNDr. Jan Rygl
+i
+Poděkování
+Na tomto místě bych chtěla nejprve poděkovat svému vedoucímu práce Vojtěchu
+Kovářovi za vedení práce, ochotu a pochopení. Rovněž mé veliké díky si zaslouží
+i Honza „Sir“ Rygl za „ztracený“ čas, trpělivost, ochotu a opravdu pevné nervy.
+V neposlední řadě děkuji svým kamarádům a členům rodiny za cenné rady, připo-
+mínky i morální oporu. Nezapomenu ani na kolektiv laboratoře Centra zpracování
+přirozeného jazyka, kde mi byla poskytnuta možnost používat výpočetní zdroje
+Centra, ale hlavně děkuji všem za nepopsatelnou a neopakovatelnou atmosféru, ve
+které jsem mohla pracovat, a díky které tato práce vůbec mohla vzniknout. Díky
+všem!
+Tato práce vznikla v souvislosti s projektem VF20102014003 Ministerstva vnitra
+České republiky.
+ii
+Klíčová slova
+syntaktická analýza, SET, synt, MaltParser, MSTParser, složkový strom, závislostní
+strom, hybridní strom, autorství dokumentů, verifikace autorství, accuracy
+iii
+Obsah
+1 Úvod 1
+2 Určování autorství 2
+2.1 Verifikace autorství . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+2.2 Stav bádání . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+2.2.1 Morfologické značky . . . . . . . . . . . . . . . . . . . . . . . . 4
+2.2.2 Slovní druhy . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+2.2.3 Bigramy slovních druhů . . . . . . . . . . . . . . . . . . . . . . 4
+2.2.4 Délka vět . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+2.2.5 Interpunkce . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+2.2.6 Frekvence slov z tzv. „stoplistu“ . . . . . . . . . . . . . . . . . 6
+2.2.7 Opakování slov . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+3 Syntaktická analýza 7
+3.1 Syntaktický analyzátor SET . . . . . . . . . . . . . . . . . . . . . . . . 7
+3.2 Další syntaktické analyzátory . . . . . . . . . . . . . . . . . . . . . . . 11
+3.2.1 Syntaktický analyzátor synt . . . . . . . . . . . . . . . . . . . 11
+3.2.2 MaltParser . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.2.3 MSTParser . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+3.3 Využití syntaktické analýzy . . . . . . . . . . . . . . . . . . . . . . . . 14
+3.3.1 Maximální hloubka závislostního stromu . . . . . . . . . . . . 15
+3.3.2 Faktor větvení závislostního stromu . . . . . . . . . . . . . . . 15
+3.3.3 Frekvence neterminálů složkového stromu . . . . . . . . . . . 15
+3.3.4 Frekvence pojmenování v závislostním stromu . . . . . . . . . 16
+3.4 Využití syntaxe . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+3.4.1 Pořadí vybraných neterminálů . . . . . . . . . . . . . . . . . . 16
+3.4.2 Relativní frekvence dvojic morfologických značek . . . . . . . 17
+4 Strojové učení 18
+4.1 Jednovrstvé strojové učení . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4.2 Dvouvrstvé strojové učení . . . . . . . . . . . . . . . . . . . . . . . . . 19
+5 Experimenty 21
+5.1 Použitá data . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+5.2 Vyhodnocování úspěšnosti . . . . . . . . . . . . . . . . . . . . . . . . . 22
+5.3 Metodika měření . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+5.4 Jednovrstvé strojové učení . . . . . . . . . . . . . . . . . . . . . . . . . 24
+5.4.1 Experimenty s malými daty . . . . . . . . . . . . . . . . . . . . 25
+iv
+5.4.2 Experimenty s většími daty . . . . . . . . . . . . . . . . . . . . 27
+5.5 Dvouvrstvé strojové učení . . . . . . . . . . . . . . . . . . . . . . . . . 29
+5.5.1 Experimenty s malými daty . . . . . . . . . . . . . . . . . . . . 30
+5.5.2 Experimenty s většími daty . . . . . . . . . . . . . . . . . . . . 30
+5.6 Jednovrstvé vs. dvouvrstvé . . . . . . . . . . . . . . . . . . . . . . . . 31
+6 Závěr 33
+Příloha A 40
+v
+1. Úvod
+Problémem určování autorství dokumentů se lidé zabývají již několik staletí. Už
+na přelomu 16. a 17. století se vedly vleklé spory ohledně původu divadelních
+her běžně připisovaných Williamu Shakespearovi. Pochybnosti vzešly například
+z faktu, že autor „Shakespearových děl“ musel být velmi dobře obeznámen s širo-
+kým okruhem znalostí, jakými jsou např. právo, hudba, cizí jazyky nebo chování
+šlechticů. Nikde ale nenajdeme žádné zmínky o tom, že by měl W. Shakespeare
+k takovýmto informacím přístup.1 Ani v českých zemích není o spory o autorství
+nouze, například slavné Rukopisy Královédvorský a Zelenohorský2. Nová vlna
+zájmu o určování autorství textů přišla s rozvojem internetu. Od té doby se s potře-
+bou rozpoznat autora určitého textu setkáváme dnes a denně.
+Větná syntax se chápe jako systémově uspořádaný soubor větných vzroců a pra-
+videl, tj. obecných a jazykovým společenstvím přijatých organizačních principů,
+podle nichž mluvčí utváří věty, jedinečné výpovědi.3 Syntax jako taková stále na-
+bývá na významu. Jelikož syntaktický rozbor věty nese informace o způsobu slo-
+žení jednotlivých výrazů do vět, je možné se domnívat, že by syntax mohla být pro
+verifikaci autorství přínosem.
+Je-li zmiňována syntaktická analýza v kontextu verifikace autorství, může se
+jednat o dvě úlohy. První úkol je ten, že se zkoumá přínos syntaktické analýzy na
+výsledek verifikace autorství, druhý možný úkol je porovnávání úspěšnosti syn-
+taktických analyzátorů mezi sebou na úloze verifikace autorství.
+Cílem této bakalářské práce je právě průzkum možnosti využití syntaktické
+analýzy při verifikaci autorství. Proto popíšu autorské rysy již používané ve stá-
+vajících projektech zaměřených na verifikaci autorství a stručně je charakterizuji.
+V další kapitole představím metodu strojového učení. Zmíním se o jednovrstvém
+i dvouvrstvém strojovém učení, nastíním, jakým způsobem se z nasbíraných dat
+dokáže strojové učení „naučit“ rozlišovat autorství. Popíšu způsob provádění ex-
+perimentů i jejich vyhodnocení. Nejprve pomocí těchto experimentů vyhodnotím
+přínos metrik (již používaných) pro úpěšnost daného problému na konkrétních
+datech. K takovýmto charakteristikám přidám nové rysy, získáné syntaktickou ana-
+lýzou zkoumaných textů, zhodnotím i jejich přínos pro úspěšnost verifikace au-
+torství a pokusím se dojít k závěru, zda může být syntaktická analýza řešení tako-
+výchto problémů nápomocna.
+1A Beginner’s Guide to the Shakespeare Authorship Problem. In: Shakespeare Oxford Society:
+Dedicated to Researching and Honoring the True Bard [online]. [cit. 2013-04-12]. Dostupné z: <http:
+//www.shakespeare-oxford.com/?p=35>.
+2viz např. IVANOV, Miroslav. Tajemství RKZ. 1. vyd. Praha: Mladá fronta, 1969, 650 s.
+3DANEŠ, František a Zdeněk HLAVSA. Větné vzorce v češtině. Vyd. 1. Praha: Academia, 1981,
+270 s.
+1
+2. Problém určování autorství
+Problém určování autorství lze rozdělit na několik podúloh: verifikaci autorství
+(authorship verification, někdy též kontrola autorství), přiřazování autorství (author-
+ship attribution) a shlukování podle autorství (authorship clustering). Někdy se sem
+řadí i plagiátorství.4
+Verifikace autorství: jsou dány dva dokumenty a úkolem je určit, zda dokumenty
+byly napsány stejným autorem, nebo ne.5
+Přiřazování autorství: je dán konkrétní dokument a množina potenciálních autorů
+s kolekcí jejich textů; úkolem je určit, který z nabízených autorů dokument
+napsal.6
+Shlukování podle autorství: úkolem je určit, zda daný text napsal jeden autor,
+nebo to byla kolektivní práce více autorů. Nesnaží se o klasifikaci, výsledkem
+tedy není určení konkrétního autora, ale pouze podobnost s jinými texty.7
+Plagiátorství: převzetí cizí myšlenky a prohlášení jí za vlastní.
+2.1 Verifikace autorství
+V této práci se zaměřím pouze na automatickou verifikaci autorství.
+Jak již bylo zmíněno výše, verifikace autorství je úkol, při kterém jsou dány
+ukázky stylu psaní jednoho konkrétního autora a je třeba rozhodnout, zda další
+texty byly napsány tímtéž autorem, nebo ne;8 jsou jen dvě možné odpovědi: ano,
+uvedený autor skutečně napsal předložený text, ne, text nebyl napsán touto oso-
+bou. Jelikož se ale styl jednoho autora může (at’ už vědomě, či nevědomě) měnit
+postupem času nebo se může lišit i text od textu, verifikace autorství není jednodu-
+chá.
+Při verifikaci není cílem vymezit autorství vůči skupině konkrétních alterna-
+tivních autorů, předmětem zájmu je pouze fakt, zda daný text napsal konkrétní
+autor či nikoliv.9
+4RYGL, Jan. Determining Authorship of Anonymous Texts. 2013. Nepublikované teze. Brno:
+Masarykova univerzita, Fakulta informatiky. s. 2.
+5FARKHUND, Iqbal et al. E-mail authorship verification for forensic investigation. In: Proceedings
+of the 2010 ACM Symposium on Applied Computing: SAC ’10. New York, USA, 2010. s. 1591.
+6RYGL, Jan. Determining Authorship of Anonymous Texts. [online]. 2013 [cit. 2013-06-13]. Rigorózní
+práce. Masarykova univerzita, Fakulta informatiky. s. 2.
+7ŘEHŮŘEK, Radim. Rešeršní analýza pro projekt strojového určování autorství. 2009. s. 7.
+8KOPPEL, Moshe a Jonathan SCHLER. Authorship verification as a one-class classification prob-
+lem. In: Proceedings of the twenty-first international conference on Machine learning (ICML ’04). New York,
+NY, USA: ACM, 2004, s. 62.
+9ŘEHŮŘEK, Radim. Rešeršní analýza pro projekt strojového určování autorství. 2009. s. 9.
+2
+KAPITOLA 2. URČOVÁNÍ AUTORSTVÍ 2.2. STAV BÁDÁNÍ
+Algoritmus pro automatickou verifikaci autorství vyžaduje10:
+. Vývoj rozhodovací funkce (response function), která dá kýženou odpověd’,
+zda daný autor je či není původcem textu. Pro zadaný text musí tato funkce
+vrátit hodnotu založenou na autorských charakteristikách. Text je zkoumán
+z hlediska vybraných charakteristik a na základě analýz je vybráno číslo chara-
+kterizující podobu autorských stylů.
+. Definice prahové hodnoty (treshold value). Návratová hodnota funkce vyja-
+dřuje podobnost dvou autorů v intervalu 0 (jistota, že autoři jsou různí) až
+1 (jsme přesvědčeni o shodě). Problém je určit, od které hodnoty se přiklo-
+nit ke shodě autorství a pro které hodnoty považovat autory za různé. Tato
+mezní hodnota se označuje jako prahová a obvykle se volí jako 0,5 (stejná
+pravděpodobnost shodného i různého autorství).
+Verifikace autorství je velmi podstatná, lze ji označit za základní problém roz-
+lišování autorství. Proto se v této práci zaměřuji právě na verifikaci. Zlepšením
+metody verifikace, zejména zlepšením její úspěšnosti, se zvýší úspěšnost i u rozli-
+šování autorství obecně.
+Přiřazování autorství znamená takový problém, kdy je dána množina autorů
+a neznámý text a úkolem je určit, který z nabízených autorů daný text napsal.
+Samozřejmě je možné, že autor konkrétního textu se mezi kandidáty vůbec nevy-
+skytuje. Zúží-li se tento problém na přiřazení autorství o malém počtu kandidátů
+(k dispozici je pouze malá množina autorů, ze kterých se vybírá) na nejjednodušší
+případ, a to na binární rozhodování, zda daný dokument byl napsán konkrétním
+autorem, nebo ne, jedná se právě o verifikaci.
+Verifikace je rovněž zmiňována i v kontextu odhalování plagiátů.11
+2.2 Stav bádání
+Lingvista je schopen na základě jazykových či stylistických rysů určit pravděpodob-
+nost, že daný text napsal určitý autor. Při strojovém určování autorství je třeba
+počítači dát přesně definované charakteristiky textů. Aby byl stroj schopen říci, jak
+podobné si dva dokumenty jsou, je nutné vytvořit pro každý charakteristický rys
+určitou metriku a tu řádně formálně popsat.
+V průběhu zkoumání verifikace autorství se počítačoví lingvisté zaměřovali na
+velké množství charakteristických rysů, které mohou (at’ už větší či menší měrou)
+přispět k rozlišení autorů. Cílem této práce není vyčerpávající popis všech dosud
+zkoumaných metrik, uvedu pouze ty metriky, které dále využívám ke svým exper-
+imentům. Tyto rysy pak vstupují do strojového učení, popsaného v kapitole 4.
+V této sekci popíšu metriky v současnosti používané v rámci již běžícího pro-
+jektu ART (Authorship Recognition Tool12) podporovaného Ministerstvem vnitra Čes-
+ké republiky.
+10STAMATATOS, Efstathios, Nikos FAKOTAKIS a George KOKKINAKIS. Automatic Text Catego-
+rization in Terms of Genre and Author. In: Computational Linguistics. 2000, roč. 26, č. 4, s. 489-490.
+11KOPPEL, Moshe et al. The „Fundamental Problem“ of Authorship Attribution. In: English Studies.
+2012, roč. 93, č. 3, s. 284-286.
+12více o projektu ART v článku RYGL, Jan a Aleš HORÁK. A Framework for Authorship Identi-
+fication in the Internet Environment. In Proceedings of Fifth Workshop on Recent Advances in Slavonic
+Natural Language Processing, RASLAN 2011. Brno: Tribun EU, 2011. s. 117-124, 8 s.
+3
+KAPITOLA 2. URČOVÁNÍ AUTORSTVÍ 2.2. STAV BÁDÁNÍ
+2.2.1 Morfologické značky
+Diferenční metrika morfologické značky udává, jak často se v textu vyskytuje určitá
+morfologická kategorie, např. s jakou frekvencí se objevuje v dokumentu obouvidé
+sloveso, sloveso v 1. osobě či slovo ve 2. pádě. Úplný přehled zkoumaných morfo-
+logických kategorií uvádím v příloze A.
+2.2.2 Slovní druhy
+Slovní druhy (word classes) – podstatná jména, přídavná jména, zájmena, číslovky, slovesa,
+příslovce, předložky, spojky, částice, citoslovce – rovněž nejsou zastoupeny u různých
+autorů stejně. Lze tedy zjišt’ovat i frekvenci výskytu jednotlivých slovních druhů
+v dokumentu, a to jako podíl výskytu konkrétního slovního druhu ku počtu slov
+v celém dokumentu13, tedy jejich relativní frekvenci.
+Pravděpodobnost určitého slovního druhu lze určit relativně přesně u těch slov,
+která jsou rozpoznána softwarem na morfologickou analýzu správně. V této práci je
+použit morfologický analyzátor ajka vyvíjený na Fakultě informatiky Masarykovy
+univerzity v Brně. Výsledky této charakteristiky tedy velkou měrou závisí na ús-
+pěšnosti morfologické analýzy. Slova, u kterých použitý software není schopen
+určit slovní druh, se do statistiky nezařadí, vypustí se.
+U metriky slovních druhů jsou sledovány zvlášt’ slovní druhy na začátku věty,
+na konci věty i kdekoli v rámci celé věty.14
+2.2.3 Bigramy slovních druhů
+Bigram je n-prvková podposloupnost dané posloupnosti,15 kde n je rovno dvěma.
+Může se jednat o posloupnost písmen, slabik, slov či třeba vět, pro účely této práce
+se však bere v potaz posloupnost slov.
+Jelikož v různých textech autoři pojednávají o rozličných tématech, využívají
+velké množství slov. Bigramy se v textech vyskytují velice řídce. Není tedy možné
+zajistit tak rozsáhlý vzorek textů jednotlivých autorů, aby bylo možno pracovat
+s bigramy slov. Proto je vhodnější počítat s bigramy slovních druhů. Další důvod,
+proč se používají bigramy slovních druhů namísto bigramů slov, je ten, že slovní
+bigramy jsou závislé na tématu textu. Díky tomu se mohou použít u odhalování
+plagiátorství, nikoli však u verifikace autorství.
+Pracuje se s bigramy na začátku věty, na konci věty a zjišt’uje se i jejich procen-
+tuální rozložení v celé větě.
+Je to jedno z přesnějších kvalitativních ohodnocení autorských charakteristik.
+2.2.4 Délka vět
+Někteří autoři preferují jednoduché krátké věty, další dávají přednost kratším sou-
+větím a jiní zase souvětím dlouhým. Mezi autory nejsou rozdíly příliš velké na to,
+13RYGL, Jan a Aleš HORÁK. Authorship Attribution: Comparison of Single-layer and Double-
+layer Machine Learning in Petr Sojka, Aleš Horák, Ivan Kopeček, Karel Pala. Text, Speech and Dialogue
+- 15th International Conference. 7499. vyd. Brno: Springer, 2012. s. 285.
+14RYGL, Jan. Určování autorství anonymních textů na základě automaticky nalezených charakteristických
+znaků [online]. 2011 [cit. 2013-05-19]. Diplomová práce. Masarykova univerzita, Fakulta informatiky.
+Vedoucí práce Aleš Horák. s. 42.
+15HEGR, Jan. Automatické určení jazyka dokumentu založené na zpracování slabik [online]. 2011 [cit.
+2013-06-05]. Diplomová práce. Masarykova univerzita, Fakulta informatiky.
+4
+KAPITOLA 2. URČOVÁNÍ AUTORSTVÍ 2.2. STAV BÁDÁNÍ
+aby se daly považovat za průkazné. Je to tedy jen dobrý doplněk k jiným charak-
+teristikám.
+Průměrnou délka věty je možno počítat počítat dvěma různými způsoby. První
+přístup chápe délku věty jako poměr všech znaků ku počtu vět v dokumentu:
+prumerna_delka_vet =
+|pocet_znaku_v_dokumentu|
+|pocet_vet_v_dokumentu|
+Podobnost dokumentů (a) je pak vyjádřena jako poměr menší průměrné délky
+věty ku větší průměrné délce věty. Formálně tedy:
+a =
+min(p, q)
+max(p, q)
+,
+kde p je průměrná délka věty prvního dokumentu a q je průměrná délka věty
+druhého dokumentu.16 Tímto se ale sleduje spíše vizuální stránka autorova díla,
+nikoli fakt, zda mají stejný počet členů, protože získanou informací je, zda jsou
+věty na pohled stejně dlouhé.
+Druhý přístup chápe délku věty jako počet slov ve větě. Bez dalších úprav je
+tento přístup značně nepřesný. Nejen ze závorek, čárek i dalších znaků, ale i na-
+příklad z emotikonů se stanou slova, což nezanedbatelně mění statistiku. Je dobré
+tedy všechny řetězce, které obsahují jiné znaky než písmena, ignorovat, čímž je
+možné se soustředit jen na autorskou stylistiku (na délku věty).17
+2.2.5 Interpunkce
+Někteří autoři našli zalíbení v používání určitých interpunkčních znamének. Další
+autoři zase využívají celkově interpunkci méně než jiní.
+Tento rys popisuje frekvenci interpunkčních znamének v textu a jejich umístění
+ve větě. Výběr znamének ale nenese dostatek informací na to, aby se podle něj
+dalo autorství určit s nějakou rozumnou přesností. Provede-li se však syntaktická
+analýza textu, jednotlivým znaménkům se přiřadí přesnější význam, a styl autora
+se tak může promítnout výrazněji.
+Jsou popisována tato interpunkčí znaménka: ’.’, ’,’, ’:’, ’;’, ’?’,
+’!’, ’-’, ’(’. (Pravé závorky se neuvažují, měl by jich být stejný počet jako
+závorek levých.) Trojtečky ani uvozovky nejsou brány v potaz kvůli problematické
+detekci.
+Relativní frekvenci spočítáme jako poměr počtu výskytů konkrétního symbolu
+ku počtu všech znaků v dokumentu.18
+16RYGL, Jan a Aleš HORÁK. Authorship Attribution: Comparison of Single-layer and Double-
+layer Machine Learning in Petr Sojka, Aleš Horák, Ivan Kopeček, Karel Pala. Text, Speech and Dialogue
+- 15th International Conference. 7499. vyd. Brno: Springer, 2012. s. 285.
+17RYGL, Jan. Určování autorství anonymních textů na základě automaticky nalezených charakteristických
+znaků [online]. 2011 [cit. 2013-05-19]. Diplomová práce. Masarykova univerzita, Fakulta informatiky.
+Vedoucí práce Aleš Horák. s. 33-34.
+18RYGL, Jan a Aleš HORÁK. Authorship Attribution: Comparison of Single-layer and Double-
+layer Machine Learning in Petr Sojka, Aleš Horák, Ivan Kopeček, Karel Pala. Text, Speech and Dialogue
+- 15th International Conference. 7499. vyd. Brno: Springer, 2012. s. 286.
+5
+KAPITOLA 2. URČOVÁNÍ AUTORSTVÍ 2.2. STAV BÁDÁNÍ
+2.2.6 Frekvence slov z tzv. „stoplistu“
+Stoplist je seznam n (v tomto případě je n rovno 75) nejfrekventovanějších slov
+v češtině, která většinou nenesou význam. Protože mají tato slova ve větě význam
+spíše gramatický, lze je bez větší újmy na srozumitelnosti sdělení z věty vypustit.
+Jedná se především o spojky a předložky, tedy slova velmi krátká. Slova jsou brána
+z korpusu DESAM, vytvořeného na Fakultě informatiky Masarykovy univerzity.
+stoplist = {být, v, a, sebe, na, ten, s, z, že, který, o, mít, i, do, on, k, pro, tento, za, by,
+moci, svůj, ale, po, rok, jako, však, od, všechen, dva, nebo, tak, u, při, jeden, podle, Praha,
+jen, další, jeho, aby, co, český, jak, veliký, nový, až, už, muset, než, nebýt, člověk, jenž, léto,
+firma, první, náš, také, my, jejich, když, před, doba, chtít, jiný, mezi, ještě, já, ani, cena, již,
+jít, strana, či, druhý}19
+Opět je vypočítána relativní frekvence těchto slov jako poměr výskytu vybra-
+ného slova v dokumentu ku počtu slov v dokumentu. Jelikož je známa frekvence
+určitého slova ve velkých textech, aby se mohly dva dokumenty porovnat, není
+třeba uvažovat rozdíl frekvencí, je možné použít normalizovanou absolutní hod-
+notu rozdílu od průměrné frekvence.
+Tato metrika se od běžné metody zjišt’ování frekvence slov liší hlavně tím, že
+zde je výběr slov předdefinován, čímž je vliv tématu textu na verifikaci autorství
+omezen.20
+2.2.7 Opakování slov
+Charakteristický rys opakování slov popisuje, jaká slova se opakují v rámci jed-
+notlivých slovních druhů. Pomocí jednoduchého algoritmu se zjistí, která slova
+a kolikrát jsou v textu obsažena, a roztřídí se dle slovních druhů. Význam mají
+pouze slova s vícenásobným výskytem. Vypočítá se průměrná četnost opakování
+na počet vět. Např. je-li v textu třikrát slovo "ale" a pětkrát "a", spojky (k8) mají nor-
+malizovanou relativní frekvenci (normalizovaná frekvence je absolutní frekvence
+snížená o jedničku, čímž se odstraní všechna slova s frekvencí jedna):21
+(3− 1) + (5− 1)
+počet vět
+19frekvence slov ze stoplistu základních tvarů. In: Centrum zpracování přirozeného jazyka [online].
+[cit. 2013-04-22]. Dostupné z: <http://nlp.fi.muni.cz/cs/frekvenceslovzestoplistu_
+zakladnich_tvaru>.
+20RYGL, Jan. Určování autorství anonymních textů na základě automaticky nalezených charakteristických
+znaků [online]. 2011 [cit. 2013-05-19]. Diplomová práce. Masarykova univerzita, Fakulta informatiky.
+Vedoucí práce Aleš Horák. s. 44.
+21viz dokumentace k použitému frameworku
+6
+3. Syntaktická analýza
+V této kapitole vysvětlím, co to je syntaktický analyzátor, stručně představím vy-
+brané analyzátory, konkrétně analyzátor SET, synt, MaltParser a MSTParser. De-
+tailní popis analyzátorů není cílem této práce.
+Syntaktická analýza je odvětví počítačové lingvistiky, které v poslední době na-
+bývá na významu. Klade si za cíl najít povrchovou strukturu věty, tedy odhalit
+vztahy mezi slovy a většími jednotkami a také způsob, jakým se tyto jednotky spo-
+jují do vět. Tato informace ze syntaktické analýzy je důležitým předpokladem pro
+sémantickou či logickou analýzu daného textu, případně pro extrakci informací
+z textu.22
+Přenos informací se realizuje v promluvách neboli textech (komunikátech). Úko-
+lem syntaxe je podat systematický popis i výklad výrazové, významové i komu-
+nikativní struktury jednotek jazyka, které mají schopnost plnit promluvovou funkci,
+a jejich specifických funkcí. Cílem syntaxe je i postižení pravidelností ve stavbě
+výpovědí i jejich částí a také se snaží zjistit, jaké je systémové uspořádání jednotek.
+Stanovuje jejich typy, souvztažnosti mezi nimi a jejich hierarchii.23
+K syntaktické analýze lze přistupovat několika způsoby – statisticky nebo pra-
+vidlově. Analýza založená na statistice (tzv. data-driven) je založena na strojovém
+učení. Na základě anotovaných dat je vytvořen model, pomocí kterého je možné
+nacházet syntaktické struktury i u vět nových. Analyzátory využívající pravidlový
+přístup (grammar-based) jsou založeny na množině pravidel, tzv. formální grama-
+tice, které musí analyzované věty splňovat. Oba přístupy jsou řešeny na význam-
+ných pracovištích – statistickými principy se zabývají např. na Ústavu formální
+a aplikované lingvistiky na Matematicko-fyzikální fakultě – ÚFAL MFF UK a sys-
+tém pravidlový je předmětem zkoumání mimo jiné pracovníků Centra zpracování
+přirozeného jazyka při Fakultě informatiky Masarykovy univerzity (dále jen CZPJ
+FI MU).
+Syntaktický analyzátor je takový nástroj, který provádí syntaktickou analýzu
+věty. Není důležité, na jakém principu jsou analyzátory založeny (zda na pravidlo-
+vém či statistickém), cíl analýzy je podobný, najít stromové struktury vět.
+3.1 Syntaktický analyzátor SET
+SET, systém pro syntaktickou analýzu přirozených jazyků (Syntactic Engineering
+Tool), je vyvíjen v CZPJ. Licence programu umožňuje volné použití a zdrojové kódy
+22viz KOVÁŘ, Vojtěch. Syntaktická analýza s využitím postupné segmentace věty [online]. 2009 [cit.
+2013-02-23]. Diplomová práce. Masarykova univerzita, Fakulta informatiky. s 4.
+23DANEŠ, František, Zdeněk HLAVSA a Miroslav GREPL. Mluvnice češtiny. 3, Skladba. 1. vyd.
+Praha: Academia, 1987, s. 7.
+7
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.1. SYNTAKTICKÝ ANALYZÁTOR SET
+jsou volně k dispozici. Velmi snadno se používá – program je možné obsluhovat
+z příkazové řádky (příklad spuštění: ./set.py [OPTIONS] file) nebo z we-
+bového rozhraní24.
+Analyzátor SET je založen na jednoduchém přiřazování vzorů (pattern mat-
+ching), proto je rychlý, jednoduchý, transparentní, srozumitelný pro lidi, a tedy
+i snadno rozšiřitelný. Pro více detailů o přiřazování vzorů doporučuji nahlédnout
+do článku Syntactic Analysis Using Finite Patterns25, ze kterého v této kapitole vy-
+cházím. Pro analýzu je definován určitý počet možných vzorů. Proces analýzy
+sestává z nacházení takových vzorů v zadané větě, kterou chceme analyzovat,
+a následného výběru nejlepší možnosti. Jednotlivé vzory jsou rozděleny do šesti
+tzv. vrstev (layers) podle toho, jaký jev popisují. První tři vrstvy obsahují vzory
+popisující spojky a takové znaky, které od sebe dělí věty (např. středník) či znaky
+na konci vět. Vzory ve čtvrté vrstvě popisují hranice vztažných vět, vrstva pátá je
+věnována koordinacím a poslední, sedmá vrstva, se zabývá vším ostatním, tedy
+strukturou jmenných frází, slovesných frází aj. V každé vrstvě se vybere to nej-
+lepší, nekonfliktní pravidlo – první pravidlo v pořadí takto seřazených vzorů (pat-
+tern rank). Každá definice vzoru (pattern definition) se skládá ze dvou částí, a to
+z šablony (template) a množiny akcí (set of actions). Když je v průběhu analýzy
+nalezena šablona, začnou se vykonávat odpovídající akce. Šablona definuje sek-
+venci slovních tříd (word classes) včetně mezer. Každá třída je popsána slovním
+tvarem, lemmatem a morfologickou značkou, získanou z předešlé morfologické
+analýzy. Akce zase analyzátoru říkají, jak mají interpretovat to konkrétní přiřazení
+vzoru, jinými slovy, akce obsahují instrukce, jak zaznačit závislostní vztahy mezi
+slovy. Pravidlo může vypadat třeba následovně:
+TMPL: noun $...* comma [tag k3yR] $...* verb $...* rbound
+MARK 2 7 <relclause> DEP 0 AGREE 0 3 gn
+$...*[tag not]: k3yR.
+Pravidlo uvedené výše popisuje nacházení vedlejších vztažných vět. Lze z něj
+vyčíst, že řídicím prvkem vztažné věty je podstatné jméno, že věta je uvozena
+čárkou a vztažným zájmenem a obsahuje sloveso v určitém tvaru. Akce vytváří
+složkový element relclause, který závisí na řídicím substantivu. Rovněž je kladen
+požadavek na shodu mezi vztažným zájmenem a řídicím substantivem v rodě
+a čísle. Detailnější popis pravidel je uveden v diplomové práci Vojtěcha Kováře26.
+Systém SET očekává na vstupu soubor se vstupní větou ve vertikálním for-
+mátu27 nebo v tzv. formátu brief. Vertikální formát požaduje každé slovo vstupní
+věty na samostatném řádku. Brief formát je vertikálu podobný, jednotlivá slova se
+rovněž vyskytují každé na jednom řádku. Jednotlivé řádky mají podobu slovo <l>
+lemma <c> morfologická značka.28 Analyzátor SET si dokáže poradit i s nejednoznač-
+24viz <http://nlp.fi.muni.cz/projekty/set/wwwset.cgi/first_page?uilang=cz>
+25KOVÁŘ, Vojtěch, Aleš HORÁK a Miloš JAKUBÍČEK. Syntactic Analysis Using Finite Patterns:
+A New Parsing System for Czech. In Human Language Technology. Challenges for Computer Science and
+Linguistics. Berlin/Heidelberg: Springer, 2011. s. 162-163.
+26KOVÁŘ, Vojtěch. Syntaktická analýza s využitím postupné segmentace věty [online]. 2009 [cit. 2013-
+02-23]. Diplomová práce. Masarykova univerzita, Fakulta informatiky. s. 23.
+27o vertikálu více v: RYCHLÝ, Pavel. Korpusové manažery a jejich efektivní implementace. Brno, 2000.
+s. 29. Dizertační práce. Masarykova univerzita, Fakulta informatiky.
+28GOLEMBIOVSKÝ, Jiří. WWW rozhraní k syntaktickému analyzátoru SYNT [online]. 2007 [cit. 2013-
+05-01]. Bakalářská práce. Masarykova univerzita, Fakulta informatiky.
+8
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.1. SYNTAKTICKÝ ANALYZÁTOR SET
+nou morfologií, kdy je na vstupu více možných lemmat a morfologických značek
+oddělených čárkami.
+Analyzátor SET má několik možných výstupů. Kromě obvyklého závislostního
+a složkového stromu může být výstup i kombinace obou přístupů, tzv. hybridní
+strom. Rozdíly jsou patrny z níže uvedeného obrázku 3.1.
+Závislostní strom je taková struktura, která je konečným stromem ve smyslu teorie
+grafů, má kořen, do kterého směřují všechny cesty, a jeho uzly jsou úplně
+(lineárně zleva doprava) uspořádány.29 Formálně se většinou definuje jako
+pětice T =< N, Q, E, WO,L >, kde (N, E) je orientovaný graf (jedná se
+o strom, což znamená, že graf je souvislý, neobsahuje kružnici a každý uzel
+kromě kořene má právě jednoho rodiče), Q je množina ohodnocení uzlů (kon-
+krétně gramatické kategorie), WO ⊂ N×N je silné úplné uspořádání daných
+slov (určuje pořadí slov) a L : N → Q je ohodnocovací funkce.30 Takovýto
+závislostní strom má přesně tolik vrcholů, kolik má analyzovaná věta slov,
+plus ještě jeden vrchol navíc (ve výstupu SETu značen root). Hrany reprezen-
+tují vztah mezi rozvíjeným a rozvíjejícím slovem (jednotkou) ve větě.
+Složkový strom je generován tzv. frázovými pravidly (například S → NP V P,
+S → NP atd.). Každé pravidlo obsahuje funkční notaci pro jednotlivé uzly,
+notace pak označují funkci, kterou bude mít daný uzel ve struktuře.31 Defi-
+nuje se jako pětice T =< N,Q, D, P, L >, kde N je množina uzlů, Q je ohod-
+nocení uzlů (například gramatické kategorie), D je relace dominance, P je
+relace precedence (silné částečné uspořádání neboli slovosled), L : N → Q
+je ohodnocovací funkce (zajišt’uje přiřazení gramatických kategorií uzlům).
+Strom má více vrcholů, než je slov ve větě – slova věty představují listy složko-
+vého syntaktického stromu.32
+Hybridní strom je kombinací obou předchozích přístupů – výstupem jsou syn-
+taktické stromy, které obsahují jak závislostní, tak složkové informace. „Hy-
+bridní strom“ tedy obsahuje dva typy uzlů: povrchové (představují slova
+vstupní věty) a složkové (představují složkové elementy). Závislostní hrany
+vyznačují závislostní vztahy mezi uzly (v obrázku znázorněny černě) a hrany
+složkové (v obrázku vyznačeny modře) vyznačují příslušnost uzlu do složky.33
+Výstup syntaktického analyzátoru SET je možné modifikovat pomocí něko-
+lika parametrů. Zde uvádím jen ty parametry, které byly pro tuto práci opravdu
+použity.
+29LOPATKOVÁ, Markéta, Martin PLÁTEK a Vladislav KUBOŇ. Závislostní redukční analýza
+přirozených jazyků. In: VOJTÁŠ, Peter. Proceedings of ITAT. Košice, 2004, s. 170-171.
+30DUŠEK, Ondřej. Státnice I3: Závislostní syntax. In: Wiki.matfyz.cz [online]. 2010 [cit. 2013-06-
+13]. Dostupné z: <http://wiki.matfyz.cz/index.php?title=St\%C3\%A1tnice_I3:_Z\
+%C3\%A1vislostn\%C3\%AD_syntax>.
+31HAJIČOVÁ, Eva, Jarmila PANEVOVÁ a Petr SGALL. Úvod do teoretické a počítačové lingvistiky:
+teoretická lingvistika. Vyd. 1. Univerzita Karlova Praha: Karolinum, 2003, s. 70.
+32DUŠEK, Ondřej. Státnice I3: Syntax bezprostředních složek a frázové gramatiky.In: Wiki.matfyz.cz
+[online]. 2010 [cit. 2013-06-13]. Dostupné z: <http://wiki.matfyz.cz/index.php?title=
+St\%C3\%A1tnice_I3:_Syntax_bezprost\%C5\%99edn\%C3\%ADch_slo\%C5\%BEek_a_
+fr\%C3\%A1zov\%C3\%A9_gramatiky>.
+33KOVÁŘ, Vojtěch. Syntaktická analýza s využitím postupné segmentace věty [online]. 2009 [cit. 2013-
+02-23]. Diplomová práce. Masarykova univerzita, Fakulta informatiky.
+9
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.1. SYNTAKTICKÝ ANALYZÁTOR SET
+-d výstup je ve formě závislostního stromu – viz obr. 3.1(a)
+-p výstupem je složkový (frázový) strom – viz obr. 3.1(b)
+- -laa výstupem je složkový strom ve formátu tzv. ohodnocené uzávorkování, který
+se používá pro porovnávání stromů za použití programu Leaf Ancestor Assess-
+ment34 – viz obr. 3.2(c)
+- -cout výstup je ve formě tzv. kolokací; výsledkem jsou dvojice lemmat a morfo-
+logických značek – viz obr. 3.2(d)
+Dále je možno použít přepínač -g, který umožní, aby SET zobrazoval syntak-
+tický strom i v grafické podobě.
+root
+loví
+trpaslík housenku
+Velký
+.
+modrou
+object
+modifier modifier
+object
+(a) závislostní strom
+<SENTENCE>
+<CLAUSE>
+<VP> <C>
+<NP> <V> <NP>
+<ADJ>
+Velký
+<N>
+trpaslík
+loví
+.
+<ADJ> <N>
+modrou housenku
+(b) složkový strom
+<sentence>
+<clause>
+trpaslík
+.loví
+modrouVelký
+housenku
+object
+modifier modifier
+object
+(c) hybridní strom
+Obrázek 3.1: Různé stromy na výstupu analyzátoru SET
+34viz <http://www.grsampson.net/RLeafAnc.html>.
+10
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.2. DALŠÍ SYNTAKTICKÉ ANALYZÁTORY
+0    Velký    11    p
+1    trpaslík    12    p
+2    loví    13    p
+3    modrou    14    p
+4    housenku    15    p
+5    .    16    p
+6    <CLAUSE>    7    p
+7    <SENTENCE>    -1    p
+8    <VP>    6    p
+9    <NP>    8    p
+10    <NP>    8    p
+11    <ADJ>    9    p
+12    <N>    9    p
+13    <V>    8    p
+14    <ADJ>    10    p
+15    <N>    10    p
+16    <C>    6    p
+(a) výstup volby -p
+0    Velký    1    d    modifier
+1    trpaslík    2    d    object
+2    loví    -1    d    
+3    modrou    4    d    modifier
+4    housenku    2    d    object
+5    .    2    d
+(b) výstup volby -d
+[<SENTENCE> [<CLAUSE> [<VP> [<NP> [<ADJ> Velký ]  [<N> t rpasl ík ]  ]
+ [ < V >  l o v í  [ < N P >  [ < A D J >  m o d r o u ]  [ < N >  h o u s e n k u ]  ]  ]   [ < C >  . ]  ]  ]
+(c) výstup volby - -laa
+l o v i t  < -  t r p a s l í k  ( k 5 e A a I m I p 3 n S ,  k 1 g M n S c 1 )  ( l o v í  < -  t r p a s l í k )
+t r p a s l í k  < -  v e l k ý  ( k 1 g M n S c 1 ,  k 2 e A g M n S c 1 d 1 )  ( t r p a s l í k  < -  V e l k ý )
+l ov i t  < -  housenka  ( k5eAa ImIp3nS ,  k1gFnSc4 )  ( l ov í  < -  housenku )
+housenka <- modrý (k1gFnSc4, k2eAgFnSc4d1) (housenku <- modrou)
+(d) výstup volby - -cout
+Obrázek 3.2: Ukázka možných výstupů SETu
+3.2 Další syntaktické analyzátory
+Pro úplnost se zmíním i o dalších analyzátorech, vhodných pro zadaný úkol zkou-
+mání úspěšnosti syntaktické analýzy při verifikaci autorství, a stručně popíši jejich
+princip. Jedná se konkrétně o analyzátory synt, MaltParser a MSTParser. Jelikož
+mají tyto analyzátory výstup odlišný od analyzátoru SET (viz dále), zmíněného
+v předchozí sekci, nelze použít stejné skripty pro převod výstupu analyzátoru
+do podoby akceptovatelné strojovým učením. Proto je má další práce zaměřena
+pouze na analyzátor SET. Veškeré přípravné fáze (označkování dokumentů níže
+uvedenými analyzátory) však již byly provedeny.
+3.2.1 Syntaktický analyzátor synt
+Syntaktický analyzátor synt pochází rovněž z Centra zpracování přirozeného ja-
+zyka FI MU. Tento analyzátor se zakládá na bezkontextové gramatice, která je obo-
+hacena o kontextové akce. Převážně kvůli volnému pořádku slov v české větě
+je gramatika češtiny značně rozsáhlá, gramatika syntu je tedy nejednoznačná.
+Z tohoto důvodu je výsledek analýzy ne jeden konkrétní strom, ale celá množina
+11
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.2. DALŠÍ SYNTAKTICKÉ ANALYZÁTORY
+stromů. Stromy jsou však ohodnoceny a setříděny takovým způsobem, aby bylo
+možné vybrat n nejlepších stromů.35
+Gramatika je vyvíjena v podobě tzv. metagramatiky (G1), která umožňuje zhus-
+tit gramatiku do přibližně 250 pravidel, jenž jsou automaticky rozgenerována. Tato
+rozgenerovaná forma gramatiky (G2) již obsahuje několik tisíc pravidel, navíc ještě
+již zmíněné tzv. kontextové akce. Z gramatiky G2 vzniká převodem některých akcí
+na bezkontextová pravidla forma G3, která není v dnešní době zvláště používaná.
+Každému pravidlu je přiřazeno ohodnocení. Vynásobením ohodnocení použitých
+pravidel lze vypočítat celkové ohodnocení analýzy (tzv. tree rank).36
+Systém synt akceptuje vstupní data v několika formátech, a to ve formátu plain
+text, brief i vertikálním formátu (viz výše). Synt se spouští z příkazové řádky nebo
+z webového rozhraní37.
+Výstupů nabízí synt hned několik (obdobně jako u SETu je k dispozici široká
+škála voleb). Základním výstupem je binární odpověd’ „akceptováno“/„neakcep-
+továno“. Je-li věta analyzátorem přijata, zobrazí se i množina platných syntaktic-
+kých stromů, konkrétně orientovaný graf typu chart, resp. forest of values (volba
+-pcf, viz obrázek 3.3), acyklický orientovaný graf, ze kterého lze syntaktické stromy
+extrahovat. Jednotlivé hrany tohoto chartu odpovídají použití některého pravidla
+vstupní gramatiky.38 Další možný výstup je závislostní graf (volba -og3, viz obrázek
+3.4). Jelikož se jedná o graf, v posledním sloupci se může nacházet více hodnot
+(vzájemně jsou odděleny čárkami).
+0, 6, +##start## -> .{ start } . @level 0 [kX] children @level -1
+0, 6, +start -> .{ ss } ends . @level 0 [kX] children @level -1
+0, 5, +ss -> .{ clause } . @level 0 [kX] children @level -1
+5, 6, +ends -> .{ ’.’ } . @level 0 [kX] children @level -1
+0, 5, +clause -> .intr { V } intr . @level 0 [kX] children @level -1
+5, 6, +’.’ -> .’.’ . @level 0 [kX] children @level -1
+0, 2, +intr -> .{ inter_list } . @level 0 [kX] children @level -1
+3, 5, +intr -> .{ inter_list } . @level 0 [kX] children @level -1
+0, 2, +inter_list -> .{ inter_listnl } . @level 0 [kX] children @level -1
+3, 5, +inter_list -> .{ inter_listnl } . @level 0 [kX] children @level -1
+0, 2, +inter_listnl -> .{ inter } . @level 0 [k1gMnSc1] children @level -1
+3, 5, +inter_listnl -> .{ inter } . @level 0 [k1gFnSc4] children @level -1
+0, 2, +inter -> .{ interbez } . @level 0 [k1gMnSc1] children @level -1
+3, 5, +inter -> .{ interbez } . @level 0 [k1gFnSc4] children @level -1
+0, 2, +interbez -> .{ nnp } . @level 0 [k1gMnSc1] children @level -1
+[...]
+Obrázek 3.3: Výstup analyzátoru při použití volby -pcf
+35KOVÁŘ, Vojtěch. Syntaktická analýza s využitím postupné segmentace věty [online]. 2009 [cit. 2013-
+02-23]. Diplomová práce. Masarykova univerzita, Fakulta informatiky. s. 8-9.
+36KOVÁŘ, Vojtěch. Algoritmy kvalitativního ohodnocení výstupu syntaktické analýzy české věty [online].
+2007 [cit. 2013-02-23]. Bakalářská práce. Masarykova univerzita, Fakulta informatiky. s. 4.
+37<http://nlp.fi.muni.cz/projekty/wwwsynt/query.cgi>.
+38JAKUBÍČEK, Miloš. Extrakce strukturních informací z běžného textu na základě syntaktického analyzá-
+toru [online]. 2008 [cit. 2013-06-11]. Bakalářská práce. Masarykova univerzita, Fakulta informatiky.
+s. 8.
+12
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.2. DALŠÍ SYNTAKTICKÉ ANALYZÁTORY
+Velký velký k2eAgMnSc1d1qP 0 1,modifier
+trpaslík trpaslík k1gMnSc1qP 1 2,N-object
+loví lovit k5eAaImIp3nPaIrDqP 2
+modrou modrý k2eAgFnSc4d1qP 3 4,modifier
+housenku housenka k1gFnSc4qP 4 2,N-object
+. . kX 5
+Obrázek 3.4: Výstup analyzátoru při použití volby -og3
+3.2.2 MaltParser
+MaltParser je volně dostupný komplexní systém pro statistickou syntaktickou ana-
+lýzu vytvořený Johanem Hallem, Jensem Nilssonem a Joakimem Nivrem ze švéd-
+ských univerzit ve Växjö a Uppsala. Jedná se o analyzátor založený na závislost-
+ním přístupu, který je řízen daty. To znamená, že může být použit pro vytvoření
+modelu syntaktické analýzy z předem známých dat (věty jsou již v podobě závis-
+lostních syntaktických stromů) a na základě takto vytvořeného modelu mohou být
+analyzována data nová. MaltParser je jazykově nezávislý systém, nezáleží tedy na
+tom, zda analyzuje text v českém (anglickém) či jakémkoli jiném jazyce.
+MaltParser je zástupcem tzv. transition systémů, lze jej tedy chápat jako stavový
+automat. Je třeba vytvořit takový model, který spolu s klasifikátorem na základě
+předem vykonaných kroků dokáže deterministicky předpovídat stav následující.39
+Tento analyzátor redukuje problém analýzy věty přirozeného jazyka na nalezení
+optimální cesty ve stavovém automatu. Na počátku se analyzátor nachází v tzv.
+počátečním (iniciálním) stavu automatu a na základě predikcí naučeného modelu
+se „hladově“40 pohybuje přes další stavy až do konečného stavu.
+MaltParser implicitně akceptuje data ve speciálním CoNNL formátu41, který je
+pro přehlednost zaznamenán v tabulce:
+číslo pozice název pozice popis
+1 ID pořadí slova
+2 FORM slovo/interpunkční znaménko
+3 LEMMA lemma (není-li známo, vypíše se podtržítko
+4 CPOSTAG nahrubo určený slovní druh daného slova
+5 POSTAG blíže určený slovní druh daného slova
+6 FEATS syntaktické a/nebo morfologické kategorie
+7 HEAD dominující člen daného slova (hodnota prvního
+sloupce)
+8 DEPREL závislostní relace mezi dvěma slovy v relaci domi-
+nace
+9 PHEAD projektivní hlava aktuálního slova (hodnota
+prvního sloupce, nebo podtržítko)
+10 PDEPREL závislostní vztah ke sloupci 9
+Tabulka 3.1: Popis CoNNL formátu
+39NIVRE, Joakim a Johan HALL. A Quick Guide to MaltParser Optimization. s. 1-8. Dostupné z:
+<www.maltparser.org/guides/opt/quick-opt.pdf>.
+40Označení hladový algoritmus znamená, že v každém svém kroku vybírá lokální minimum, tudíž
+existuje šance, že takto bude nalezeno i minimum globální.
+41viz <http://nextens.uvt.nl/depparse-wiki/DataFormat>.
+13
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.3. VYUŽITÍ SYNTAKTICKÉ ANALÝZY
+Jednotlivé údaje jsou od sebe odděleny tabulátorem a věty navzájem vždy od-
+děluje prázdný řádek.
+Výstup věty Velký trpaslík loví modrou housenku vypadá následovně:
+1 Velký velký A A SubPOS=A|Gen=M|Num=S|Cas=1|Gra=1|Neg=A 2 Atr _ _
+2 trpaslík trpaslík N N SubPOS=N|Gen=M|Num=S|Cas=1|Neg=A 3 Sb _ _
+3 loví lovit V V SubPOS=B|Num=S|Per=3|Ten=P|Neg=A|Voi=A 0 Pred _ _
+4 modrou modrý A A SubPOS=A|Gen=F|Num=S|Cas=4|Gra=1|Neg=A 5 Atr _ _
+5 housenku housenka N N SubPOS=N|Gen=F|Num=S|Cas=4|Neg=A 3 Obj _ _
+6 . . Z Z SubPOS=: 0 AuxK _ _
+3.2.3 MSTParser
+MSTParser, analyzátor vyvinutý Jasonem Bridgem a Ryanem McDonaldem, pro-
+vádí neprojektivní závislostní analýzu založenou na hledání tzv. největších koster
+(maximum spanning trees) v orientovaných grafech. Na vstupu analyzátor požaduje
+data v CoNNL formátu (stejně jako MaltParser) nebo ve vlastním MST formátu,
+který je mnohem jednodušší než CoNNL formát. Každá věta v MST formátu je
+reprezentována alespoň prvními třemi řádky (nebo všemi čtyřmi řádky):
+w1 w2 w3 . . . wn – n slov věty
+p1 p2 p3 . . . pn – morfologická značka každého slova
+l1 l2 l3 . . . ln – pojmenování hran vedoucích do konkrétního
+slova
+d1 d2 d3 . . . dn – pozice rodiče konkrétního uzlu
+Každý údaj v rámci jedné věty je od dalšího údaje oddělen tabulátorem a celé
+věty jsou od sebe odděleny jedním prázdným řádkem.42
+Jedná se o analyzátor založený na grafech (tzv. graph-based). MSTParser pro
+každou větu vytvoří množinu potenciálních závislostních grafů. Začíná se úplným
+grafem, což znamená, že se předpokládá závislost mezi libovolnými dvěma slovy
+ve větě. V přípravné fázi učení vytvoří model přiřazující jednotlivým grafům skóre
+a následně vybere ten nejpravděpodobnější graf. Toto hodnocení provádí statis-
+tický algoritmus, který se učí na gramatických rysech hrany (lema, slovní druh
+apod.) a následně model stanoví hodnotu grafu jako součet všech hodnot na hra-
+nách.
+Rovněž i zde uvádím ukázku výstupu věty Velký trpaslík loví modrou housenku:
+1 Velký Velký A A - 2 Atr - -
+2 trpaslík trpaslík N N - 3 Sb - -
+3 loví loví V V - 0 Pred - -
+4 modrou modrou A A - 5 Atr - -
+5 housenku housenku N N - 3 Obj - -
+6 . . Z Z - 0 AuxK - -
+3.3 Využití syntaktické analýzy
+Cílem mé práce je průzkum možnosti využití syntaktické analýzy při verifikaci
+autorství, proto v této části nastíním, jaké informace lze syntaktickou analýzou
+42KOCINCOVÁ, Lucia. Reproducing Czech Syntactic Parsing Results Published in CoNLL Tasks.
+In Aleš Horák, Pavel Rychlý. 6th Workshop on Recent Advances in Slavonic Natural Language Pro-
+cessing. Brno: Tribun EU, 2012. s. 18.
+14
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.3. VYUŽITÍ SYNTAKTICKÉ ANALÝZY
+získat. V této sekci se zmíním o syntaktických vlastnostech dokumentu, které byly
+publikovány na konferenci RASLAN 2012.43 Tyto metriky rovněž vstupují do stro-
+jového učení a v experimentech dále je pak souhrnně označuji jako charakteristiky
+získané syntaktickou analýzou.
+3.3.1 Maximální hloubka závislostního stromu
+Tento charakteristický rys zjišt’uji z výstupu SETu s volbou -d.
+Vztah závislosti, tak, jak je zachycen v závislostním stromě, se též nazývá do-
+minace44. Hloubka zanoření tohoto vztahu může rovněž vypovídat o stylu autora.
+Charakteristický rys maximální hloubka závislostního stromu je založen na dél-
+ce řady slov vázaných k sobě právě tímto vztahem dominace.
+3.3.2 Faktor větvení závislostního stromu
+Rovněž tuto autorskou charakteristiku zjištuji z výstupu SETu volbou -d.
+Sleduje se, jak moc je strom rozvitý (formálně se tento jev nazývá faktor větvení
+stromu). Jak již bylo zmíněno výše, slovesa jsou velmi často dále rozvíjena (větná
+stavba vyžaduje obsadit valenční pozice predikátu). Ty větné členy, které nejsou
+vyžadovány valencí predikátu, jsou členy rozvíjející, nezákladové.45 Nejen valence
+ovlivňuje faktor větvení stromu, rovněž i volná doplnění – jako jsou např. infor-
+mace o času, místě – zvyšují počet členů, které strom rozvíjejí.
+Autorskou charakteristiku nejvyšší počet potomků uzlu v závislostním stromě
+lze definovat jako počet valenčních pozic daného slova navýšený o počet dalších
+volných doplnění, vázaných ke konkrétnímu uzlu.
+3.3.3 Frekvence neterminálů složkového stromu
+Složkové stromy, ze kterých lze zjišt’ovat tuto informaci, lze obdržet ze syntaktic-
+kého analyzátoru SET volbou -p.
+Neterminální symboly slouží k označení rozpoznaných struktur, nesou tedy in-
+formaci, které části věty formují například jmenné skupiny, předložkové skupiny
+či které jmenné skupiny se pojí se slovesem apod.
+V této práci uvažuji tyto neterminální symboly (pro přehlednost abecedně se-
+řazené):
+. <ABBR> = zkratka
+. <ADJ> = adjektivum (přídavné jméno)
+. <ADJP> = adjektivní fráze
+. <ADV> = adverbium (příslovce)
+. <ADVP> = příslovečná fráze
+. <C> = spojky (conjunction), interpunkce
+. <CLAUSE> = věta jednoduchá
+. <CP> fráze, jejíž hlavou je spojka
+43viz RYGL, Jan, Kristýna ZEMKOVÁ a Vojtěch KOVÁŘ. Authorship Verification based on Syntax
+Features. In Aleš Horák, Pavel Rychlý. Proceedings of the Sixth Workshop on Recent Advances in Slavonic
+Natural Language Processing, RASLAN 2012. 1st ed. Brno (Czech Republic): Tribun EU, 2012. s. 111-119.
+44viz DANEŠ, František, Zdeněk HLAVSA a Miroslav GREPL. Mluvnice češtiny. 3, Skladba. 1. vyd.
+Praha: Academia, 1987, s. 17.
+45Tamtéž, s. 18.
+15
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.4. VYUŽITÍ SYNTAXE
+. <N> = noun (podstatné jméno)
+. <NP> = jmenná fráze
+. <PART> = partikule (částice)
+. <PARTP> = fráze, jejíž hlavou je částice
+. <PP> předložková fráze
+. <PREP> = prepozice (předložka)
+. <PRON> = pronomen (zájmeno)
+. <SENTENCE> = celá věta (příp. souvětí)
+. <UNKNOWN> = nerozpoznaná jednotka
+. <V> = verb (sloveso)
+. <VP> = verbální (slovesná) fráze
+Pro každý neterminální symbol zjišt’uji relativní frekvenci v textu.
+3.3.4 Frekvence pojmenování v závislostním stromu
+Charakteristický rys frekvence určitých pojmenování typů závislostí nebo syntak-
+tických funkcí lze zkoumat z informace získané ze závislostního stromu jakožto
+výstupu SETu volbou -d. Určitými pojmenováními se rozumí popis syntaktické
+funkce, která určuje typ závislosti dané hrany mezi na sobě závislými slovy. Zde
+zkoumané syntaktické funkce jsou:
+. prep-object – vyjadřuje substantivum v předložkové frázi (např. šel do
+města)
+. additional-prep – je to označení pro předložku či předložkový výraz
+v předložkové frázi (např. šel do města)
+. modifier – jsou to nejčastěji přídavná jména či příslovce, která mají defi-
+novat, vysvětlovat či jinak „modifikovat“ podstatná jména a slovesa (např.
+černý pes)
+. genitiv – označuje genitivní rozvití ve jmenné skupině (např. ministerstvo
+vnitra)
+. object – jsou to všechna objektová doplnění slovesného děje, jaká slovesa
+mohou mít (např. viděl ženu)
+. verb-object – vyjadřuje infinitivní rozvití slovesa majícího infinitivní va-
+lenci (např. nemohl spát)
+. auxiliary-verb – označení pro pomocná slovesa (např. chtěl bych, viděl
+jsi)
+. adverb – označuje příslovce rozvíjející sloveso (např. seděl tiše)
+3.4 Další využití syntaktické analýzy
+V této sekci se zmíním o dalších autorských rysech, kterými je dle mého názoru
+možno přispět k lepšímu rozpoznávání autorství dokumentů. Následující dvě met-
+riky vstupují dohromady s výše uvedenými metrikami syntaktické analýzy spo-
+lečně do strojového učení v níže uvedených experimentech souhrnně jako kom-
+plexní syntaktická analýza.
+3.4.1 Pořadí vybraných neterminálů
+Používám neterminály vypsané v sekci 3.3.3.
+16
+KAPITOLA 3. SYNTAKTICKÁ ANALÝZA 3.4. VYUŽITÍ SYNTAXE
+Vycházím zde z principu vyjadřování gramatického větného vzorce (GVV).46
+Gramatický větný vzorec je symbolický zápis, zobecněná gramatická struktura věty.
+V klasickém GVV jsou zaznamenány větněčlenské pozice (např. větě Sestra šla
+dnes domů. odpovídá větný vzorec SUBJECT - VERB - ADVERBIALE - ADVER-
+BIALE.) V této práci ale neuvažuji, jakou funkci dané pozice plní (nerozlišuji, zda
+se jedná o subjekt, adverbiále či objekt), zajímá mě pouze pořadí neterminálů (zda
+jde o jmennou frázi, předložkovou frázi atd.).
+Nepočítala jsem se všemi možnými větnými vzorci, spočítala jsem relativní
+frekvence každého vyskytnutého gramatického větného vzorce a pro účely této
+práce jsem použila 100 statisticky nejčastějších větných vzorců.
+3.4.2 Relativní frekvence dvojic morfologických značek
+V tomto autorském charakteristickém rysu zkoumám, jaké slovní druhy v jakých
+pádech na sobě závisí. Pracuji s výstupem syntaktického analyzátoru SET s vol-
+bou - -cout, který přináší informaci o tom, jak vypadají morfologické značky jed-
+notlivých na sobě závislých slov. Morfologická značka je takový řetězec informací
+o gramatických kategoriích, který je každému slovu přiřazen morfologickým znač-
+kovačem, taggerem (v tomto případě morfologickým analyzátorem ajka47). Exis-
+tuje několik možných přístupů k morfologickému značkování: poziční systém (vy-
+víjen v Praze na ÚFAL)48 a systém atribut-hodnota (vyvíjen v Brně v CZPJ FI MU).
+Ajka, jakožto tagger vyvíjený v CZJP, využívá právě přístupu atribut-hodnota.
+Takovéto morfologické značky jsou definovány jako posloupnost dvojic, kde první
+člen (atribut, značí se malým písmenem) reprezentuje jednu z možných grama-
+tických kategorií a druhý člen dvojice (hodnota, značí se velkým písmenem nebo
+číslicí) vyjadřuje konkrétní hodnotu, jíž daná kategorie u daného tvaru nabývá.49
+Např. slovnímu tvaru trpaslíkům ajka přířadí značku k1gMnPc3, kde k1 znamená,
+že se jedná o podstatné jméno, gM značí rod mužský životný, nP vyjadřuje množné
+číslo a c3 ukazuje na 3. pád.50
+Jelikož všech možných kombinací morfologických značek na sobě závislých
+slov může být opravdu mnoho (pro strojové učení by se tak vytvořilo příliš mnoho
+atributů, následně by to nebylo výpočetně zvládnutelné), zaměřila jsem se pouze
+na slovní druh a pád slov ve vztahu dominace. Zajímám se tedy o to, jaká je hod-
+nota atributu k a jaká je hodnota atributu c.
+Z výsledných počtů opět spočítám relativní frekvenci.
+46o GVV více v DANEŠ, František a Zdeněk HLAVSA. Větné vzorce v češtině. Vyd. 1. Praha:
+Academia, 1981, 270 s.
+47SEDLÁČEK, Radek. Morfologický analyzátor češtiny [online]. [cit. 2013-05-02]. Diplomová práce.
+Masarykova univerzita, Fakulta informatiky.
+48viz <http://ufal.mff.cuni.cz/czech-tagging/>.
+49PALA, Karel. Počítačové zpracování přirozeného jazyka. vydání 1., el. verze. Brno: FI MU, 2001. s. 28.
+50o ajce více např. na SEDLÁČEK, Radek. Morfologický analyzátor češtiny [online]. [cit. 2013-05-27].
+Diplomová práce. Masarykova univerzita, Fakulta informatiky.
+17
+4. Strojové učení
+„Strojové učení je oblast zájmu, která propůjčuje počítačům schopnost učit se,
+aniž by musely být explicitně naprogramovány.“ (Arthur Samuel, 1959)51
+Strojové učení (machine learning), odvětví spadající pod umělou inteligenci, se
+zabývá technikami, které umožní počítači „učit se“. Výraznou měrou se prolíná
+se statistikou či dobýváním znalostí. Je to velmi efektivní metoda, jejímž cílem je
+rozpoznání neznámých vzorků na základě naučení se na datech již známých.52
+Obecný princip strojového učení je následující: data je třeba rozdělit na mini-
+málně dvě části: na trénovací data, ze kterých je následně vytvořen model, a testo-
+vací data, na kterých se ověří, jak dobře model funguje. Zjišt’uje se, jestli jsou zna-
+losti přenositelné na nová data53 a zda se dají vyvozovat nové závěry.
+Strojové učení lze rozdělit na jednovrstvé učení (single-layer machine learning
+nebo one-layer ML) a dvouvrstvé strojové učení (double-layer machine learning nebo
+two-layer ML).
+4.1 Jednovrstvé strojové učení
+Jednovrstvé strojové učení (single-layer machine learning) se v rámci projektu ART
+skládá ze dvou částí, a to z heuristických algoritmů (heuristic algorithms) a samot-
+ného strojového učení (machine learning).
+Je zde použito devět heuristických algoritmů (např. autorský rys délka věty,
+interpunkce), kde každá heuristika vypočítává, jak moc jsou si dva dokumenty
+podobné na základě zadaných charakteristik. Aby bylo možno určit, zda jsou dané
+dokumenty napsány stejným autorem, nebo ne, heuristiky porovnají rozdíly mezi
+danými dokumenty na základě odpovídajících autorských charakteristik a vrátí
+nám devět hodnot (pro každý algoritmus jednu hodnotu) v intervalu od nuly do
+jedné. Tyto hodnoty popisují, jak moc si jsou dva dokumenty podobné (1 znamená
+naprostá shoda, tedy jistota, že dané dokumenty byly napsány stejným autorem,
+kdežto 0 znamená, že dokumenty napsali dva odlišní autoři).
+Strojovým učením je následně vytvořen klasifikátor, který požaduje na vstupu
+devítici čísel získaných z devíti heuristických algoritmů. Hodnota, kterou nám klasi-
+51VITAY, Julien. Machine Learning 01 - Introduction. [online] [prezentace]. [cit. 2013-05-16]. Dos-
+tupné z: <http://ebookbrowse.com/ml01-introduction-pdf-d203536135>.
+52CHEN, Guo a Rongtao HOU. A New Machine Double-Layer Learning Method and Its Applica-
+tion in Non-Linear Time Series Forecasting. In: International Conference on Mechatronics and Automation.
+Harbin, 2007, s. 795.
+53ILLICH, Michal. Strojové učení z rychlíku [online] [prezentace]. [cit. 2013-05-16]. Dostupné z:
+<http://www.slideshare.net/michalillich/prez-develcz3>.
+18
+KAPITOLA 4. STROJOVÉ UČENÍ 4.2. DVOUVRSTVÉ STROJOVÉ UČENÍ
+fikátor vrátí, je pravděpodobnost, s jakou byly dané dokumenty napsány stejným
+autorem.54
+Po provedení několika různých experimentů se ukazuje, že jednovrstvé strojové
+učení dosahuje o něco horších výsledků než učení dvouvrstvé.
+4.2 Dvouvrstvé strojové učení
+Dvouvrstvé strojové učení (double-layer machine learning) sestává ze tří fází. V první
+fázi jsou porovnávány atributy zadaných dokumentů, v další fázi je provedena
+první vrstva strojového učení a poslední fázi je možno označit jako druhou vrstvu
+strojového učení. Celý proces dvouvrstvého strojového učení je názorně zakreslen
+v obrázku 4.155.
+Obrázek 4.1: Dvouvrstvé strojové učení
+neznámý dokument 1
+automatická extrakce atributů z dokumentů podle charakteristik autorů
+A1 A2 C1 C2 C3B2B1 C5C4A1 A2 A3A3 B1 B2 C1 C2 C3 C4 C5
+spočítá absolutní rozdíly 
+mezi atributy dokumentů
+A1 A2 A3 B1 B2 C1 C2 C3 C4 C5
+Atributy dokumentů
+(např. frekvence slova 
+"a" ze stoplistu)
+1. vrstva strojového učení
+2. vrstva strojového učení
+vlastnost A vlastnost B vlastnost C
+Hodnota vlastnosti 
+(např. interpunkce,
+délka věty)
+shoda mezi dvěma 
+dokumenty
+>=0,5stejný autor odlišný autor
+neznámý dokument 2
+Metodu dvouvrstvého učení vysvětlím na příkladu z obrázku 4.1. Jsou dány
+dva dokumenty D1 a D2 a tři vlastnosti (charakteristiky autora) A, B, C. Každá
+vlastnost se skládá z několika atributů, např. A se skládá z A1, A2, A3 – pro ná-
+54RYGL, Jan a Aleš HORÁK. Authorship Attribution: Comparison of Single-layer and Double-
+layer Machine Learning. In Petr Sojka, Aleš Horák, Ivan Kopeček, Karel Pala. Text, Speech and Dialogue
+- 15th International Conference. 7499. vyd. Brno: Springer, 2012. s. 283.
+55Podle: RYGL, Jan a Aleš HORÁK. Authorship Attribution: Comparison of Single-layer and
+Double-layer Machine Learning. In Petr Sojka, Aleš Horák, Ivan Kopeček, Karel Pala. Text, Speech
+and Dialogue - 15th International Conference. 7499. vyd. Brno: Springer, 2012. s. 284.
+19
+KAPITOLA 4. STROJOVÉ UČENÍ 4.2. DVOUVRSTVÉ STROJOVÉ UČENÍ
+zornost uvedu příklad, kdy atribut A je charakteristika pořadí vybraných neter-
+minálu, A1, A2, A3 jsou tedy např. <ADJ>, <NP> či <CLAUSE>.
+V prvním kroku jsou oba dokumenty analyzovány a pro každý atribut je zjištěna
+pro oba dokumenty jeho hodnota. Nyní je znám pro každý dokument seznam
+hodnot (pro dokument 1 jsou hodnoty A1(D1), A2(D1), A3(D1), B1(D1), B2(D1),
+C1(D1), C2(D1), C3(D1), C4(D1), C5(D1), pro dokument 2 jsou hodnoty A1(D2),
+A2(D2), A3(D2), B1(D2), B2(D2), C1(D2) , C2(D2), C3(D2), C4(D2), C5(D2)) a lze
+spočítat podobnost dvou dokumentů. Ta je reprezentována následujícím seznamem
+(seznam podobností): |A1(D1)−A1(D2)|, |A2(D1)−A2(D2)|, |A3(D1)−A3(D2)|,
+|B1(D1)−B1(D2)|, |B2(D1)−B2(D2)|, |C1(D1)− C1(D2)|, |C2(D1)− C2(D2)|,
+|C3(D1)− C3(D2)|, |C4(D1)− C4(D2)|, |C5(D1)− C5(D2)|.
+Ve druhém kroku se pracuje se seznamem podobností, získaným v předchozí
+fázi. Pro každou vlastnost (např. pro vlastnost A) je k dispozici klasifikátor stro-
+jového učení, který v podseznamu seznamu podobností (|A1(D1)−A1(D2)|, |A2(D1)
+− A2(D2)|, |A3(D1) − A3(D2)|) přiřadí hodnotu vlastnosti. Postupně jsou získány
+hodnoty vlastností A, B, C.
+V posledním kroku je použit finální klasifikátor, který z výstupů předchozí
+fáze (hodnoty vlastnosti A, B a C) determinuje pravděpodobnost shody autorství
+zadaných dokumentů. Je-li pravděpodobnost menší než prahová hodnota (0,5),
+výstupem programu je, že dokumenty byly napsány různými autory, v opačném
+případě je autor shodný.56
+56RYGL, Jan a Aleš HORÁK. Authorship Attribution: Comparison of Single-layer and Double-
+layer Machine Learning. In Petr Sojka, Aleš Horák, Ivan Kopeček, Karel Pala. Text, Speech and Dialogue
+- 15th International Conference. 7499. vyd. Brno: Springer, 2012. s. 284.
+20
+5. Experimenty
+5.1 Použitá data
+K níže uvedeným experimentům využívám data, která jsou součástí projektu ART.
+Data byla vybrána podle několika kritérií jako je délka, různost autorů apod. Všech-
+ny dokumenty (jedná se o blogy) pochází z webové domény http://blog.ihned.
+cz. Jedná se o volně dostupný elektronický materiál Hospodářských novin za-
+měřený převážně na ekonomiku a politickou sféru. Hospodářské noviny vycházejí
+již od roku 1996, ale pro mé účely byly staženy jen texty z roku 2012.
+Pro tuto práci jsem využila 5 368 dokumentů s průměrnou délkou přibližně 300
+vět (počet vět v jednotlivých dokumentech se pohybuje v rozmezí od 20 do více
+než 500 vět).
+Články není rozumné stahovat a následně třídit ručně, v takovém množství by
+to zabralo příliš mnoho času. Soubory byly staženy automaticky pomocí knihovny
+programovacího jazyka Python na procházení dokumentů v rámci zadané domény
+– scrapy.57 Z každé stažené URL adresy je pomocí XPath selektorů58 extrahován ob-
+sah (je zde požadavek na zachování jména autora a textu), poté je dokument zbaven
+strukturních značek (HTML značek, komentářů atd.) a následně dále upravován.
+Takto očištěný text se převede do vertikálního formátu (jedno slovo na řádek). Ver-
+tikální formát byl zvolen jednak proto, že další nástroje dokáží s tímto formátem
+dobře pracovat, jednak je tato forma dobře čitelná i pro lidi, kteří musí tyto texty
+dále upravovat. Následně je provedeno označkování morfologickým analyzátorem
+ajka a dále je víceznačná morfologie zjednoznačněna (desambiguována) nástro-
+jem desamb59, což je software rovněž vyvíjený na FI MU (viz obr. 5.1).
+Takto upravené dokumenty je následně možno označkovat syntaktickým ana-
+lyzátorem SET.
+Použití analyzátoru SET není obtížné, je však nutné dodržovat některé zásady.
+Pro zjištění všech užitých syntaktických informací (viz kapitoly 3.3 a 3.4) je třeba
+data označkovat několikrát (přesněji tolikrát, kolik voleb SETu je požadováno –
+v mém případě čtyřikrát: volba -p, -d, - -cout, - -laa). Takto získám 4 adresáře označ-
+kovaných dokumentů. Pro lepší práci s výstupem SETu, který pak dále vstupuje do
+strojového učení, je dobré spojit jednotlivé výstupy vždy do jednoho souboru. Pro
+každý dokument mám tudíž soubor, ve kterém jsou postupně vypsány všechny
+výstupy SETu za sebou. Nyní je možné takto zpracované soubory dále upravovat
+pro potřeby strojového učení.
+57viz <http://scrapy.org/>.
+58viz <http://www.w3.org/TR/xpath/>.
+59ŠMERK, Pavel. K počítačové morfologické analýze češtiny [online]. 2010 [cit. 2013-05-19]. Disertační
+práce. Masarykova univerzita, Fakulta informatiky.
+21
+KAPITOLA 5. EXPERIMENTY 5.2. VYHODNOCOVÁNÍ ÚSPĚŠNOSTI
+<s>
+Známkou známka k1gFnSc7
+změny změna k1gFnSc2
+přístupu přístup k1gInSc2
+veřejnosti veřejnost k1gFnSc2
+k k k7c3
+vědeckému vědecký k2eAgNnSc3d1
+poznání poznání k1gNnSc3
+je být k5eAaImIp3nS
+už už k6eAd1
+název název k1gInSc1
+knihy kniha k1gFnSc2
+...
+Obrázek 5.1: Ukázka vertikálního formátu morfologicky označkovaného textu
+5.2 Vyhodnocování úspěšnosti
+Úspěšnost vyhodnocuji na testovacích datech (jeden testovací záznam odpovídá
+dvojici verifikovaných dokumentů), která musí splňovat několik podmínek:
+. testovací data jsou vytvořena z dokumentů se známým autorem (z doku-
+mentů se známým autorem jsou vylosovány náhodné dokumenty, které jsou
+následně použity jako testovací data)
+. počet záznamů se shodným autorstvím (pozitivní příklady) odpovídá počtu
+záznamů od různých autorů (negativní příklady)
+. každý autor je zastoupen v testovacích datech rovnoměrně
+Jestliže chci měřit kvalitu algoritmu, musím vyhodnocenou úspěšnost srovná-
+vat s jinými publikovanými výsledky. Jelikož jsou publikace zaměřeny nejčastěji
+na anglický jazyk, není k dispozici dostatek dat na komplexní srovnání. Z tohoto
+důvodu používám k porovnání naivní metodu (nepoučené rozhodování, anglicky
+se používá termín baseline), která má několik alternativ:
+. přiřazení všech do nejčastější kategorie (při stejném zastoupení pozitivních
+i negativních případů je úspěšnost 50 %)
+. náhodné přiřazení kategorie každému případu se stejnou pravděpodobností
+pro každou kategorii (odpovídá např. hodu mincí a při dostatečně velkých
+testovacích datech úspěšnost konverguje k 50 %)
+Cílem je tuto hranici 50 % překonat a snažit se s co největší přesností identifiko-
+vat shodnost autorství.
+Výsledky následujících experimentů budu zapisovat ve formě tzv. matice záměn
+(confusion matrix) viz příklad 5.2. V jednotlivých buňkách tabulky je zaznačeno, jak
+pracuje použitý klasifikátor:
+A potvrdí stejného autora
+B různé autory vyhodnotí jako stejné autory
+C stejného autora vyhodnotí jako různé autory
+D potvrdí různost autorů
+22
+KAPITOLA 5. EXPERIMENTY 5.3. METODIKA MĚŘENÍ
+stejní autoři různí autoři
+hádá stejné autory A B
+hádá různé autory C D
+Přesnost (accuracy)
+Přesnost (v textu značím i jako úspěšnost) klasifikátoru je možno vyjádřit vzorcem:
+Accuracy =
+A + D
+A + B + C + D
+,
+jinými slovy přesnost je poměr počtu správně klasifikovaných dokumentů vůči
+všem dokumentům.60
+Další možnou metrikou často používanou pro vyhodnocování úspěšnosti je tzv.
+balanced accuracy neboli vážená přesnost. Počítá se následujícím vztahem:
+Balanced accuracy =
+0, 5 ∗A
+A + C
++
+0, 5 ∗D
+B + D
+.
+Váženou přesnost ale není třeba v tomto případě uvažovat. Protože mám stejně
+velké množiny pozitivních i negativních výsledků, obě přesnosti dosahují stejné
+hodnoty.
+5.3 Metodika měření
+Cílem této práce je prozkoumat využití syntaktické analýzy při určování autorství.
+Nejprve je třeba určit datovou sadu, která bude společná pro všechna měření, na
+ní zjistím úspěšnost verifikace autorství bez syntaktické analýzy. V dalších krocích
+budu přidávat jednotlivé syntaktické charakteristiky a zkoumat vliv takto přidané
+informace na úspěšnost.
+Na měření byly použity dvě množiny textů:
+M: menší z nich (500 dokumentů), na které algoritmy řeší úlohu rychle (řádově
+desítky minut na laboratorních strojích CZPJ), lze na ní tudíž testovat všechny
+kombinace autorských charakteristik
+V: větší z nich (5 000 dokumentů), na které algoritmy běží pomaleji (řádově v ho-
+dinách), proto na ní byly testovány pouze ty kombinace charakteristik, které
+dosahovaly na menší množině dat nejlepších výsledků
+Na sadě M jsem provedla experimenty se všemi možnými kombinacemi násle-
+dujících charakteristik:
+1. morfologické značky
+2. slovní druhy
+3. bigramy slovních druhů
+4. interpunkce
+60HROZA, Jiří. Automatizovaná podpora filtrace elektronických textových dokumentů metodami strojového
+učení [online]. 2009 [cit. 2013-05-08]. Rigorózní práce. Masarykova univerzita, Fakulta informatiky. s.
+9.
+23
+KAPITOLA 5. EXPERIMENTY 5.4. JEDNOVRSTVÉ STROJOVÉ UČENÍ
+5. délka vět
+6. frekvence slov z tzv. stoplistu
+7. opakování slov
+8. syntaktická analýza
+9. komplexní syntaktická analýza
+V následujícím textu jsou vyhodnoceny experimenty jak pro jednovsrtvé strojové
+učení, tak i pro dvouvrstvé učení.
+5.4 Jednovrstvé strojové učení
+V první fázi jsem pracovala s jednovrstvým strojovým učením. Pro tyto experi-
+menty jsem použila framework vyvíjený Centrem zpracování přirozeného jazyka
+na Fakultě informatiky Masarykovy univerzity v rámci projektu ART61.
+Aktuálně je k dispozici celá řada technik strojového učení jako např. rozhodo-
+vací stromy, naivní Bayes či neuronové sítě, ale v kontextu určování autorství doku-
+mentů nejlépe funguje metoda Support Vector Machines (SVM). V práci používám
+její nejrozšířenější implementaci – LIBSVM62.
+S pomocí strojového učení zjišt’uji, zda dva předložené dokumenty byly na-
+psány stejným autorem (= pozitivní příklady), nebo ne (= negativní příklady).
+Průběh experimentu jednovrstvého strojového učení při použití SVM je patrný
+z níže uvedeného schématu:
+Obrázek 5.2: Schéma experimentu
+testovací 
+sada 
+dokumentů
+trénovací 
+sada 
+dokumentů
+SVM
+predikce
+testování 
+modelů
+matice 
+záměn
+data
+data
+data model
+klasifikátor
+výsledky
+nová
+data data
+Jak je vidět na obrázku, klasifikátor je vytvořen pomocí trénovacích dat. Pro vy-
+hodnocení úspěšnosti kasifikátoru používám komponentu testování modelů, která
+vytvořený naučený klasifikátor aplikuje na testovací data a jejím výstupem je ma-
+tice záměn. Pokud je úspěšnost dostatečná, lze klasifikátor použít k verifikaci au-
+61více o projektu ART v článku RYGL, Jan a Aleš HORÁK. A Framework for Authorship Identi-
+fication in the Internet Environment. In Proceedings of Fifth Workshop on Recent Advances in Slavonic
+Natural Language Processing, RASLAN 2011. Brno: Tribun EU, 2011. s. 117-124, 8 s.
+62CHANG, Chih-Chung a Chih-Jen LIN. LIBSVM: A library for support vector machines. In: ACM
+Transactions on Intelligent Systems and Technology (TIST). NY, USA: ACM New York, 2011.
+24
+KAPITOLA 5. EXPERIMENTY 5.4. JEDNOVRSTVÉ STROJOVÉ UČENÍ
+torství neznámých dat, což reprezentuje komponenta predikce, která dostává nová
+data a využívá naučeného klasifikátoru.
+5.4.1 Experimenty s malými daty
+Nejprve jsem zkoušela experimenty na malých datech (500 dokumentů). Tato data
+byla zredukována na 187 dokumentů, aby se snížil význam autorů, kteří napsali
+řádově více dokumentů než ostatní autoři (pro níže uvedené experimenty bylo pří-
+pustné 4-8 dokumentů na autora u učicí sady a 4 dokumenty na autora u testovací
+sady, to znamená, že pro autory s více dokumenty byly náhodně odstraněny doku-
+menty nad 8, respektive nad 4, a autoři s méně než čtyřmi dokumenty byli ze sady
+odstraněni). Dokumenty byly rozděleny do dvou skupin, na trénovací sadu o 115
+dokumentech a testovací sadu o 72 dokumentech (18 autorů po 4 dokumentech).
+Z vybraných dat trénovací sady lze vygenerovat 340 dvojic dokumentů se ste-
+jným autorem (počet vygenerovaných dat vždy záleží na počtu dokumentů na au-
+tora v dané sadě), aby byla dodržena podmínka na stejný počet pozitivních a neg-
+ativních příkladů, počet dvojic dokumentů s různými autory byl zredukován také
+na 340. Z testovací sady lze stejným postupem vygenerovat 108 pozitivních a 108
+negativních příkladů. Kvůli zachování nezávislosti dat se autoři mezi množinami
+liší.
+Vybrané metody z projektu ART
+S použitím frameworku ART jsem změřila úspěšnost původních sedmi charakte-
+ristik (viz kapitola 2.2 na straně 3). Výsledky jsou shrnuty v tabulce, dosažená
+úspěšnost je téměř 61 %:
+Tabulka 5.1: ART – úspěšnost: 131/216 (60,7 %)
+stejní autoři různí autoři
+hádá stejné autory + 63 (29,2 %) - 40 (18,5 %)
+hádá různé autory - 45 (20,8 %) + 68 (31,5 %)
+Autorská charakteristika na základě syntaktické analýzy
+Stejné pokusy jsem provedla i pro charakteristiky popsané v kapitole 3.3 na straně
+14. Výsledky (úspěšnost cca 57 %) jsou nepatrně horší než ty, kterých je možné
+dosáhnout použitím charakteristik z projektu ART, což není překvapující. Jen sa-
+motná syntaktická analýza sama o sobě není schopna dosáhnout uspokojivých
+hodnot. Přehled výsledků je k dispozici v tabulce:
+25
+KAPITOLA 5. EXPERIMENTY 5.4. JEDNOVRSTVÉ STROJOVÉ UČENÍ
+Tabulka 5.2: Syntaktická analýza – úspěšnost: 123/216 (56,9 %)
+stejní autoři různí autoři
+hádá stejné autory + 67 (31,0 %) - 52 (24,1 %)
+hádá různé autory - 41 (19,0 %) + 56 (25,9 %)
+Autorská charakteristika komplexně využívající výstupy syntaktické analýzy
+I pro další charakteristiky získané syntaktickou analýzou pomocí analyzátoru SET
+(viz metriky popsané v kapitách 3.3 a 3.4) byly výsledky překvapivě vysoké, base-
+line převyšovaly o více než 15 %. Dosažený výsledek vyšší než 65 procent může být
+zkreslený z důvodu malé množiny dokumentů, na kterých byl experiment prove-
+den, je třeba jej verifikovat na větších datech.
+Tabulka 5.3: Komplexní syntaktická analýza – úspěšnost: 141/216 (65,3 %)
+stejní autoři různí autoři
+hádá stejné autory + 83 (38,4 %) - 50 (23,1 %)
+hádá různé autory - 25 (11,6 %) + 58 (26,9 %)
+Další vysvětlení, proč bylo dosaženo tak vysoké úspěšnosti, je, že komplexní
+syntaktická analýza poskytuje více informací než syntaktická analýza výše, což
+umožňuje kvalitnější naučení klasifikátoru a zvyšuje úspěšnost. Na druhou stranu,
+čím více informací máme u jednovrstvého strojového učení, tím hůře se klasifiká-
+tor učí. To vysvětluje, proč komplexní syntaktická analýza, ač nese méně informací
+než všechny metody projektu ART, může přinést lepší výsledky. Má lepší poměr
+kvality informace na množství informace na analyzované množině dat, což ale ne-
+musí platit pro jiné množiny dat. Budou-li dokumenty při dalších experimentech
+vybrány jinak, je možné, že výsledky dopadnou jinak.
+Vybrané metody z projektu ART spojené s charakteristikami ze syntaktické ana-
+lýzy
+Přidáním informace získané syntaktickou analýzou k charakteristikám z projektu
+ART lze dosáhnout úspěšnosti přibližně 60 %, viz tabulka 5.4. Přidání syntaktické
+analýzy k charakteristikám z projektu ART překvapivě nepřináší žádné zlepšení
+na testovaných datech.
+Tabulka 5.4: ART + syntaktická analýza – úspěšnost: 130/216 (60,2 %)
+stejní autoři různí autoři
+hádá stejné autory + 64 (29,6 %) - 42 (19,4 %)
+hádá různé autory - 44 (20,4 %) + 66 (30,6 %)
+26
+KAPITOLA 5. EXPERIMENTY 5.4. JEDNOVRSTVÉ STROJOVÉ UČENÍ
+Vybrané metody z projektu ART spojené s komplexní syntaktickou analýzou
+Přidáním charakteristik získaných komplexní syntaktickou analýzou k autorským
+rysům z projektu ART se úspěšnost verifikace autorství zvýší na téměř 64 %, viz
+tabulka 5.5, což jsem očekávala, protože se jedná o kombinaci dvou nejlepších vari-
+ant pro tuto sadu dat.
+Tabulka 5.5: ART + komplexní syntaktická analýza – úspěšnost: 138/216 (63,9 %)
+stejní autoři různí autoři
+hádá stejné autory + 75 (34,7 %) - 45 (20,8 %)
+hádá různé autory - 33 (15,3 %) + 63 (29,2 %)
+Nejlepší kombinace
+Dále jsem zkoušela všechny možné kombinace jednotlivých autorských rysů. Vý-
+sledky s největší přesností se ukázaly být dosaženy následujícími kombinacemi
+(pro přehlednost jsou výsledky zaznamenány do tabulky):
+morfologické
+značky slovní druhy
+bigramy
+slovních
+druhů
+interpunkce délka vět syntaktickáanalýza
+komplexní
+syntaktická
+analýza
+stoplist opakováníslov přesnost
+65,2 %
+65,2 %
+65,3 %
+65,3 %
+65,3 %
+65,3 %
+65,3 %
+65,7 %
+65,8 %
+65,8 %
+65,8 %
+66,2 %
+66,2 %
+66,2 %
+67,2 %
+Jak je vidět z uvedeného výčtu nejlepších kombinací, téměř ve všech kombi-
+nacích se vyskytuje komplexní syntaktická analýza. Dovoluji si tedy tvrdit, že vyu-
+žití informací získaných ze syntaktické analýzy pro vylepšení problému verifikace
+autorství přispívá k dosažení lepších výsledků. Nejlepší kombinace dosahuje přes-
+nosti o více než 17 % vyšší než je baseline. Naopak využití charakteristických rysů
+interpunkce nepřináší potřebné výsledky.
+5.4.2 Experimenty s většími daty
+Experimenty na malých datech nelze brát za jediné správné, sloužily pouze k vý-
+běru takových kombinací, u kterých lze předpokládat úspěšnost i na datech větších,
+kde lze očekávat konzistentní chování. Na věrohodnější výsledky potřebujeme data
+několikanásobně větší. Jak se říká „more data beats a cleverer algorithm“63 neboli
+63DOMINGOS, Pedro. A few useful things to know about machine learning. In: Communications of
+the ACM. New York, NY, USA: ACM, 2012, roč. 55, č. 10. s. 78.
+27
+KAPITOLA 5. EXPERIMENTY 5.4. JEDNOVRSTVÉ STROJOVÉ UČENÍ
+„větší množství dat je lepší než vylepšování algoritmů“. Proto jsem použila ve
+druhém případě 5 000 dokumentů, což se zredukuje obdobně jako u experimentů
+s menšími daty na 895 dokumentů. Z toho připadne 575 dokumentů na učící mno-
+žinu a 320 dokumentů na množinu testovací. Z těchto dat lze vygenerovat 1 828
+pozitivních a stejně tak negativních příkladů pro trénovací množinu (což je pětkrát
+více než při prvním experimentu s menšími daty) a 480 pozitivních a negativních
+příkladů pro testovací množinu. Jelikož výpočet na velkém množství dokumentů
+při takovémto počtu atributů klade velké nároky na výpočetní prostředky, pro toto
+testování jsem použila jen ty kombinace, které na malých datech (500 dokumentů)
+dosahovaly nejlepších výsledků.
+Pro přehlednost uvádím výsledky v tabulce (pořadí kombinací, respektive řád-
+ků, je stejné jako v předchozí tabulce pro snadné srovnání):
+morfologické
+značky slovní druhy
+bigramy
+slovních
+druhů
+interpunkce délka vět syntaktickáanalýza
+komplexní
+syntaktická
+analýza
+stoplist opakováníslov přesnost
+62,9 %
+59,4 %
+59,7 %
+60,4 %
+58,5 %
+60,0 %
+59,1 %
+59,9 %
+60,0 %
+60,0 %
+59,3 %
+60,0 %
+60,0 %
+58,9 %
+60,0 %
+Vypočítaná přesnost je nižší než u experimentu s menším počtem dokumentů.
+Je možné, že je to způsobeno jiným výběrem učicích a testovacích dokumentů.
+Rovněž je možné, že tato nekonzistence mezi výsledky jednovrstvého a dvouvrst-
+vého strojového učení je způsobena případnou chybou v použité metodologii. Počet
+trénovacích příkladů je možná stále ještě malý, bylo by jej třeba postupně zvyšovat
+(samozřejmě jen do té míry, aby to bylo upočitatelné), dokud výsledky nezačnou
+být konzistentní.
+Vyzkouším-li pro srovnání vypočítat i úspěšnost vybraných metod projektu
+ART, získám 63,3 % přesnost. Spustím-li strojové učení pouze na komplexní syn-
+taktické analýze, dosáhneme úspěšnosti 56,2 %.
+Pro přehlednost výsledků přesnosti (accuracy) na malých a velkých datech je
+uveden graf 5.3.
+28
+KAPITOLA 5. EXPERIMENTY 5.5. DVOUVRSTVÉ STROJOVÉ UČENÍ
+Obrázek 5.3: Porovnání přesnosti na malých a velkých datech
+5.5 Dvouvrstvé strojové učení
+Rovněž v pokusech s dvouvrstvým strojovým učením byl použit framework z pro-
+jektu ART. Pro tento experiment jsem se rozhodla využít techniku naivního Baye-
+sova klasifikátoru (naïve Bayes), protože není tak výpočetně náročný a dosahuje
+skoro srovnatelné úspěšnosti v čase řádově mnohem menším než SVM.
+Průběh experimentů se strojovým učením za použití techniky naivního Baye-
+sova klasifikátoru je patrný z níže uvedeného schématu:
+Obrázek 5.4: Schéma – naivní Bayesův klasifikátor
+testovací 
+sada 
+dokumentů
+trénovací 
+sada 
+dokumentů
+predikce
+testování 
+modelů
+matice 
+záměn
+nová
+data
+predikce 1
+predikce 2
+naïve 
+Bayes
+naïve 
+Bayes
+naïve 
+Bayes
+naïve Bayes
+...
+...
+Z obrázku je patrné, že princip funguje obdobně jako u jednovrtsvého stro-
+jového učení, jediný rozdíl je ve zdvojení vrstvy strojového učení. Pro trénovací
+data je vytvořeno tolik klasifikátorů (n), kolik je charakteristik. Poté je rovnou apli-
+kován klasifikátor na trénovací data a pro každý učící příklad je tak získáno n
+podobností. Z takto upravených učících příkladů se natrénuje finální klasifikátor.
+Postupně jsou klasifikátory aplikovány na testovací data a s využitím komponenty
+29
+KAPITOLA 5. EXPERIMENTY 5.5. DVOUVRSTVÉ STROJOVÉ UČENÍ
+testování modelů je získána matice záměn. Při predikci autorství u neznámých dat
+je v prvním kroku určeno n podobností pomocí n komponent predikce a z následu-
+jících dat je pomocí finální predikční komponenty určena pravděpodobnost shod-
+ného autorství.
+5.5.1 Experimenty s malými daty
+První experimety s dvouvrstvým strojovým učením byly provedeny stejně jako
+u jednovrstvého strojového učení na menších datech, tedy na 500 dokumentech.
+Opět jsem provedla všechny kombinace jako u jednovrstvého učení.
+Zde klasifikátor dosahuje vyšších hodnot přesnosti (dosahuje téměř 70 %). Nej-
+lepší kombinací se ukázalo být spojení následujících charakteristických rysů: inter-
+punkce, syntaktické analýzy, opakování slov a bigramů slovních druhů: přesnost
+je 69,9 %.
+Tabulka 5.6: Nejlepší kombinace – úspěšnost: 158/226 (69,9 %)
+stejní autoři různí autoři
+hádá stejné autory + 66 (29,2 %) - 26 (11,5 %)
+hádá různé autory - 42 (18,6 %) + 92 (40,7 %)
+5.5.2 Experimenty s většími daty
+Dvouvrstvé strojové učení je výpočetně méně náročné než jednovrstvé strojové
+učení (naučení klasifikátoru na malém počtu atributů je výpočtově řádově méně
+náročné než učení na velkém počtu, tudíž je výhodnější natrénovat více klasifiká-
+torů po menším počtu atributů), je tedy možné spouštět experimenty i na větších
+datech bez výraznějších komplikací.
+Opět jsem použila 5 000 dokumentů jako při prvním pokusu. Nejvyšší úspěš-
+nosti (accuracy přesáhla 65 %) dosáhly dvě kombinace:
+1. Morfologické značky – interpunkce – délka vět – opakování slov: 657/1008
+(65.2 %) – viz tabulka 5.7
+2. Morfologické značky – interpunkce – délka vět – komplexní syntaktická ana-
+lýza – opakování slov: 658/1008 (65.3 %) – viz tabulka 5.8
+Tabulka 5.7: úspěšnost: 657/1008 (65,2 %)
+stejní autoři různí autoři
+hádá stejné autory + 254 (25,2 %) - 125 (12,4 %)
+hádá různé autory - 226 (22,4 %) +403 (40,0 %)
+30
+KAPITOLA 5. EXPERIMENTY 5.6. JEDNOVRSTVÉ VS. DVOUVRSTVÉ
+Tabulka 5.8: úspěšnost: 658/1008 (65,3 %)
+stejní autoři různí autoři
+hádá stejné autory + 254 (25,2 %) - 124 (12,3 %)
+hádá různé autory - 226 (22,4 %) + 404 (40,1 %)
+5.6 Porovnání výsledků jednovrstvého a dvouvrstvého stro-
+jového učení
+Přehledně jsou výsledky vidět na níže přiložených grafech.
+Obrázek 5.5: Přesnost na 500 dokumentech
+Obrázek 5.6: Přesnost na 5 000 dokumentech
+31
+KAPITOLA 5. EXPERIMENTY 5.6. JEDNOVRSTVÉ VS. DVOUVRSTVÉ
+Dvouvrstvé strojové učení obecně dosahuje lepších výsledků než strojové učení
+jednovrstvé. To je patrno i z níže přiložených grafů. Některé odchylky od tohoto
+faktu (např. při vyhodnocování úspěšnosti komplexní syntaktické analýzy) je mož-
+né zdůvodnit tak, že učení a následně trénování probíhalo na relativně malé mno-
+žině dat. Proto mohou být výsledky částečně zkresleny. Rovněž dvouvrstvé stro-
+jové učení je lepší pouze statisticky. To znamená, že ne na všech sadách dokumentů
+dokáže dosáhnout vyšších hodnot přesnosti.
+32
+6. Závěr
+Cílem této práce bylo prozkoumání možnosti využití informací získaných syntak-
+tickou analýzou při verifikaci autorství neznámých dokumentů. Za tímto účelem
+jsem nastudovala problém verifikace autorství, metody strojového učení a již do-
+sažené výsledky v této oblasti bádání. Dále bylo nutné nastudovat teorie syntaxe
+i použití vybraných syntaktických analyzátorů. Práce obsahuje stručný vhled do
+teoretického pozadí řešeného problému a rovněž detailní vyhodnocení dosažených
+výsledků.
+Nejdříve jsem dokumenty stažené z webového portálu označkovala morfolo-
+gickým analyzátorem ajka, následně použila syntaktické analyzátory SET, synt,
+MaltParser a MSTParser. Takto upravená data bylo třeba převést do podoby ak-
+ceptovatelné strojovým učením. K tomuto účelu byl využit framework z projektu
+ART. Následně jsem navrhla další charakteristické metriky, které by mohly přispět
+k dosažení lepších výsledků verifikace autorství. Výsledky strojového učení jsem
+vyhodnotila jak na původních, již používaných metrikách, tak na metrikách nově
+navržených.
+Jelikož zpracování dat do formy vhodné pro strojové učení je kvůli rozdílnosti
+výstupů značně komplikované, pro tuto práci jsem si vybrala pouze syntaktický
+analyzátor SET. Experimenty s jinými syntaktickými analyzátory plánuji v rámci
+další práce.
+V poslední části práce jsou popsány provedené experimenty, které ukazují, že
+syntaktická analýza sama o sobě přináší výsledky s podobnou úspěšností jako os-
+tatní charakteristiky. Přidáním informace obdržené syntaktickou analýzou k dalším
+metrikám jsem dosáhla hodnoty 69,9 %, což představuje zlepšení hodnoty úspěš-
+nosti o téměř 20 %. Proto si myslím, že zabývat se syntaktickou analýzou v kon-
+textu verifikace autorství je užitečné. Toto zlepšení je však v kontextu dalších ex-
+perimentů nejednoznačné a vyžaduje další zkoumání.
+33
+Literatura
+A Beginner’s Guide to the Shakespeare Authorship Problem. In: Shakespeare Oxford
+Society: Dedicated to Researching and Honoring the True Bard [online]. [cit. 2013-04-
+12]. Dostupné z: <http://www.shakespeare-oxford.com/?p=35>.
+BALLESTEROS, Miguel a Joakim NIVRE. MaltOptimizer: A System for MaltParser
+Optimization. In: The 8th international conference on Language Resources and Evalu-
+ation (LREC 2012). Istanbul, 2012, s. 58-62, 6 s.
+DANEŠ, František a Zdeněk HLAVSA. Větné vzorce v češtině. Vyd. 1. Praha:
+Academia, 1981, 270 s.
+DANEŠ, František, Zdeněk HLAVSA a Miroslav GREPL. Mluvnice češtiny. 3,
+Skladba. 1. vyd. Praha: Academia, 1987, 748 s.
+DOMINGOS, Pedro. A few useful things to know about machine learning. In: Com-
+munications of the ACM. New York, NY, USA: ACM, 2012, roč. 55, č. 10. s. 78-87,
+10 s.
+DUŠEK, Ondřej. Státnice I3: Závislostní syntax. In: Wiki.matfyz.cz [online]. 2010 [cit.
+2013-06-13]. Dostupné z: <http://wiki.matfyz.cz/index.php?title=
+St\%C3\%A1tnice_I3:_Z\%C3\%A1vislostn\%C3\%AD_syntax>.
+DUŠEK, Ondřej. Státnice I3: Syntax bezprostředních složek a frázové gra-
+matiky.In: Wiki.matfyz.cz [online]. 2010 [cit. 2013-06-13]. Dostupné z:
+<http://wiki.matfyz.cz/index.php?title=St\%C3\%A1tnice_I3:
+_Syntax_bezprost\%C5\%99edn\%C3\%ADch_slo\%C5\%BEek_a_fr\
+%C3\%A1zov\%C3\%A9_gramatiky>.
+FARKHUND, Iqbal, Liaquat A. KHAN, Benjamin C. M. FUNG a Mourad DEB-
+BABI. E-mail authorship verification for forensic investigation. In: Proceedings of
+the 2010 ACM Symposium on Applied Computing: SAC ’10. New York, USA, 2010,
+s. 1591-1598, 8 s.
+FOSTER, Donald W. Author unknown: on the trail of anonymous. 1. vyd. New York:
+Henry Holt, 2000, 318 s. ISBN 08-050-6357-9.
+GOLEMBIOVSKÝ, Jiří. WWW rozhraní k syntaktickému analyzátoru SYNT [online].
+2007 [cit. 2013-02-23]. Bakalářská práce. Masarykova univerzita, Fakulta infor-
+matiky. Vedoucí práce Aleš Horák. Dostupné z: <http://is.muni.cz/th/
+98861/fi_b/>.
+34
+LITERATURA LITERATURA
+HAJIČOVÁ, Eva, Jarmila PANEVOVÁ a Petr SGALL. Úvod do teoretické a počítačové
+lingvistiky: teoretická lingvistika. Vyd. 1. Univerzita Karlova Praha: Karolinum,
+2003, 156 s. ISBN 80-246-0470-1.
+HEGR, Jan. Automatické určení jazyka dokumentu založené na zpracování slabik [on-
+line]. 2011 [cit. 2013-06-13]. Diplomová práce. Masarykova univerzita, Fakulta
+informatiky. Vedoucí práce Pavel Rychlý. Dostupné z: <http://is.muni.cz/
+th/72595/fi_m/>.
+HROZA, Jiří. Automatizovaná podpora filtrace elektronických textových dokumentů meto-
+dami strojového učení [online]. 2009 [cit. 2013-02-26]. Rigorózní práce. Masarykova
+univerzita, Fakulta informatiky. Vedoucí práce Jan Žižka. Dostupné z: <http:
+//is.muni.cz/th/3800/fi_r/>.
+CHEN, Guo a Rongtao HOU. A New Machine Double-Layer Learning Method and
+Its Application in Non-Linear Time Series Forecasting. In: International Conference
+on Mechatronics and Automation. Harbin, 2007, s. 795-799, 5 s.
+ILLICH, Michal. Strojové učení z rychlíku [online] [prezentace]. [cit. 2013-
+05-16]. Dostupné z: <http://www.slideshare.net/michalillich/
+prez-develcz3>.
+JAKUBÍČEK, Miloš. Extrakce strukturních informací z běžného textu na základě syntak-
+tického analyzátoru [online]. 2008 [cit. 2013-02-23]. Bakalářská práce. Masarykova
+univerzita, Fakulta informatiky. Vedoucí práce Aleš Horák. Dostupné z: <http:
+//is.muni.cz/th/172962/fi_b/>.
+KARLÍK, Petr, Marek NEKULA a Jana PLESKALOVÁ. Encyklopedický slovník
+češtiny. 1. vyd. Praha: Nakladatelství Lidové noviny, 2002. 604 s.
+KOCINCOVÁ, Lucia. Reproducing Czech Syntactic Parsing Results Published in
+CoNLL Tasks. In Aleš Horák, Pavel Rychlý. 6th Workshop on Recent Advances in
+Slavonic Natural Language Processing. Brno: Tribun EU, 2012. s. 15-22, 8 s. ISBN
+978-80-263-0313-8.
+KOPPEL, Moshe et al. The „Fundamental Problem“ of Authorship Attribution. In:
+English Studies. 2012, roč. 93, č. 3, s. 284-291, 8 s.
+KOPPEL, Moshe a Jonathan SCHLER. Authorship verification as a one-class clas-
+sification problem. In: Proceedings of the twenty-first international conference on Ma-
+chine learning (ICML ’04). New York, NY, USA: ACM, 2004, 62 s. ISBN 1-58113-
+838-5.
+KOPPEL, Moshe, Jonathan SCHLER a Shlomo ARGAMON. Computational Meth-
+ods in Authorship Attribution. In: J. Am. Soc. Inf. Sci. Technol. New York, NY,
+USA: John Wiley & Sons, Inc., leden 2009, č. 60. s. 9-26, 18 s.
+KOVÁŘ, Vojtěch. Algoritmy kvalitativního ohodnocení výstupu syntaktické analýzy české
+věty [online]. 2007 [cit. 2013-02-23]. Bakalářská práce. Masarykova univerzita,
+Fakulta informatiky. Vedoucí práce Aleš Horák. Dostupné z: <http://is.
+muni.cz/th/139915/fi_b/>.
+35
+LITERATURA LITERATURA
+KOVÁŘ, Vojtěch. Syntaktická analýza s využitím postupné segmentace věty [online].
+2009 [cit. 2013-02-23]. Diplomová práce. Masarykova univerzita, Fakulta infor-
+matiky. Vedoucí práce Aleš Horák. Dostupné z: http://is.muni.cz/th/
+139915/fi_m/.
+KOVÁŘ, Vojtěch, Aleš HORÁK a Miloš JAKUBÍČEK. Syntactic Analysis Using Fi-
+nite Patterns: A New Parsing System for Czech. In Human Language Technology.
+Challenges for Computer Science and Linguistics. Berlin/Heidelberg: Springer, 2011.
+s. 161-171, 11 s. ISBN 978-3-642-20094-6.
+LOPATKOVÁ, Markéta, Martin PLÁTEK a Vladislav KUBOŇ. Závislostní redukční
+analýza přirozených jazyků. In: VOJTÁŠ, Peter. Proceedings of ITAT. Košice, 2004,
+s. 165-174, 10 s.
+NIVRE, Joakim a Johan HALL. A Quick Guide to MaltParser Optimization [on-
+line]. [cit. 2013-02-23]. 8 s. Dostupné z: <www.maltparser.org/guides/opt/
+quick-opt.pdf>.
+PALA, Karel. Počítačové zpracování přirozeného jazyka. vydání 1., el. verze. Brno:
+FI MU, 2001. Dostupné z: <nlp.fi.muni.cz/poc_lingv/slajdy-2009/
+pala_zprac.pdf>. 150 s.
+RYGL, Jan. Determining Authorship of Anonymous Texts [online]. 2013 [cit. 2013-06-
+13]. Rigorózní práce. Masarykova univerzita, Fakulta informatiky. Vedoucí práce
+Aleš Horák. Dostupné z: <http://is.muni.cz/th/208072/fi_r/>.
+RYGL, Jan. Určování autorství anonymních textů na základě automaticky nalezených
+charakteristických znaků [online]. 2011 [cit. 2013-02-26]. Diplomová práce.
+Masarykova univerzita, Fakulta informatiky. Vedoucí práce Aleš Horák. Dos-
+tupné z: <http://is.muni.cz/th/208072/fi_m/>.
+RYGL, Jan a Aleš HORÁK. Authorship Attribution: Comparison of Single-layer
+and Double-layer Machine Learning. In Petr Sojka, Aleš Horák, Ivan Kopeček,
+Karel Pala. Text, Speech and Dialogue - 15th International Conference. 7499. vyd.
+Brno: Springer, 2012. s. 282-289, 8 s. ISBN 978-3-642-32789-6.
+RYGL, Jan, Kristýna ZEMKOVÁ a Vojtěch KOVÁŘ. Authorship Verification based on
+Syntax Features. In Aleš Horák, Pavel Rychlý. Proceedings of the Sixth Workshop
+on Recent Advances in Slavonic Natural Language Processing, RASLAN 2012. 1st ed.
+Brno (Czech Republic): Tribun EU, 2012. s. 111-119, 131 s. ISBN 978-80-263-0313-
+8.
+ŘEHŮŘEK, Radim. Rešeršní analýza pro projekt strojového určování autorství. 2009.
+SCHÖLKOPF, Bernhard a Alexander J. SMOLA. Learning with Kernels: support vector
+machines, regularization, optimization, and beyond. Cambridge, Mass.: MIT Press,
+2002, 626 s. ISBN 02-621-9475-9.
+STAMATATOS, Efstathios, Nikos FAKOTAKIS a George KOKKINAKIS. Automatic
+Text Categorization in Terms of Genre and Author. In: Computational Linguistics.
+2000, roč. 26, č. 4, s. 471-495, 25 s.
+36
+LITERATURA LITERATURA
+VITAY, Julien. Machine Learning 01 - Introduction. [online] [prezen-
+tace]. [cit. 2013-05-16]. Dostupné z: <http://ebookbrowse.com/
+ml01-introduction-pdf-d203536135>.
+37
+Seznam obrázků
+3.1 Různé stromy na výstupu analyzátoru SET . . . . . . . . . . . . . . . 10
+3.2 Ukázka možných výstupů SETu . . . . . . . . . . . . . . . . . . . . . . 11
+3.3 Výstup analyzátoru při použití volby -pcf . . . . . . . . . . . . . . . . 12
+3.4 Výstup analyzátoru při použití volby -og3 . . . . . . . . . . . . . . . . 13
+4.1 Dvouvrstvé strojové učení . . . . . . . . . . . . . . . . . . . . . . . . . 19
+5.1 Ukázka vertikálního formátu morfologicky označkovaného textu . . 22
+5.2 Schéma experimentu . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+5.3 Porovnání přesnosti na malých a velkých datech . . . . . . . . . . . . 29
+5.4 Schéma – naivní Bayesův klasifikátor . . . . . . . . . . . . . . . . . . . 29
+5.5 Přesnost na 500 dokumentech . . . . . . . . . . . . . . . . . . . . . . . 31
+5.6 Přesnost na 5 000 dokumentech . . . . . . . . . . . . . . . . . . . . . . 31
+38
+Seznam tabulek
+3.1 Popis CoNNL formátu . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+5.1 ART – úspěšnost: 131/216 (60,7 %) . . . . . . . . . . . . . . . . . . . . 25
+5.2 Syntaktická analýza – úspěšnost: 123/216 (56,9 %) . . . . . . . . . . . 26
+5.3 Komplexní syntaktická analýza – úspěšnost: 141/216 (65,3 %) . . . . 26
+5.4 ART + syntaktická analýza – úspěšnost: 130/216 (60,2 %) . . . . . . . 26
+5.5 ART + komplexní syntaktická analýza – úspěšnost: 138/216 (63,9 %) 27
+5.6 Nejlepší kombinace – úspěšnost: 158/226 (69,9 %) . . . . . . . . . . . 30
+5.7 úspěšnost: 657/1008 (65,2 %) . . . . . . . . . . . . . . . . . . . . . . . 30
+5.8 úspěšnost: 658/1008 (65,3 %) . . . . . . . . . . . . . . . . . . . . . . . 31
+39
+Příloha A
+Zkoumané morfologické charakteristiky
+aB obouvidové
+aI nedokonavý vid
+aP dokonavý vid
+c1 1. pád
+c2 2. pád
+c3 3. pád
+c4 4. pád
+c5 5. pád
+c6 6. pád
+c7 7. pád
+d1 adjektivum pozitiv
+d2 adjektivum komparitiv
+d3 adjektivum superlativ
+eA afirmace
+eN negace
+gF rod ženský
+gI rod mužský neživotný
+gM rod mužský životný
+gN rod střední
+gR rod rodina
+kA zkratka
+kY by aby kdyby
+kI interpunkce
+k? nerozpoznané
+k0 citoslovce
+k1 substantivum
+k2 adjektivum
+k3 zájmeno
+k4 číslovka
+k5 sloveso
+k6 příslovce
+k7 předložka
+k8 spojka
+k9 částice
+mA příčestí činné/minulé
+mB indikativ futura
+mC kondicionál
+mD přechodník minulý
+mF infinitiv
+mI indikativ prézentu
+mN příčestí trpné
+mR imperativ
+mS přechodník přítomný
+nP množné číslo
+nS jednotné číslo
+nD duál
+p1 první osoba
+p2 druhá osoba
+p3 třetí osoba
+tM terminál M
+tT terminál T
+wR řidké slovo
+wZ zastarale
+xC číslovka základní/souřadící spojka
+xD zájmeno ukazovací
+40
+SEZNAM TABULEK SEZNAM TABULEK
+xO zájmeno přivlastňovací/číslovka
+řadová
+xP zájmeno osobní
+xR číslovka druhová
+xS podřadící spojka
+xT zájmeno vymezovací
+yF zájmeno reflexivní
+yI neurčitá číslovka
+yN záporná číslovka
+yQ tázací
+yR vztažná
+41

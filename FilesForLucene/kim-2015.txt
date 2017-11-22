@@ -1,0 +1,754 @@
+A New Approach for Approximate Text Search Using
+Genomic Short-Read Mapping Model ∗
+Sung-Hwan Kim
+Dept. of Electrical and Computer Engineering
+Pusan National University
+South Korea
++82-51-510-2871
+sunghwan@pusan.ac.kr
+Hwan-Gue Cho
+†
+Dept. of Electrical and Computer Engineering
+Pusan National University
+South Korea
++82-51-510-2283
+hgcho@pusan.ac.kr
+ABSTRACT
+In genomic sequence analysis, approximate searching is necessary
+to tolerate errors involved from genetic or mechanic reasons. Short-
+readmappingmethod is one of the methods that can search genomic
+objects allowing an acceptable level of error rates. In this model,
+a large set of fragments is given, and it is asked to find the simi-
+lar regions on a long sequence, where the fragments are matched as
+many as possible. In this paper, we exploit this model to search tex-
+tual objects treating them in a genomic view. And we also propose
+a new method for fragment ordering that considers a time limit in
+the search process. The proposed method tends to select fragments
+having less frequency, which allows the maximum number of dis-
+tinct fragments to be processed within a short time period. Empir-
+ical tests showed that our method is much faster than the previous
+method.
+Categories and Subject Descriptors
+H.3.3 [Information Search and Retrieval]: Search process
+General Terms
+Algorithms,Experimentation,Performance
+Keywords
+Text Similarity Search, Document Search, Short-readMapping, Ap-
+proximate String Matching, Plagiarism Detection
+1. INTRODUCTION
+Large volumes of information are easily accessible on the Inter-
+net; thus, the importance of document similarity searches is grow-
+ing each day. The document similarity search problem involves
+∗This work was supported by the National Research Foundation
+of Korea(NRF) grant funded by the Korea government(MSIP)
+(No.2011-0015359).
+†To whom correspondence should be addressed.
+Permission to make digital or hard copies of all or part of this work for
+personal or classroom use is granted without fee provided that copies are
+not made or distributed for profit or commercial advantage and that copies
+bear this notice and the full citation on the first page. To copy otherwise, to
+republish, to post on servers or to redistribute to lists, requires prior specific
+permission and/or a fee.
+IMCOM '15. January 08-10, 2015, BALI, Indonesia
+Copyright 2015 ACM 978-1-4503-3377-1/15/01 ...$15.00.
+http://dx.doi.org/10.1145/2701126.2701151.
+finding documents that are similar to a given query. The system
+should find the similar documents as rapidly as possible from a pre-
+indexed repository that contains a large volume of documents.
+Themost useful applications of this problem include de-duplication
+and query-by-document, as well as plagiarism detection. Redun-
+dancy is also increasing as the volume of information grows rapidly.
+Web data mining systems such as search engines and web crawlers
+can identify duplicate or near-duplicate documents to reduce stor-
+age costs (e.g., [9, 12] ). In the query-by-document retrieval system
+[13], users can submit a document as a query, whereas traditional
+information retrieval systems accept a word, partial phrases, or a
+couple of sentences at most as queries. Plagiarism detection sys-
+tems take a query document or a set of documents and find suspect
+documents that are near duplicates or locally similar to the query
+documents (e.g., [2, 10]).
+Two general approaches are used to address the document simi-
+larity search problem: (i) fingerprinting and (ii) structural analysis.
+Fingerprinting is a simple and effective solution to this problem.
+The hash values of documents are usually very small and indepen-
+dent of the document size, and thus, it is possible to compare two
+documents in constant time. Moreover, recent similarity-preserving
+and locality-sensitive hash techniques allow the detection of near-
+duplicate documents (e.g., [14]), whereas traditional hash functions
+require that the documents are exactly the same.
+Structural analysis includes lexical analysis, such as sequence
+alignment [15]. Fingerprinting methods using a fixed-size hash
+values can be used for similarity searches only if documents share
+global similarity, but sequence alignment (or the weighted edit dis-
+tance) can be effective for detecting locally similar regions in two or
+more given documents. However, sequence alignment incurs high
+computational costs, and it is difficult to generate an index that al-
+lows documents to be searched quickly for a given online query.
+Asmentioned above, the twomethods of fingerprinting and struc-
+tural analysis have disadvantages: one cannot detect local similar-
+ity, whereas the other fails to preprocess documents. Several hybrid
+methods have been proposed to address these limitations.
+Fragment mapping is a hybrid method that exploits some of the
+advantages of the fingerprinting and structural analysis methods
+[8]. Originally, this method was inspired by the so-called short
+read-mapping method, which is used widely in bioinformatics for
+identifying the expected locations of processed genomic fragments
+[6, 7, 11]. Short-read mapping is a method to find locally simi-
+lar regions of genomic sequences. Since only a number of short
+fragments (called short-reads) of a genomic sequence are given in-
+stead of the original sequence for the genomic object, it is required
+to compare these fragments with an already-known sequence such
+as the human reference genome. By mapping the fragments onto
+Figure 1. Flowchart of the proposed method.
+the reference sequence, we can figure out the most likely locations
+where the fragments come from.
+In this paper, we exploit the basic framework used in long ge-
+nomic sequence searching and assembling with a large set of short-
+reads (very short DNA fragments). The key concept employed by
+this method is to treat a document as a genomic object and to assume
+that it has mutated from part of a pre-indexed corpus. As a result,
+the problem of finding similar documents in an indexed corpus is
+reduced to determining the original positions in the reference cor-
+pus. A complete document is submitted during document similarity
+searches whereas a set of short fragments of the original sequence
+are used initially in bioinformatics. Thus, it is necessary to split
+the given document artificially when using the fragment mapping
+method for document processing. Thus, we can apply appropriate
+techniques such as splicing and matching much more freely than
+would be the case in genomic sequence processing. However, pre-
+vious applications of fragment mapping to document searches have
+not exploited this advantage.
+This paper presents an improved strategy for the string fragment
+mapping method based on substring frequencies. The proposed
+method consider the cases where a time limit concerns. We pro-
+cess the document fragments in the least-frequent-first manner to
+improve the performance when the search is aborted due to the time
+limit. The overall process of the proposedmethod is depicted in Fig-
+ure 1. The details will be described in the remainder of the paper
+as follows. In Section 2, we define the notations used in this paper
+and we review some relevant background information. Section 3
+provides a formal definition of the fragment mapping method and
+Section 4 presents our proposed method. The proposed method is
+evaluated in Section 5. Our conclusions and suggestions for future
+research are given in Section 6.
+2. PRELIMINARIES
+2.1 Notation
+Let x be a string. The length of string x is denoted by |x| such
+that the index of a string starts with 1 and ends with |x|. x[i] is
+the character with the index i in the string x. x[i : j] denotes the
+substring of x that starts at the index i and ends at j. Similarly, for
+a vector v, |v| is used to denote the length of v. v[i] is the element
+at position i and the index of a vector starts with 1 as a string. We
+denote [i, j] as the inclusive set of integers from i to j.
+For two strings, x and y, the matching My(x) is the set of all
+occurrences of x in y, which is defined as follows.
+My(x) = {i ∈ [1, |y| − |x|+ 1] | x = y[i : i+ |x| − 1]} (1)
+The statement ``x matches y'' means that |My(x)| > 0. Note that
+the null-string ϕ matches any string.
+2.2 Problem Definition
+LetD be a set of documents. When a query document q is given,
+we have to find the documents d ∈ D that are similar to q. If we
+treat D as a long single string that is obtained by concatenating all
+documents in D, this problem can be rewritten as finding the in-
+tervals ID(q) = {[ai, bi]} in the string D that correspond to the
+documents in D that are similar to query q. Thus the problem dis-
+cussed in this paper can be formulated as follows:
+Input: a long textD, a query document q.
+Output: the interval [a, b] that maximizes sim(D[a, b], q).
+Note that the criteria used to determine the similarity can either
+be global or local. The similarity measure used depends on the ap-
+plication. We can attempt to find near-duplicate documents using a
+global similarity measure by determining the local similarity, e.g.,
+to detect plagiarism.
+2.3 Index for String Matching
+When the text is fixed, we can build an index to boost string
+matching. At present, succinct structures provide space-efficient
+data structures, which allow us to handle a large volume of text in
+the memory during string matching. These full-text indexes, in-
+cluding the compressed suffix array [5] and FM-index [3], have the
+following functionalities:
+• count: computes the number of occurrences for a given query
+string;
+• locate: computes the exact position of a given occurrence
+of the query string.
+This process is divided into two operations because the full-text
+indexes are usually based on suffix arrays, and thus, the occurrences
+of the query string in the long text can be represented as a consec-
+utive interval. This representation of matches can reduce the time
+required to compute the count of the number of occurrences, which
+makes the matching algorithm output-sensitive. The detection of
+all the occurrences is executed by the locate operation for each
+element in the resulting interval in the suffix array.
+3. FRAGMENT MAPPING METHOD
+The proposed method comprises four stages: (i) indexing, (ii)
+query fragmentation, (iii) fragment matching, and (iv) interval de-
+tection. An overview of the structure is shown in Figure 2.
+Figure 2. Overview of the fragment mapping method. Given a
+query, the string matching statistics of its fragments are used to
+identify similar intervals in the long pre-indexed corpus.
+3.1 Indexing
+The first stage of the procedure involves the preprocessing of
+the corpus document that will be searched. To achieve rapid string
+matching, the corpus should be indexed with a full-text indexing
+method, such as a compressed suffix array or FM-index, as men-
+tioned in Section II. Preprocessing methods such as tokenization,
+alphabet sampling, or word-wise positional sampling can be per-
+formed before indexing, if necessary.
+Suppose that a setD of documents is given. We can assume that
+D is a long string obtained by concatenating all given documents. In
+the first preprocessing stage, we take R(D), where R : Σ∗ → Σ∗
+is a user-specific front-end string processing function that satisfies
+the following property: for any strings x, y ∈ Σ∗, if x matches y,
+then R(x) matches to R(y).
+The following are simple examples of the function R.
+Example 1. A function R1 that takes a string x and yields x,
+i.e., R1 is the identity function.
+Example 2. A functionR2 that takes a string x from the English
+alphabet {a, · · · , z, A, · · · Z} and yields the lowercase string of x,
+e.g., if x = ``baNanA'', then R2(x) =``banana''.
+Example 3. A function R4 that takes a string x from the alpha-
+bet {0, · · · , 9} and yields a string y such that y[i] = x[i] mod 2.
+Example 1 describes the identity function, whereas Examples 2
+and 3 show that we can use any surjective function on the alphabet
+for preprocessing. Note that the alphabet from which the strings are
+drawn does not need to be characters and it can be much larger or
+abstract units, such as words or topics.
+After applying the preprocessing functionR, we indexR(D) us-
+ing a data structure for stringmatching. The stringmatching process
+is executed using this data structure. We denote D̂ as the prepro-
+cessed document corpus R(D).
+3.2 Query Fragmentation
+In the second stage, we split the query document into several frag-
+ments. We slice the query document into fixed length segments in
+this paper, but other variations can be used such as variable-length
+fragments. The main purpose of fragmentation is to facilitate ap-
+proximate substring matching using the exact matching technique,
+which can be conducted using the indexes constructed in the first
+stage.
+LetQ be a query document. Q is a string from the same alphabet
+used as the pre-indexed corpus. First, we apply the preprocessing
+functionR toQ. The property of the preprocessing function allows
+us to findQ inD by searching forR(Q) inR(D). After conversion
+into the preprocessed text, we need to split the string into several
+fragments.
+We use a function to split a given query string. We can use any
+splitting function but for the sake of simplicity, we use only one
+parameter to splice the query: k as the length of fragments. The
+splitting function then yields all the substrings with length k from
+the given string. This is the same definition as an n-gram, which is
+used widely in information retrieval. Thus, we define the splitting
+function Ψk as follows.
+Ψk(x) = {x[i : i+ k − 1] | i ∈ [1, |x| − k]} (2)
+Example 4. Given Q =``apple'' and k = 3, we obtain the set
+of fragments Ψk(Q) = { ``app,'' ``ppl,'' ``ple'' }.
+Note thatΨk can be amultiset if wewant to assign higher weights
+to those fragments that appear in the query more than once.
+3.3 String Matching
+After generating fragments from the query, we conduct string
+matching using the pre-indexed corpus in the third stage. The frag-
+ments tend to match if the corpus includes part of the query. In
+the last stage, we accumulate these matching results to detect the
+interval.
+We have to find all occurrences of each fragment inΨk(Q̂) (where
+Q̂ = R(Q)), which we generated in the previous stage. Given a
+fragment x ∈ Ψk(Q̂), we can simply computeMD̂(x) using the in-
+dexed structure produced in the preprocessing stage. We can repre-
+sentMD̂(x) as a binary vector vx,D̂ , where each element vx,D̂[i] =
+1 if i ∈ MD̂(x), but 0 otherwise.
+Finally, we obtain the matching statistical vector VQ,D̂ by accu-
+mulating vx,D̂ for all x ∈ Ψk(Q̂).
+VQ,D̂[i] =
+∑
+x∈Ψk(Q̂)
+vx,D̂[i] (3)
+Example 5. IfD =``app_apple'' andQ =``apple'' are given,
+thenwe have vapp,D̂ = ⟨1, 0, 0, 1, 0, 0, 0, 0⟩, vppl,D̂ = ⟨0, 0, 0, 0, 1, 0, 0, 0⟩
+and vple,D̂ = ⟨0, 0, 0, 0, 0, 1, 0, 0⟩. Hence, VQ,D̂ = ⟨1, 0, 0, 0, 1, 1, 1, 0, 0⟩.
+3.4 Interval Detection
+In the interval detection stage, we obtain the interval from the
+substring matching statistics. By accumulating the matching posi-
+tions throughout the corpus, we can identify the interval that corre-
+sponds to the whole or part of the given query.
+hI v ea a d r e a m t h a t o n e d a y o n
+d r e
+r e a
+e a m
+0 00 0 0 00 0 1 20 3 1 02 0 0 00 0 0 00 0 0 00 0 00C
+D
+Matched fragments
+Figure 3. Method for computing the array C. Because a frag-
+ment matches with a position, the array C reflects the interval
+covered and the accumulated matches.
+After accumulating the matching counts, the next task is to de-
+termine the resulting interval. First, we convert the set of matching
+counts from the corpus into the set of corresponding intervals. Sup-
+pose that we have VD(Q̂) as the matching statistic vector. Note that
+we have k as the length of fragments and Vx,D̂[i] indicates the num-
+ber of fragments, which include matches that start at the ith position
+in the corpus.
+Now, let us revisit the string matching of a fragment. If a frag-
+ment of length k matches in the corpus at the ith position, we can
+say that the fragment covers D̂[i : i+ k− 1]. Thus, if a match of a
+fragment starts at the ith position, the spanning interval [i, i+k−1]
+represents the interval that this fragment covers. Since Vx,D̂[i] indi-
+cates the number of matches that start from position i, we can com-
+pute the vector that indicates the number of fragments that cover
+each position as follows.
+Cx,D̂[i] =
+k−1∑
+j=0
+Vx,D̂[i− j] (4)
+Example 6. IfD =``app_apple'' andQ =``apple'' are given,
+then we have the following.
+Cx,D̂ = ⟨1, 1, 1, 0, 1, 2, 3, 2, 1⟩ (5)
+Figure 3 illustrates the array Cx,D̂ . Because a fragment matches
+with a position, the value of each position in the interval covered by
+the fragment increases by 1. Thus, Cx,D̂[i] indicates the number of
+fragments that cover the position i in the document corpus used for
+string matching.
+There are two considerations when computing the intervals from
+a given Cx,D̂: (i) thresholding and (ii) extending.
+A query fragment may appear at positions other than that in the
+original source, thus wemust consider these noisy matching results.
+The application of a threshold is one method for eliminating false
+positive results. We can take an interval [i, j] such thatCx,D̂[l] ≥ θ
+for every l ∈ [i, j]. We can obtain the resulting interval by collect-
+ing all the intervals that satisfy this condition. Using a high thresh-
+old means that the longer context is aware rather than matchings of
+individual fragments.
+Figure 4 shows how the resulting intervals are computed with
+respect to θ. The black bars indicate the intervals covered. If more
+bars are stacked, more fragments cover that interval. For example,
+position (a) in Figure 4 is covered by only one fragment, whereas
+position (c) is covered by four fragments. If we set θ = 1, no
+covered positions are discarded. However, if θ = 2, the interval
+Extended intervalsRaw intervals
+ !"
+ !#
+ !$
+ !%
+(a) (b) (c)
+Figure 4. Eliminating accidentally matched intervals by thresh-
+olding using various values of θ. The resulting intervals are
+extended provided there is no essential loss at the boundaries
+while applying θ.
+at position (a) will be discarded because all of the positions in that
+interval are covered by only one fragment, i.e., if a match occurs
+accidently, it is considered to be noise.
+One consideration that should be addressedwhen applying a thresh-
+old value to discard noisy intervals is that the length of the interval
+is shorter when more fragments are covered. Intuitively, we can
+see that if θ = 2, position (b) will be included in the interval in the
+middle, whereas it is excluded if θ > 2. This is because the inter-
+val produced by θ is always a subset of the interval with a threshold
+less than θ. Thus, if we only extract the intervals where each po-
+sition is covered by at least θ fragments, the length of the interval
+produced will decrease as θ increases. Therefore, we have to ex-
+tend the interval after thresholding. Thus, we extend the interval by
+θ − 1 in both directions to 2(θ − 1) because this is the minimum
+length required to produce the resulting thresholded interval, i.e.,
+the thresholded interval can be obtained only if some fragments are
+matched compactly in this extended interval.
+If we assume that we only need to find one interval, applying a
+threshold to cut off negligible intervals is not important. Instead, it
+is sufficient to take the longest interval, which is assumed to encom-
+pass the region of the corpus that corresponds to the target query.
+Example 7. In Example 6, the maximum intervals are [1, 3] and
+[5, 9], and [5, 9] is the maximum interval where ``apple'' is found.
+Another more important consideration should be addressed if we
+want to execute an approximate search. It is possible that the query
+is not identical with some intervals in the searched corpus. For ex-
+ample, there can be slight differences or a high level of obfuscation
+if we consider plagiarism detection. Thus, we consider the case
+where the query is exactly the same as some region of the corpus,
+or it differs slightly compared with the target interval. Cases with
+high obfuscation, such as summarized, paraphrased, or translated
+documents, can be addressed by applying appropriate similarity-
+preserving hash functions, whichwewill consider in future research.
+Note that the use of these hash functions is orthogonal to ourmethod,
+thus the assumption mentioned above does not state a limitation of
+the method.
+To execute an approximate search, we extend the intervals to fill
+the small gaps between intervals, which are caused by mismatches
+between the corpus and the query. Thus, if two matching positions
+are close to each other, the gap between these positions is assumed
+to be matched and we count them as one long match.
+Let β be the length of the interval extension. Suppose that we
+have two maximum intervals [i1, j1] and [i2, j2] from Cx,D̂ . With-
+out any loss of generality, we can assume that j1 < i2. Next, we
+merge these intervals into one interval [i1, j2] if i2 − j1 ≤ β + 1.
+Resulting intervals
+&!'
+&!%
+&!"
+&!(
+&!#
+(a) (b) (c) (d)
+Figure 5. Merging intervals with various values of β. A higher
+value of β is more likely to merge a greater number of intervals
+into one long interval.
+Group #2
+Group #1
+Query
+Document Corpus
+Priority Queue
+Group #4
+Group #3
+Group #5
+Group #6
+Group #7
+In-queue groups
+Groups waiting for insertion
+Group #0
+Processed fragments
+Unprocessed fragments
+Q
+u
+e
+u
+e
+in
+g
+o
+rd
+e
+r
+Q
+u
+e
+u
+e
+<#occ, id>
+Figure 6. Frequency-based fragment ordering. Fragments are
+inserted into the priority queue in a group-wise manner, where
+the number of occurrences is used as their key. In each step, a
+decision is made about whether to perform string matching for
+the top fragment or inserting the next group.
+The term added on the right-hand side aims to merge consecutive
+intervals. For example, intervals such as [1, 4] and [5, 10] have no
+intersection but a consecutive interval from 1 to 10 is represented.
+Example 8. In Example 6, two intervals, [1, 3] and [5, 9], are
+merged into one long interval [1, 9] if β ≥ 1.
+Figure 5 shows examples of interval merging with different val-
+ues of β. With a higher β, more distant intervals can be merged
+together. In the examples, there are four intervals before merging.
+After merging with β = 1, intervals (b) and (c) are merged into
+one interval. Assuming that the distance between intervals (a) and
+(b) is 4, there is no change, even when β is increased by 1 (the
+third layer in Figure 5). If we set β at an excessively high value
+(e.g., β = ∞), all of the intervals will be merged and the interval
+produced will cover from the start position of the left-most interval
+to the end position of the right-most interval (e.g., the case where
+β = 8 in Figure 5).
+4. FREQUENCY-BASED FRAGMENT OR-
+DERING
+The overall process of fragment matching is simple; we conduct
+string matching for each fragment extracted from the query and ac-
+cumulate all the matches.
+However, this method is not guaranteed to match these fragments
+only with the identical region of the query because a fragment can
+(a) sequential selection
+(b) frequency-based selection
+merged intervalresulting interval
+ground truthdocument corpus
+Figure 7. Comparison between sequential selection and the pro-
+posedmethod. The frequency-based selectionmethod processes
+themore promising fragments first, before post-processingwith
+thresholding and merging to improve the search performance.
+This method can detect the resulting interval much faster than
+sequential ordering, which detects the interval incrementally
+without any speedup process.
+appear at any other positions in the text by chance. Some fragments
+may comprise common words such as ``of the," which are very fre-
+quent in English texts, thus there are many occurrences throughout
+the corpus. Therefore, we may obtain the expected number of oc-
+currences for a random fragment of a fixed length, but a fragment
+may have a different number of occurrences.
+This is not a problem if we have sufficient time to finish the
+matching process for all of the query fragments that are generated.
+However, we may be forced to abandon the search when a specific
+time has elapsed in some cases, which can be attributable to usabil-
+ity issues when providing services. In particular, this is the case
+when a system needs to provide users with results before a specific
+deadline. Balancing the system workload can also result in the ter-
+mination of searches. In this case, we must reorder the fragments to
+perform string matching before we can process as manymeaningful
+query fragments as possible.
+Two simple reordering methods can be considered as examples.
+Identity reordering can be represented as selecting the fragments in
+increasing order of their position in the query, i.e., we first select
+q[1, k], followed by q[2, k + 1], etc. However, this method cannot
+guarantee that all parts of the query are covered if it is aborted in
+the middle of the search process. If the search is terminated when
+half of the time required for processing all the fragments has passed,
+only the first half of the query will have been searched. As another
+example, we can reorder the fragments as follows. Let k be the
+fragment length and l is the query length. We can generate k groups
+of fragments such that the fragments in the ith group start at the
+position that remains after dividing i by k.
+Our proposed reordering technique is a frequency-aware method,
+where fragments with a smaller number of occurrences are selected
+sooner for string matching. The main concept of frequency-aware
+reordering is that a fragment with a unique occurrence in the corpus
+can be very useful for identifying the identical region. This is re-
+lated to the concept of inverse document frequency, which is used
+widely in information retrieval.
+Moreover, this method can process more fragments than other
+methods within a restricted time. In particular, common full-text
+indexing methods use a sampled suffix array to reduce the space
+of the data structure, thus the locate operation is a bottleneck in the
+stringmatching process. As a result, selecting fragments with lower
+numbers of occurrences is a good strategy for processing as many
+fragments as possible in a given time. The overall structure of the
+proposed method is described in Figure 7, and we will address the
+involved issues in this method.
+There are two problems when we use this strategy alone. First,
+if all the fragments have equal numbers of occurrences in the in-
+dexed corpus, the frequency-aware method collapses into sequen-
+tial processing of fragments in increasing order of their positions in
+the query. Second, we must compute the occurrences of all the frag-
+ments before determining their processing order, and thus, the count
+operations will be called as many times as there are fragments. This
+process is considerably unnecessary because a substantial number
+of fragments will remain unprocessed due to the time overheads.
+To address these problems, we combine the frequency-awaremethod
+with the groupingmethod that wementioned earlier. First, we group
+the fragments that remain after dividing by k and we process the
+fragments with the minimum number of occurrences. Next, we
+insert the fragments of the next group into the queue and execute
+fragment selection repeatedly.
+Thus, we push non-overlapping fragments into the priority queue
+initially. Each fragment is represented as a pair of its starting po-
+sition in the query and its number of occurrences in the text. The
+number of occurrences is the key and the priority queue pops the
+element with the minimum key.
+We can reduce the costs incurred when counting the occurrences
+because we do not compute all of the fragments at once. Initially,
+we use only the minimum number of fragments that can cover the
+query. After processing the fragments with the minimum occur-
+rences, we push another group of non-overlapping fragments that
+are also distinct from those in the queue. We then repeat the selec-
+tion of the fragments with the minimum number of occurrences.
+If there is sufficient time, this process is similar to placing all of
+the fragments into the queue using their number of occurrences as
+the key. If the fragment with the minimum number of occurrences
+belongs to the first group placed into the queue, it is identical. How-
+ever, our method can reduce the costs required to compute the num-
+ber of occurrences of fragments several times. This division process
+generates more query fragments when the search is aborted in the
+middle of the run.
+Another fragment selection technique is the reverse-bit ordering
+of fragment groups. When the next group is about to be inserted
+into the priority queue, it might not be efficient to insert them next
+to the fragments that have been already inserted. This is because if
+Q[i : i + k − 1] matches, then it is likely that the next fragment
+Q[i + 1 : i + k] will match. Thus, selecting the immediate next
+fragment might not be a good choice if we do not have sufficient
+time to process all of the fragments.
+Our grouping method aims to avoid pairwise overlaps between
+the fragments in the priority queue. First, we group the fragments
+{Q[ik : (i + 1)k − 1]}, i.e., the fragments with starting points
+that are divisible by k. The next group are the fragments {Q[⌊(i+
+1/2)k⌋ : ⌊(i+3/2)k⌋−1]}. Note that there is an overlap of at most
+half the length between any pair of fragments in the first group and
+second group. To generalize this step, we assign an integer to each
+group of fragments. A fragment group {Q[ik+j : (i+1)k+j−1]}
+has an integer j − 1 as its corresponding number. The insertion or-
+der increases in the reverse order of the binary representation of the
+number assigned to the group. For example, the fragment group
+{Q[ik : (i + 1)k − 1]} takes 0 as its own number and the group
+{Q[ik + k/2 : (i+ 1)k + k/2− 1]} has k/2. If k is the power of
+2, k/2 is the number obtained by right-shifting k. Since there are k
+numbers from 0 to k − 1, the number of bits required to represent
+Table 1. Dataset used in the experiments
+No Description Num Total Size Source
+D1 P&C English corpus 1 128.0M [4]
+D2 PAN13-NoObfus-susp 155 2.4M [1]
+D3 PAN13-NoObfus-src 155 0.6M [1]
+D4 PAN13-RandObfus-susp 159 2.0M [1]
+D5 PAN13-RandObfus-src 159 0.6M [1]
+Table 2. Experimental Settings
+No. Cases Corpus Query
+E1 Duplicate D1+D2 D2
+E2 Partially duplicate D1+D3 D2
+E3 Obfuscated D1+D5 D4
+these integers is lg k. Therefore, the reverse of the binary represen-
+tation k/2 will be 1 and this group will be inserted into the priority
+queue as the second group.
+Example 9. There are eight groups if k = 8, where the frag-
+ments in the 0 ≤ j < 8th group start at the positions where the re-
+mainder after dividing by 8 is j. The queuing order of those groups
+is 0, 4, 2, 6, 1, 5, 3, 7, and their corresponding binary representa-
+tions are 000, 100, 010, 110, 001, 101, 011, 111, respectively, which
+are sorted by their reversed strings in dictionary order.
+5. EXPERIMENTAL EVALUATION
+Weconducted several experiments to evaluate our proposedmethod.
+We used the English documents from the Pizza and Chilli (P&C)
+corpus [4], and the source documents from the text alignment eval-
+uation dataset in PAN 2013 [1], as shown in Table 1. We only ex-
+tracted the English alphabet from these documents and converted
+them into lowercase alphabets to generate strings overΣ = {a, · · · , z}.
+In addition, we selected distinct pairs of documents from the PAN
+2013 dataset as the source and the query to confirm to our assump-
+tion of the existence of a unique corresponding interval in the target
+corpus. Table 2 shows the settings for our experiments. We merged
+the P&C English corpus and the source documents for the corpus,
+and indexed them using the compressed suffix array implemented
+in the Succinct Data Structure Library (SDSL) with its default set-
+tings. The suspicious documents in the PAN 2013 dataset were used
+for queries.
+For each experiment, we determined the F -measure for every
+100 ms that elapsed. There was a one-to-one correspondence be-
+tween intervals in the corpus and query, thus it was sufficient to
+compute the evaluation measure from the resulting interval on the
+corpus. And we measured the convergence at each unit time as the
+ratio of the F -measure at the time to its maximum value during the
+first 5 seconds, which is the cut-off time.
+Convergence(t) = F (t)
+max0≤t≤5 F (t)
+(6)
+Figure 8-(a) compares the results obtained using basic sequential
+fragment selection and the proposed method for duplicate detection
+with k = 8. We selected the combination of parameters that ob-
+tained the best F -measure every 100 ms. The performance reached
+a sufficiently high level very rapidly when we selected fragments
+in frequency-based order, whereas it increased incrementally and
+gradually with sequential fragment selection. This is because the
+frequency-based fragment selection method can select fragments
+(a) Duplicate (b) Partially duplicate (c) Obfuscated
+Figure 8. Comparison between the proposed method (indicated by white circles) and the original method (black squares) in terms of
+convergence based on the elapsed time for: (a) duplicate, (b) partially duplicate, and (c) random obfuscated cases. The convergence
+of the proposed method increased more rapidly than that of the existing method.
+(a) Duplicate (b) Partially duplicate (c) Obfuscated
+Figure 9. The optimal values for β with the proposed method in terms of convergence about the elapsed time for: (a) duplicate, (b)
+partially duplicate, and (c) random obfuscated cases. In all cases, β decreased with time.
+that are distant from each other and fill the gap between them us-
+ing a large value of β. In the duplication detection experiment,
+each query fragment had at least one location that matched in the
+corpus. Therefore, the fragments with only one matching position
+were selected first using the proposed method. Statistically, they
+were likely to be sufficiently distant from each other to cover the
+duplicate interval very quickly.
+Figure 8-(b) shows the experimental results for the partially du-
+plicate cases. The overall trend was similar to that in the duplicate
+case. The difference is that the increment in the performance with
+respect to time is slightly slower than that in the duplicate cases.
+The performance staying at around 0.7 is caused by the assump-
+tion we made. It is observed the indexed corpus has more than one
+similar regions to part of several query documents. As a results, F -
+measures for some queries remain at 0 for a long time while those
+for the others converge to 1.0 very quickly.
+More interesting results were obtained with the obfuscated cases,
+as shown in Figure 8-(c). With sequential fragment selection, the
+performance decreased over time after amajor step change improve-
+ment in the first part of the experiment, which was probably at-
+tributable to noise in the text. After finding some critical matches,
+additional fragments that correspond to irrelevant positions may be
+selected because no appropriate match can be detected in the true in-
+terval. Overall, our proposed system outperformed sequential frag-
+ment selection over time. We also found that the performance in-
+creased slightly over time after a rapid initial decline. This observa-
+tion suggests that we can determine a combination of curves, some
+of whichwill be controlled by a decrease in noise whereas the others
+can increase the performance by using additional information.
+The optimal value for θ was always 1 for the first long period
+of the experiments. This is because the number of fragments is not
+large enough to consider overlaps between fragments. Figure 9-(a)
+shows the value ofβ that obtained the best performancewith respect
+to the time elapsed from the start of the search process for the dupli-
+cate cases. As expected, the positions of the fragments selected in
+the corpus were sparse immediately after the start, thus a very large
+value of β was required to fill the gap between the matched frag-
+ments. The gap that needed to be filled became increasingly smaller
+over time. However, if β remains excessively large over time, too
+many intervals could be merged unnecessarily, thereby generating
+false positive results in irrelevant positions. As a result, the optimal
+value of β decreased with time.
+The results were similar for the partially duplicate cases, as shown
+in Figure 9-(b). We found that the optimal value of β was smaller
+than that in the duplicate case because the average length of the sim-
+ilar intervals was much less in the partially duplicate case. Figure
+9-(c) shows the results for the obfuscated cases, which demonstrate
+that the overall trend in the changes in β with respect to the elapsed
+time did not differ significantly among the overall configurations.
+6. CONCLUSIONS AND FUTURE WORK
+Document similarity search is an important problem in current in-
+formation retrieval systems. Fragmentmapping is a heuristicmethod
+that is used to search for similar documents, which can adjust the
+trade-off between fingerprintingmethods and structural analysismeth-
+ods.
+In this paper, we proposed a new fragment orderingmethod, which
+is effective when the search has a time limit. This method arranges
+the fragments for string matching in order of their number of occur-
+rences in the corpus text, which allow as many fragments as pos-
+sible to be processed within a restricted time interval. We showed
+that ourmethod is likely to convergemuch faster than the basic frag-
+ment ordering method, and we conducted additional experiments to
+determine the characteristics obtained using various combinations
+of parameters.
+We did not determine the exact roles of the parameters in the
+fragment-mapping method, but we observed several important fea-
+tures when changing these parameters. In future research, we con-
+sider that we will able to derive an analytic formula to explain the
+interesting results we obtained in amore formal and precise manner.
+In addition, although we used the raw English text without any
+linguistic or statistical preprocessing, semantic-aware hashing of
+each token is orthogonal to our method thus we can apply it di-
+rectly to semantic-based search, plagiarism detection for obfuscated
+cases, and cross-language copy detection. We also aim to extend the
+fragment-mapping model so it can work effectively with a relaxed
+assumption where an unlimited number of similar intervals can ex-
+ist across documents.
+7. REFERENCES
+[1] Pan2013. http://pan.webis.de/.
+[2] S. M. Alzahrani, N. Salim, and A. Abraham. Understanding
+plagiarism linguistic patterns, textual features and detection
+methods. IEEE Transactions on Systems, Man, and
+Cybernetics---Part C: Applications and Reviews,
+42(2):133--149, 2012.
+[3] P. Ferragina and G. Manzini. Opportunistic data structures
+with applications. In Proc. 41st Annual Symposium on
+Foundations of Computer Science, pages 390--398, 2000.
+[4] P. Ferragina and G. Navarro. Pizza & chili corpus.
+http://pizzachili.dcc.uchile.cl/.
+[5] R. Grossi and J. S. Vitter. Compressed suffix arrays and
+suffix trees, with applications to text indexing and string
+matching. SIAM Journal on Computing, 35(2):378--407,
+2005.
+[6] H. Li and R. Durbin. Fast and accurate short read alignment
+with burrows-wheeler transform. Bioinformatics,
+25(14):1754--1760, 2009.
+[7] R. Li, H. Zhu, J. Ruan, W. Qian, X. Fang, Z. Shi, Y. Li, S. Li,
+G. Shi, K. Kristiansen, S. Li, H. Yang, J. Wang, and J. Wang.
+De novo assembly of human genomes with massively
+parallel short read sequencing. Genome Research,
+20(2):265--272, 2010.
+[8] C. S. Ock, S.-H. Kim, H. Tak, and H.-G. Cho. A fast
+searching for similar text using genomic read mapping
+method. In Proc. IEEE 16th Int'l Conf. on Computational
+Science and Engineering, pages 219--226, 2013.
+[9] F. Radlinski, P. N. Bennett, and E. Yilmaz. Detecting
+duplicate web documents using clickthrough data. In Proc.
+4th ACM Int'l Conf. on Web Search and Data Mining, pages
+147--156, 2011.
+[10] E. Stamatatos. Plagiarism detection using stopword n-grams.
+Journal of the American Society for Information Science and
+Technology, 62(12):2512--2527, 2011.
+[11] C. Trapnell and S. L. Salzberg. How to map billions of short
+reads onto genomes. Nature Biotechnology, 27:455--457,
+2009.
+[12] Y. Wu, Q. Zhang, and X. Huang. Efficient near-duplicate
+detection for q&a forum. In Proc. 5th Int'l Joint Conf. on
+Natural Language Processing, pages 1001--1009, 2011.
+[13] Y. Yang, N. Bansal, W. Dakka, P. Ipeirotis, N. Koudas, and
+D. Papadias. Query by document. In Proc. 2nd ACM Int'l
+Conf. on Web Search and Data Mining, pages 34--43, 2009.
+[14] Q. Zhang, Y. Wu, Z. Ding, and X. Huang. Learning hash
+codes for efficient content reuse detection. In Proc. 35th Int'l
+ACM SIGIR Conf. on Research and Development in
+Information Retrieval, pages 405--414, 2012.
+[15] Q. Zhang, Y. Zhang, H. Yu, and X. Huang. Efficient
+partial-duplicate detection based on sequence matching. In
+Proc. 33rd Int'l ACM SIGIR Conf. on Research and
+Development in Information Retrieval, pages 675--682,
+2010.

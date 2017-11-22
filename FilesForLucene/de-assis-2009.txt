@@ -1,0 +1,3116 @@
+World Wide Web
+DOI 10.1007/s11280-009-0063-7
+A Genre-Aware Approach to Focused Crawling
+Guilherme T. de Assis · Alberto H. F. Laender ·
+Marcos André Gonçalves · Altigran S. da Silva
+Received: 15 February 2008 / Revised: 23 March 2009 /
+Accepted: 25 March 2009
+© Springer Science + Business Media, LLC 2009
+Abstract Focused crawlers have as their main goal to crawl Web pages that are rel-
+evant to a specific topic or user interest, playing an important role for a great variety
+of applications. In general, they work by trying to find and crawl all kinds of pages
+deemed as related to an implicitly declared topic. However, users are often not sim-
+ply interested in any document about a topic, but instead they may want only
+documents of a given type or genre on that topic to be retrieved. In this article,
+we describe an approach to focused crawling that exploits not only content-related
+information but also genre information present in Web pages to guide the crawling
+process. This approach has been designed to address situations in which the specific
+topic of interest can be expressed by specifying two sets of terms, the first describing
+genre aspects of the desired pages and the second related to the subject or content
+of these pages, thus requiring no training or any kind of preprocessing. The effec-
+tiveness, efficiency and scalability of the proposed approach are demonstrated by
+a set of experiments involving the crawling of pages related to syllabi of computer
+science courses, job offers in the computer science field and sale offers of computer
+equipments. These experiments show that focused crawlers constructed according
+to our genre-aware approach achieve levels of F1 superior to 88%, requiring the
+analysis of no more than 65% of the visited pages in order to find 90% of the relevant
+G. T. de Assis (B) · A. H. F. Laender · M. A. Gonçalves
+Computer Science Department, Federal University of Minas Gerais,
+31270-901 Belo Horizonte, Minas Gerais, Brazil
+e-mail: gtassis@dcc.ufmg.br
+A. H. F. Laender
+e-mail: laender@dcc.ufmg.br
+M. A. Gonçalves
+e-mail: mgoncalv@dcc.ufmg.br
+A. S. da Silva
+Computer Science Department, Federal University of Amazonas,
+69077-000 Manaus, Amazonas, Brazil
+e-mail: alti@dcc.ufam.edu.br
+World Wide Web
+pages. In addition, we experimentally analyze the impact of term selection on our
+approach and evaluate a proposed strategy for semi-automatic generation of such
+terms. This analysis shows that a small set of terms selected by an expert or a set of
+terms specified by a typical user familiar with the topic is usually enough to produce
+good results and that such a semi-automatic strategy is very effective in supporting
+the task of selecting the sets of terms required to guide a crawling process.
+Keywords web crawling · focused crawling · document genre exploitation
+1 Introduction
+Focused crawlers or topical crawlers [7, 21, 23, 24, 27, 33] are special purpose crawlers
+that serve to get from the Web smaller and more restricted collections of pages. They
+have as their main goal to efficiently crawl pages that are, in the best possible way,
+relevant to a specific topic or user interest. Focused crawlers are important for a
+great variety of applications, such as digital libraries [29], Web resource discovery
+[9], competitive intelligence [26], and large Web directories [22], to name a few.
+Additionally, when compared with traditional crawlers used by general purpose
+search engines, they reduce the use of resources and favor the scalability of the
+crawling process, since they avoid the need for covering the entire Web.
+The challenge of identifying specific and relevant sub-spaces of the Web, accord-
+ing to a theme, is typically referred to as “construction of intelligence” in some
+crawling strategies [27]. This process is usually carried out by means of appropriate
+heuristics, which guide the crawling process and aim at determining how relevant a
+certain page is to a specific topic of interest. Most of the current strategies rely on
+text classifiers to determine such relevance [7, 12, 27, 28], with the additional cost of
+having to train the classifiers.
+In [2], we took a different approach by explicitly considering genre and content-
+related aspects of a page to evaluate its relevance to the information needs expressed
+by a user. We notice that users are often not simply interested in any document about
+a topic, but instead many times they want only documents of a given type or genre
+on that topic to be retrieved. By genre (among its several possible meanings [4]), we
+mean the kind, sort, or style of specific documents. A similar notion of genre is also
+explored in [39]. This is also the dominant view of several works on genre-based Web
+page classification [8, 31, 34, 40], which consider the concept of genre as related to
+the form or standard structure of a Web page, representing its text style.
+The main goal of our work was to establish a framework to allow the construction
+of effective, efficient and scalable focused crawlers that take into consideration both
+the genre and the content of the desired pages. More specifically, we proposed
+a focused crawling approach designed to situations in which the specific topic of
+interest can be expressed by two distinct sets of terms, the first describing genre
+aspects of the desired pages, and the second related to the subject or content of these
+pages, thus requiring no training nor any kind of preprocessing. Examples of such
+situations include syllabi of specific courses, curricula vitae of professionals or job
+offers in a particular field, sale offers of specific products, software documentation,
+medicine descriptions, etc. Thus, distinctly from previous approaches in the literature
+World Wide Web
+[12, 21, 23, 26–28], ours exploits both the genre and the content of the Web pages to
+guide the crawling process.
+In this article, we present a detailed description of this novel genre-aware ap-
+proach to focused crawling and describe the results of a set of experiments in-
+volving three application domains that demonstrate its effectiveness, efficiency and
+scalability. The results of these experiments show that focused crawlers constructed
+according to our genre-aware approach achieve levels of F1 (measure that combines
+the traditional precision and recall measures used in the IR area [3]) superior to 88%,
+which represents an average gain of 134% over traditional classifier-based focused
+crawlers. In addition, our approach adopts a particular queuing policy that is suitable
+to situations in which a specific topic of interest can be represented in terms of genre
+and content information. As we have observed, in such situations the parent of a
+relevant page usually contains other URLs that also refer to relevant pages. This
+motivated us to develop a new queuing policy for scheduling the pages to be fetched,
+which takes advantage of this feature to dynamically change the crawling priority of
+the non-visited pages, resulting in an efficient and more scalable strategy for focused
+crawling. As shown by our experimental results, our focused crawler requires the
+analysis of no more than 65% of the visited pages in order to find 90% of the relevant
+pages, while a traditional classifier-based focused crawler has to analyze at least 90%
+of the visited pages to achieve the same goal.
+A major issue in our genre-aware approach to focused crawling is the selection
+of terms required to describe the genre and the subject (or content) of the pages
+of interest, which usually requires the assistance of an expert on the application
+domain. Although not a complex task, the selection of these terms might have an
+impact on the effectiveness of a crawler constructed according to our approach. Thus,
+in this article we also analyze the impact of term selection in our approach. More
+specifically, we report on a set of experiments we have conducted to evaluate the
+impact of terms specified by an expert and by typical users, familiar with the topic
+of interest, to describe the genre and content of the pages of interest on the crawling
+process. As we shall see, the results of these experiments show that focused crawlers
+constructed according to our genre-aware approach achieve good results even when
+a small number of relevant genre and content terms is used to describe the pages
+of interest. Good results are also obtained with terms chosen by typical users, even
+when these terms are not in complete agreement with those chosen by the expert.
+These results provide evidence that: (1) choosing suitable terms for the crawling
+process is not a difficult task; and (2) good results can be obtained with distinct sets
+of terms related to the topic. Finally, in order to facilitate even further the process
+of term selection, we describe and experimentally evaluate a simple strategy we
+have proposed for semi-automatic generation of these terms. This strategy, despite
+its simplicity, has shown to be quite effective in suggesting suitable terms for the
+crawling process.
+Summarizing, the major contributions of this article are:
+1. A detailed description of a novel approach to focused crawling that exploits
+genre and content-related aspects of the desired pages and does not require a
+training or any preprocessing phase. Moreover, this approach adopts a queuing
+policy that dynamically changes the crawling priority of the non-visited pages
+according to the content of the visited ones, therefore providing an efficient and
+more scalable crawling strategy.
+World Wide Web
+2. An extensive set of experiments, involving three distinct application domains,
+that demonstrates the effectiveness, efficiency and scalability of our approach.
+3. An experimental analysis of the impact of term selection in our approach, and
+the proposal and evaluation of a strategy for the semi-automatic selection of the
+terms required to express the genre and content-related aspects of the desired
+pages.
+The rest of this article is organized as follows. Section 2 addresses related work.
+Section 3 presents a detailed description of our genre-aware approach to focused
+crawling. Section 4 describes the set of experiments we conducted to evaluate our
+approach and discusses the results obtained. Section 5 analyzes the impact of term
+selection on our genre-aware approach, varying the number of genre and content
+terms specified by experts and considering genre and content terms chosen by typical
+users familiar with the topic. Section 6 presents the proposed strategy for semi-
+automatically generating the set of genre and content terms required for expressing
+a topic of interest, and describes the set of experiments we performed to evaluate
+such a strategy. Finally, Section 7 concludes the article and gives some directions for
+future work.
+2 Related work
+Since the first proposals for focused crawlers, such as FishSearch [6], a great variety
+of methods has been developed for this purpose. According to Pant and Srinivasan
+[27], many crawling algorithms are variations of the Best-First crawler, in which a list
+of non-visited URLs is kept as a priority queue. The non-visited URLs correspond
+to pages that have not yet been analyzed by the crawler. Each non-visited URL has a
+score associated to it, which reflects the benefits of following this URL, determining,
+therefore, its priority to be visited. Variations of the Best-First crawler can be created
+changing the heuristics used to give scores to a URL in the priority queue. The
+Naive Best-First crawler [24] measures the relevance of a page to a specific topic by
+calculating the cosine distance between the vector of terms that represent that page
+and the vector of terms that represent the topic of interest. Then, it uses this result
+to estimate the benefit of following the URLs found in that page. Naive Best-First
+crawlers and their variations have been described and analyzed in various works
+[23, 24]. FishSearch [6] uses a similar measure combined with the notion of depth
+limit, which prevents the exploration of paths leading to a sequence of irrelevant
+pages. SharkSearch [15], which adopts the FishSearch strategy, proposes a more so-
+phisticated technique to classify the non-visited URLs, which is based on the anchor
+text, i.e., the text surrounding a link, and the inherited scores of ancestor pages, i.e.,
+pages that appear in the crawling path for the URL, to influence the scores of the
+non-visited URLs. Like its predecessor, SharkSearch also keeps the notion of depth
+limit.
+In general, focused crawlers use three kinds of contextual information, in order to
+estimate the benefit of following a URL:
+– Link context: corresponds to the lexical content, which is displayed around the
+URL in the parent page, i.e., the page from which the URL was extracted. Most
+focused crawlers use such contextual information.
+World Wide Web
+– Ancestor pages: determine the lexical content of the pages that lead to the
+current page that is associated with the URL in question. Few focused crawlers,
+as suggested in [12] and [17], use information taken from the ancestor pages. In
+fact, as shown in [17], the content of ancestor pages provides little help when
+compared with the content of the actual parent page.
+– Web graph: describes the structure of the Web sub-graph around the node
+(page) associated with the URL being processed. Such contextual information
+can provide key evidence to decide whether to follow the URL. For instance,
+if the parent page in which the URL appears is a good hub, that is, a page that
+contains links to many resourceful pages, then the priority to follow that URL
+should increase.
+In [23], algorithmic aspects of focused crawlers are analyzed. For this purpose,
+a set of crawling algorithms considered as representative in the literature was
+implemented, including: Breadth-First, PageRank and SharkSearch. Based on the
+evaluation of such crawling strategies, a new class of crawling algorithms, named
+InfoSpiders, was designed and implemented, presenting an improved performance.
+These algorithms include adaptive mechanisms, that is, mechanisms that promote
+the change of the crawler’s behavior according to the context found during the
+crawling. InfoSpiders correspond, thus, to a set of evolutionary algorithms that
+generate a population of adaptive agents. In order to evaluate all crawling algorithms
+mentioned, two performance metrics were defined: (1) recall level, which determines
+how well a crawler is able to crawl pages relevant to a specific topic, and (2) the
+average similarity between the topic description and the set of pages crawled. The
+aim of this work was to obtain a more complete and trustable picture of the advan-
+tages and disadvantages of various crawling strategies found in the literature. It was
+concluded that a crawler that uses evolutionary algorithms reaches high scalability,
+due to the distribution of work through their concurrent agents, resulting in a better
+performance/cost ratio.
+Another class of solutions for focused crawlers is based on Machine Learning
+techniques and makes extensive use of classifiers. In this context, a classifier has the
+role of deciding whether a URL found during the page traversal is to be followed
+or not. Figure 1 illustrates, according to [27], the functioning model of a traditional
+focused crawler guided by a classifier. As we can see, firstly, a priority queue is
+initialized with the URLs of the seed pages. Then, a non-visited URL is selected from
+the queue based on a score assigned by the classifier, and the corresponding page is
+fetched from the Web and abstractly represented in terms of its content (e.g., by a
+feature vector). At this moment, the abstract representation of the page is analyzed
+by a classifier and a score that measures the relevance of the page to the desired
+topic is given. All URLs of the analyzed page are placed in the priority queue with
+the same score of this page. This process is repeated until there are no more URLs
+in the queue. Notice that, previously to the crawling process, the classifier must be
+trained with examples of pages to be crawled.
+The work described in [7] was the first one to use a classifier, in this case a Naive
+Bayes classifier [30], in order to guide a focused crawler. The basic idea behind such
+a crawler is to classify the crawled pages within the categories of a given taxonomy.
+Examples of relevant pages are used to create a Bayesian classifier, which is capable
+of determining the probability P(c|p) of a crawled page p to belong to a category
+c in the taxonomy. It was suggested that such a focused crawler can be generalized
+World Wide Web
+Figure 1 Functioning model of a focused crawler guided by a classifier [27].
+and used with a taxonomy where only two categories, relevant and irrelevant, are
+available. The work in [12] has proposed a variation of this crawler, naming it a
+context-focused crawler. Such a crawler uses a set of Naive Bayes classifiers that are
+trained to estimate the link distance between a crawled page and the relevant pages.
+In [32], the BINGO! system for focused crawling and its application to information
+portal generation and expert Web search are presented. The system uses a Support
+Vector Machine (SVM) classifier [10] in order to guide the crawling processes. The
+performed experiments show the potential of this focused crawling paradigm but also
+World Wide Web
+raises the difficulties for properly calibrating crawl setups to achieve good recall and
+high precision.
+In [28], the effect of distinct link contexts (i.e., terms that appear in the text
+around a hyperlink within a Web page) on the performance of SVM classifier-guided
+focused crawlers is investigated. The results show that a crawler that exploits words
+in both the immediate vicinity of a hyperlink and the entire parent page performs
+significantly better than one that depends on just one of these pieces of evidence.
+Moreover, a crawler that uses the tag tree hierarchy of the Web pages provides
+a more effective coverage. The work described in [1] proposes a Latent Semantic
+Indexing (LSI) classifier [18] that combines link analysis with text content in order to
+retrieve and index domain-specific web documents. The implementation provides a
+different approach to focused crawling and aims to overcome the limitations imposed
+by the need to provide initial data for training, while maintaining a high recall/
+precision ratio. LSI is a concept-based automatic indexing method that models the
+semantics of the domain in order to suggest additional relevant keywords and to
+reveal the “hidden” concepts of a given corpus while eliminating high-order noise.
+The method captures the higher-order “latent” structure of word usage across the
+documents rather than just surface-level word choice, modeling the association
+between terms and documents based on how terms co-occur across documents [13].
+The work described in [27] presents a systematic and comparative study involving
+experiments that explore many versions of the Naive Bayes, SVM and Neural
+Network classifying schemes [11, 35, 37]. The experiments were performed in a
+collection of over 100 topics, therefore allowing statistically valid conclusions to be
+drawn. A crawling environment was designed and developed, which allowed new
+classifiers to be flexibly added. The results show that Naive Bayes [30] is a weaker
+choice, when compared to SVM [10] and Neural Network [25], to control a focused
+crawler. SVM seems to be the best choice among the three, since it performs as well
+as the Neural Network, in addition to requiring a lower training cost. Among the
+various versions of the classifying schemes analyzed, the best were: Naive Bayes
+with kernel density, SVM with first degree kernel, and Neural Network with four
+hidden nodes and learning rate of 0.1. A second analysis of the experiments showed
+a divergence, between crawlers of similar performance, in terms of the Web sub-
+spaces covered by them. Another framework to evaluate different focused crawling
+strategies is described in [33].
+Another distinct approach to focused crawling, also based on Machine Learning
+techniques, is proposed in [21]. It uses two probabilistic models, Hidden Markov
+Models and Conditional Random Fields, to model the link structure and the content
+of documents leading to target pages by learning from user’s topic-specific browsing.
+A focused crawler constructed according to this approach is treated as a random
+surfer, over an underlying Markov chain of hidden states, defined by the distance
+from the targets, from which the actual topics of a Web page are generated. Experi-
+mental results show that the proposed crawler often outperforms Best-First crawlers.
+In general, focused crawlers guided by classifiers [1, 7, 12, 17, 27, 28, 32, 33]
+present an additional cost of having to train the classifiers with positive and negative
+examples of pages to be crawled and, due to the generality of the situations in which
+they are applied, usually reach recall and precision levels between 40% and 70%.
+This scenario does not change much with other kinds of focused crawler [6, 15, 21,
+World Wide Web
+23, 24, 26, 29]. Moreover, as we can see from the above discussion, previous work
+on focused crawling relies on a single concept space (i.e., the topic of the pages) for
+driving the crawling process. An exception is the work described in [38] that presents
+a tool for generating structure-driven crawlers. This tool takes as input a sample page
+and an entry point of a Web site and generates a structure-driven crawler based on
+navigation patterns—sequences of patterns for the links that a crawler has to follow
+to reach pages structurally similar to the sample page. Content aspects, though, are
+not considered in this case.
+Thus, in order to improve the effectiveness and the efficiency of the crawling
+process, we exploit another equally important concept space that has been neglected
+in the literature: the genre of the pages. Our genre-aware approach is, to the best of
+our knowledge, a first attempt towards this direction.
+3 Genre-aware focused crawling
+Our genre-aware approach to focused crawling relies on the fact that some specific
+topics of interest can be represented by considering two distinct aspects: its genre
+(text style) and content-related information. For instance, if a user wants to crawl
+Web pages that include syllabi of databases courses, a focused crawler should analyze
+a specific Web page considering, separately, the terms present in that page that
+indicate that it corresponds to a syllabus (terms that characterize the course syllabus
+genre) and the terms that indicate that the page is related to the field of database
+(terms that appear in a syllabus content of a databases course). On the other hand,
+a traditional focused crawler guided by a classifier analyzes the content of a specific
+Web page, but does not consider separately the two kinds of information. Therefore,
+pages that include syllabi of other courses, as well any page referring to topics in the
+field of database, could be selected by this crawler as being related to a databases
+course (precision errors), whereas pages with genre and content poorly specified but
+including a syllabus of a databases-related course would be classified as belonging to
+the “other” category (recall errors).
+Thus, our approach considers a set of heuristics to guide a crawler, in such way
+that it allows the separate analysis of the genre and the content of a Web page. In
+addition, it also considers the page URL string, since it may include terms related to
+both the genre and the content of the desired topic of interest. Our set of heuristics
+has been designed with two main objectives: improving the level of F1 of the crawling
+process and speeding up the crawling of relevant pages.
+3.1 Relevance assessment
+In order to determine the relevance between a Web page and the set of terms
+that represent the genre and the content of the desired topic, we use the cosine
+similarity function derived from the classic vector space model [3] widely used in
+the information retrieval area. The choice of this model was twofold: (1) it is easy
+to implement and usually provides an effective solution and (2) its cosine ranking
+formula allows sorting the crawled pages according to their degree of similarity to
+the desired topic, which is important to establish a crawling priority. Thus, consider a
+Web page pj and a user specification on the genre or the content of the desired topic
+World Wide Web
+given by a set of terms s. The relevance of pj with respect to s, determined by the
+degree of similarity between pj and s, is given by
+sim(pj, s) =
+∑t
+i=1 wi, j × wi,s√∑t
+i=1 w
+2
+i, j ×
+√∑t
+i=1 w
+2
+i,s
+(1)
+where ki is a term in set s, t is the number of terms in set s, wi, j is the weight asso-
+ciated with the pair (ki,pj) and wi,s is the weight associated with the pair (ki, s). If
+sim(pj, s) is greater or equal to a similarity threshold previously specified, the Web
+page pj is considered relevant.
+The weight wi, j is given by
+wi, j = fi, j × idfi (2)
+where fi, j is the normalized frequency of the term ki in the page pj and idfi is the
+Inverse Document Frequency (IDF) of the term ki that indicates the importance of
+the term ki inside a collection.
+The normalized frequency fi, j is given by
+fi, j = f reqi, jmaxl( f reql, j) (3)
+where f reqi, j is the raw frequency of the term ki in the page pj (i.e., the number of
+times that the term ki is mentioned in the text of the page pj) and maxl( f reql, j) is the
+biggest frequency among the frequencies of the terms ki mentioned in the text of the
+page pj.
+The IDF value idfi is given by
+idfi = log Nni (4)
+where N is the total amount of pages in a collection and ni is the amount of pages of
+such collection in which the term ki appears.
+Finally, the weight wi,s is given by
+wi,s =
+(
+0.5 + 0.5 × f reqi,s
+maxl( f reql,s)
+)
+× idfi (5)
+where f reqi,s is the raw frequency of the term ki in the set of terms s and
+maxl( f reql,s) is the biggest frequency among the frequencies of the terms ki in the set
+s. Since each term ki appears only once in the set s, we can conclude that wi,s = idfi
+for all terms ki.
+3.2 Crawling process
+To crawl Web pages according to our approach, we use the procedure FCrawl
+described by Algorithm 1. This procedure takes as input sets of terms that represent
+the genre (GenreTerms) and the desired information content (ContentTerms), and
+World Wide Web
+outputs a set of relevant pages (RelevantPages). Eventually, another set of terms,
+representing the URL string (URLTerms) of a page related to this topic, may also be
+specified. Each URL string term is related to the page genre or to the desired content.
+These sets of terms can be specified by an application domain expert (or a typical
+user familiar with the topic) or, as discussed in Section 6, they can be generated in a
+semi-automatic fashion.
+This procedure also takes as input a set of URLs pointing to seed pages
+(SeedPages) and two additional parameters: (1) the similarity threshold1 (Similar-
+ityThreshold), that indicates whether a specific visited page is relevant or not, and
+(2) the change threshold (ChangeThreshold), that indicates whether the score of a
+URL may be changed during the crawling process. A list of non-visited URLs is kept
+in a priority queue called Frontier. In addition, this procedure invokes the following
+pre-defined procedures and functions:
+– InsertURL(URL,score,URLtype): inserts in Frontier a URL with a specific score
+and URLtype (“seed” or “non-seed”);
+– RemoveURL(URL,URLtype): removes from Frontier the URL with the highest
+score, returning such URL and its URLtype;
+– FetchParsePage(URL,page,terms,links): fetches and parses the page pointed by
+URL, returning the actual page and its sets of terms and links;
+1It should be noticed that despite our crawling procedure has been implemented with the similarity
+threshold, a practical implementation for real users could consider a maximum number of pages to
+be visited as a parameter to be set by such users, for example, based on time constraints. The results
+could then be ranked by similarity. The use of the threshold allows us though to better evaluate the
+potential of our chosen strategies.
+World Wide Web
+– CosineDistance(page,terms): returns the cosine distance between a page and a
+set of terms;
+– Mean(similarity1,similarity2,weight1,weight2): returns the weighted mean
+between two similarity values according to weights assigned to them;
+– ChangeScores(URL,newscore): changes to newscore the score of the URLs in
+Frontier that correspond to sibling pages of a given URL.
+Procedure Fcrawl works as follows. Step 01 initializes Frontier with the URLs of
+the seed pages, setting the URL scores to 1. For each URL in Frontier (step 02), the
+corresponding page is visited (step 04) and its content analyzed (steps 05 to 09). This
+is done by determining the degree of similarity between the current page and the
+sets of terms that describe the desired topic of interest. Thus, the cosine similarity
+function is applied separately to each set of terms (steps 05, 06 and 08), generating a
+specific similarity score between the current page and the sets of terms that represent,
+respectively, the genre, the content and the URL string of the desired pages. Then,
+these scores are combined into a final single one (steps 07 and 09) and compared with
+a given threshold. If this final score is greater or equal to this threshold, the visited
+page is included in the set of relevant pages (step 10). As we shall see, determining
+the relevance of a page to a specific topic by considering separately pieces of evidence
+related to its genre and content is the main reason for the F1 levels we have achieved
+with our genre-aware approach. Next, if the current page is a non-seed one, the final
+similarity score is compared with a second threshold to determine whether the scores
+of URLs in Frontier that correspond to children of the current page’s parent may be
+changed (step 11). Notice that, for doing so, procedure ChangeScores should be able
+to locate the URLs of the siblings of the current page. Finally, the links previously
+extracted from the current page are inserted into Frontier (step 12) having their
+scores set to 0.
+As we demonstrate in our experiments, the strategy of dynamically changing
+the crawling priority of the non-visited pages is the main reason for the good
+performance of our crawling approach since it allows for relevant pages to be crawled
+as soon as possible. This occurs because in situations where a specific topic can be
+separately represented in terms of genre and content, we observed that the parent of
+a relevant page often contains other URLs that also point to relevant pages. On the
+other hand, a relevant page does not usually include a link to another relevant page.
+For example, considering that a crawler has located a page that includes the syllabus
+of a databases course, URLs of other relevant pages can be found in the page of the
+graduate program which that course is part of or in the page that includes the list of
+courses taught by a certain professor, whereas it is unlikely to find URLs of relevant
+pages in the actual page that includes the course syllabus. This strategy, which speeds
+up the crawling process, performs well in domains where the parent page has a list of
+items related to the topic of interest. In fact, this is a very common navigation pattern
+found on the Web [19].
+Figure 2 summarizes the main steps of our focused crawling approach. Notice
+that a focused crawler constructed according to our genre-aware approach follows
+the same basic steps of a traditional focused crawler guided by a classifier (see
+Figure 1). However, the fact that our approach exploits separately genre and content
+information, as well as adopts a dynamic queuing policy, considerably improves our
+results as we shall see next.
+World Wide Web
+Figure 2 Functioning model of our focused crawling approach.
+4 Experimental evaluation
+In this section, we describe the experiments we have designed and conducted to
+demonstrate the effectiveness, efficiency and scalability of our genre-aware approach
+to focused crawling, and discuss the results obtained.
+4.1 Experimental design and setup
+In order to conduct our experiments, we implemented a crawler based on the
+procedure FCrawl described by Algorithm 1. In our experiments, this crawler was
+run in the context of the Brazilian Web with the purpose of crawling pages related to
+three topics: (1) syllabi of specific computer science courses, (2) job offers in the
+computer science field, and (3) sale offers of computer equipments. These three
+topics are related to the same general subject (“computer science”) but their pages
+of interest are of different genres (“course syllabus”, “job offer” and “sale offer”).
+Notice that the fact that the topics of these experiments were related to computer
+science is not significant and other topics could also have been chosen. This choice
+was due to our familiarity with the topic which would help evaluate the experiment
+results. Another experiment that validates our approach in a real application sce-
+nario and involves distinct topics is described in Subsection 4.5.
+World Wide Web
+Table 1 Number of terms specified for each topic.
+Topic Number of Number of
+genre terms content terms
+Syllabi (genre) of data structures courses (subject) 16 16
+Syllabi (genre) of databases courses (subject) 16 24
+Syllabi (genre) of information retrieval courses (subject) 16 24
+Job offers (genre) in computer science (subject) 24 24
+Sale offers (genre) of computer equipments (subject) 24 48
+For the first topic, three disciplines with distinct characteristics were chosen as spe-
+cific subjects: “databases”, which is a discipline whose content is well-consolidated,
+“data structures”, which is also a well-consolidated discipline but whose content may
+be dispersed into several courses, and “information retrieval”, which is a discipline
+whose content is not yet well-consolidated due to its fast recent evolution. In
+addition, five seed pages of Brazilian higher education institutions were used. For
+the other two topics, job offers in computer science and sale offers of computer
+equipments, we used ten seed pages. The reason for this was to capture the trend
+we have found on the Web, where there are more pages for the two last topics than
+there exists for the first one. More importantly, the same number of seed pages was
+given to both, our crawler and the baseline, allowing therefore a fair comparison.
+For each topic, an expert manually specified the set of terms (or phrases2) required
+to represent the genre and the content of the desired pages as well as the answer set
+containing the relevant pages among those visited by the crawler in order to allow
+us to assess the effectiveness of our approach. Table 1 shows the number of genre
+and content terms specified for each topic and Table 2 shows these terms. We notice
+that we used exactly the same terms for the genre of the first topic (“course syllabi”)
+for all three disciplines. However, some subjects may require more terms than others
+due to their inherently broadness and complexity.
+It is also important to notice that the specification of these sets of terms is a
+simple task when compared with the effort required to train a classifier. For instance,
+Figure 3 illustrates a typical course syllabus page found on the Web. As we can see,
+the terms that characterize this page as such are easily recognized.
+In order to evaluate the effectiveness of our genre-aware approach, we measured
+the F1 level for each crawling process executed. According to Baeza-Yates and
+Ribeiro-Neto [3], the F1 measure is the harmonic mean of the two most widely
+used information retrieval performance measures, precision and recall, and assumes
+values in the interval [0,1]. In our context, precision corresponds to the fraction of
+the retrieved pages that is relevant, i.e,
+Precision = |number of relevant pages retrieved||number of pages retrieved| (6)
+and recall corresponds to the fraction of the relevant pages that has been actually
+retrieved, i.e.,
+Recall = |number of relevant pages retrieved||number of relevant pages| (7)
+2Multi-word terms.
+World Wide Web
+T
+ab
+le
+2
+E
+xa
+m
+pl
+es
+of
+te
+rm
+s
+us
+ed
+fo
+r
+ea
+ch
+to
+pi
+c.
+T
+op
+ic
+G
+en
+re
+te
+rm
+s
+C
+on
+te
+nt
+te
+rm
+s
+D
+at
+a
+st
+ru
+ct
+ur
+es
+“s
+yl
+la
+bu
+s”
+,“
+co
+ur
+se
+”,
+“c
+re
+di
+ts
+”,
+“i
+ns
+tr
+uc
+to
+r”
+,
+“d
+at
+a
+st
+ru
+ct
+ur
+es
+”,
+“a
+lg
+or
+it
+hm
+s
+an
+d
+da
+ta
+st
+ru
+ct
+ur
+es
+”,
+“a
+bs
+tr
+ac
+td
+at
+a
+ty
+pe
+”,
+co
+ur
+se
+sy
+lla
+bi
+“p
+re
+re
+qu
+is
+it
+es
+”,
+“c
+la
+ss
+ho
+ur
+s”
+,“
+ob
+je
+ct
+iv
+es
+”,
+“l
+in
+ea
+r
+lis
+ts
+”,
+“l
+in
+ke
+d
+lis
+ts
+”,
+“s
+ta
+ck
+s”
+,“
+qu
+eu
+es
+”,
+“t
+re
+es
+”,
+“p
+oi
+nt
+er
+s”
+,
+“d
+es
+cr
+ip
+ti
+on
+”,
+“o
+ut
+lin
+e”
+,“
+to
+pi
+cs
+”,
+“t
+en
+ta
+ti
+ve
+“a
+bs
+tr
+ac
+ti
+on
+”,
+“s
+or
+ti
+ng
+”,
+“s
+ea
+rc
+hi
+ng
+”,
+“h
+as
+hi
+ng
+”,
+“a
+lg
+or
+it
+hm
+an
+al
+ys
+is
+”
+sc
+he
+du
+le
+”,
+“g
+ra
+di
+ng
+”,
+“e
+xa
+m
+s”
+,“
+m
+at
+er
+ia
+ls
+”,
+“r
+eq
+ui
+re
+d
+te
+xt
+”,
+“t
+ex
+tb
+oo
+ks
+”
+D
+at
+ab
+as
+es
+co
+ur
+se
+“s
+yl
+la
+bu
+s”
+,“
+co
+ur
+se
+”,
+“c
+re
+di
+ts
+”,
+“i
+ns
+tr
+uc
+to
+r”
+,
+“d
+at
+ab
+as
+e”
+,“
+db
+m
+s”
+,“
+da
+ta
+ba
+se
+m
+an
+ag
+em
+en
+t”
+,“
+da
+ta
+m
+od
+el
+”,
+“c
+on
+ce
+pt
+ua
+l
+sy
+lla
+bi
+“p
+re
+re
+qu
+is
+it
+es
+”,
+“c
+la
+ss
+ho
+ur
+s”
+,“
+ob
+je
+ct
+iv
+es
+”,
+m
+od
+el
+”,
+“r
+el
+at
+io
+na
+lm
+od
+el
+”,
+“e
+nt
+it
+y-
+re
+la
+ti
+on
+sh
+ip
+”,
+“r
+ef
+er
+en
+ti
+al
+in
+te
+gr
+it
+y”
+,
+“d
+es
+cr
+ip
+ti
+on
+”,
+“o
+ut
+lin
+e”
+,“
+to
+pi
+cs
+”,
+“t
+en
+ta
+ti
+ve
+“f
+un
+ct
+io
+na
+ld
+ep
+en
+de
+nc
+ie
+s”
+,“
+no
+rm
+al
+iz
+at
+io
+n”
+,“
+re
+la
+ti
+on
+al
+al
+ge
+br
+a”
+,“
+re
+la
+ti
+on
+al
+sc
+he
+du
+le
+”,
+“g
+ra
+di
+ng
+”,
+“e
+xa
+m
+s”
+,“
+m
+at
+er
+ia
+ls
+”,
+ca
+lc
+ul
+us
+”,
+“s
+ql
+”,
+“q
+ue
+ri
+es
+”,
+“c
+on
+cu
+rr
+en
+cy
+co
+nt
+ro
+l”
+,“
+qu
+er
+y
+op
+ti
+m
+iz
+at
+io
+n”
+,
+“r
+eq
+ui
+re
+d
+te
+xt
+”,
+“t
+ex
+tb
+oo
+ks
+”
+“d
+at
+a
+de
+fin
+it
+io
+n”
+,“
+da
+ta
+m
+an
+ip
+ul
+at
+io
+n”
+,“
+tr
+ig
+ge
+rs
+”,
+“d
+at
+a
+w
+ar
+eh
+ou
+si
+ng
+”,
+“d
+is
+tr
+ib
+ut
+ed
+da
+ta
+ba
+se
+s”
+In
+fo
+rm
+at
+io
+n
+re
+tr
+ie
+va
+l
+“s
+yl
+la
+bu
+s”
+,“
+co
+ur
+se
+”,
+“c
+re
+di
+ts
+”,
+“i
+ns
+tr
+uc
+to
+r”
+,
+“i
+nf
+or
+m
+at
+io
+n
+re
+tr
+ie
+va
+l”
+,“
+in
+de
+x
+co
+ns
+tr
+uc
+ti
+on
+”,
+“c
+la
+ss
+ic
+m
+od
+el
+s”
+,“
+bo
+ol
+ea
+n
+m
+od
+el
+”,
+co
+ur
+se
+sy
+lla
+bi
+“p
+re
+re
+qu
+is
+it
+es
+”,
+“c
+la
+ss
+ho
+ur
+s”
+,“
+ob
+je
+ct
+iv
+es
+”,
+“v
+ec
+to
+r
+m
+od
+el
+”,
+“p
+ro
+ba
+bi
+lis
+ti
+c
+m
+od
+el
+”,
+“v
+ec
+to
+r”
+,“
+ra
+nk
+in
+g”
+,“
+si
+m
+ila
+ri
+ty
+”,
+“d
+es
+cr
+ip
+ti
+on
+”,
+“o
+ut
+lin
+e”
+,“
+to
+pi
+cs
+”,
+“t
+en
+ta
+ti
+ve
+“r
+el
+ev
+an
+ce
+”,
+“p
+re
+ci
+si
+on
+”,
+“r
+ec
+al
+l”
+,“
+re
+le
+va
+nc
+e
+fe
+ed
+ba
+ck
+”,
+“q
+ue
+ry
+ex
+pa
+ns
+io
+n”
+,
+sc
+he
+du
+le
+”,
+“g
+ra
+di
+ng
+”,
+“e
+xa
+m
+s”
+,“
+m
+at
+er
+ia
+ls
+”,
+“s
+ea
+rc
+h
+en
+gi
+ne
+s”
+,“
+in
+ve
+rt
+ed
+fil
+es
+”,
+“c
+at
+eg
+or
+iz
+at
+io
+n”
+,“
+cr
+aw
+lin
+g”
+,“
+st
+em
+m
+in
+g”
+,
+“r
+eq
+ui
+re
+d
+te
+xt
+”,
+“t
+ex
+tb
+oo
+ks
+”
+“s
+to
+pw
+or
+ds
+”,
+“c
+lu
+st
+er
+in
+g”
+Jo
+b
+of
+fe
+rs
+in
+co
+m
+pu
+te
+r
+“j
+ob
+s”
+,“
+jo
+b
+of
+fe
+r”
+,“
+va
+ca
+nc
+ie
+s”
+,“
+co
+m
+pa
+ny
+”,
+“c
+om
+pu
+te
+r”
+,“
+co
+m
+pu
+te
+r
+sc
+ie
+nc
+e”
+,“
+co
+m
+pu
+te
+r
+te
+ch
+ni
+ci
+an
+s”
+,“
+pr
+og
+ra
+m
+m
+in
+g”
+,
+sc
+ie
+nc
+e
+“o
+rg
+an
+iz
+at
+io
+n”
+,“
+co
+nt
+ac
+t”
+,“
+lo
+ca
+ti
+on
+”,
+“c
+it
+y”
+,
+“s
+ys
+te
+m
+an
+al
+ys
+is
+”,
+“p
+ro
+gr
+am
+m
+er
+”,
+“d
+ev
+el
+op
+er
+”,
+“s
+ys
+te
+m
+an
+al
+ys
+is
+”,
+“s
+ec
+ur
+it
+y
+“d
+et
+ai
+ls
+”,
+“d
+es
+cr
+ip
+ti
+on
+”,
+“s
+al
+ar
+y”
+,“
+be
+ne
+fit
+s”
+,
+an
+al
+ys
+t”
+,“
+su
+pp
+or
+ta
+na
+ly
+st
+”,
+“a
+dm
+in
+is
+tr
+at
+or
+”,
+“c
+om
+pu
+te
+r
+en
+gi
+ne
+er
+”,
+“c
+ar
+ee
+r”
+,“
+jo
+b
+ty
+pe
+”,
+“c
+at
+eg
+or
+y”
+,“
+w
+or
+k
+“s
+of
+tw
+ar
+e”
+,“
+da
+ta
+ba
+se
+”,
+“c
+om
+pu
+te
+r
+ne
+tw
+or
+k”
+,“
+pr
+og
+ra
+m
+m
+in
+g
+la
+ng
+ua
+ge
+s”
+,
+ex
+pe
+ri
+en
+ce
+”,
+“r
+eq
+ui
+re
+m
+en
+ts
+”,
+“c
+ur
+ri
+cu
+lu
+m
+”,
+“o
+pe
+ra
+ti
+on
+al
+sy
+st
+em
+”,
+“m
+ai
+nf
+ra
+m
+e”
+,“
+te
+ch
+ni
+ca
+ls
+up
+po
+rt
+”,
+“h
+el
+p
+de
+sk
+”,
+“e
+du
+ca
+ti
+on
+”,
+“r
+es
+po
+ns
+ib
+ili
+ti
+es
+”,
+“c
+om
+pe
+te
+nc
+ie
+s”
+,
+“i
+nt
+er
+ne
+t,
+“w
+eb
+de
+si
+gn
+er
+”,
+“w
+eb
+m
+as
+te
+r”
+,“
+co
+m
+pu
+te
+r
+m
+ai
+nt
+en
+an
+ce
+”
+“q
+ua
+lifi
+ca
+ti
+on
+s”
+,“
+re
+st
+ri
+ct
+io
+ns
+”,
+“w
+or
+k
+sc
+he
+du
+le
+”
+Sa
+le
+of
+fe
+rs
+of
+co
+m
+pu
+te
+r
+“s
+al
+e”
+,“
+bu
+y”
+,“
+sh
+op
+”,
+“v
+ir
+tu
+al
+sh
+op
+”,
+“p
+ro
+du
+ct
+”,
+“t
+ec
+hn
+ol
+og
+y”
+,“
+ac
+ce
+ss
+or
+ie
+s”
+,“
+co
+m
+po
+ne
+nt
+s”
+,“
+pc
+”,
+“c
+om
+pu
+te
+r”
+,“
+ha
+rd
+w
+ar
+e”
+,
+eq
+ui
+pm
+en
+ts
+“p
+ro
+du
+ct
+s
+lis
+t”
+,“
+br
+an
+d”
+,“
+us
+ed
+”,
+“p
+ri
+ce
+”,
+“o
+ff
+er
+s”
+,
+“s
+of
+tw
+ar
+e”
+,“
+bi
+ts
+”,
+“g
+b”
+,“
+m
+b”
+,“
+ca
+rt
+ri
+dg
+e”
+,“
+cd
+”,
+“c
+dr
+om
+”,
+“d
+ri
+ve
+”,
+“f
+ax
+“p
+ro
+m
+ot
+io
+n”
+,“
+di
+sc
+ou
+nt
+”,
+“p
+ay
+m
+en
+t”
+,“
+pa
+rc
+el
+s”
+,
+m
+od
+em
+”,
+“c
+pu
+”,
+“h
+d”
+,“
+pr
+in
+te
+rs
+”,
+“l
+as
+er
+je
+t”
+,“
+to
+ne
+r”
+,“
+m
+ot
+he
+rb
+oa
+rd
+s”
+,“
+m
+em
+or
+y”
+,
+“a
+va
+ila
+bi
+lit
+y”
+,“
+lo
+ca
+ti
+on
+”,
+“h
+ea
+dl
+in
+e”
+,“
+im
+ag
+e”
+,
+“m
+on
+it
+or
+”,
+“l
+cd
+”,
+“w
+id
+es
+cr
+ee
+n”
+,“
+sc
+re
+en
+”,
+“k
+ey
+bo
+ar
+d”
+,“
+m
+ou
+se
+”,
+“m
+p3
+pl
+ay
+er
+”,
+“c
+on
+ta
+ct
+”,
+“a
+dd
+to
+”,
+“c
+la
+ss
+ifi
+ca
+ti
+on
+”,
+“s
+ec
+ti
+on
+s”
+,
+“n
+ob
+re
+ak
+”,
+“n
+ot
+eb
+oo
+k”
+,“
+la
+pt
+op
+”,
+“d
+es
+kt
+op
+”,
+“p
+al
+m
+”,
+“p
+en
+dr
+iv
+e”
+,“
+ca
+bl
+es
+”,
+“c
+at
+eg
+or
+ie
+s”
+,“
+gr
+ou
+ps
+”
+“v
+id
+eo
+ca
+bl
+es
+”,
+“p
+ro
+ce
+ss
+or
+”,
+“c
+or
+e”
+,“
+sc
+an
+ne
+r”
+,“
+sp
+ea
+ke
+r”
+,“
+m
+ul
+ti
+m
+ed
+ia
+”,
+“j
+oy
+st
+ic
+ks
+”,
+“s
+ub
+w
+oo
+fe
+r”
+,“
+w
+eb
+ca
+m
+”,
+“c
+am
+”,
+“w
+ir
+el
+es
+s”
+,“
+ba
+tt
+er
+ie
+s”
+World Wide Web
+Figure 3 A relevant page for the “databases” discipline.
+The F1 measure is then computed as
+F1 = 2 × Precision × Recall
+Precision + Recall (8)
+Thus, F1 assumes a high level only when both precision and recall are high. There-
+fore, determining the maximum level for F1 can be interpreted as an attempt to find
+the best possible compromise between recall and precision.
+4.1.1 Pre-crawling: the IDF factor
+As we can see from Eq. 2, in conventional information retrieval applications, in
+order to apply the cosine measure to evaluate a query against to a specific collection
+of documents, it is necessary to compute first, for each query term, an IDF value
+that indicates the importance of that term inside the collection. Thus, to be able to
+implement the function CosineDistance used by the procedure FCrawl, we computed
+IDF values for all terms specified by the experts, considering approximately 500,000
+pages randomly chosen from WBR05,3 a representative collection of pages from the
+Brazilian Web that has also been used in [5].
+3This collection was taken from TodoBr, a Brazilian search engine acquired by Google Inc.
+World Wide Web
+In order to evaluate the importance of this pre-crawling phase in our focused
+crawling approach, we executed the following crawling processes:
+– DS-1: topic “data structures course syllabi”, using the IDF values calculated for
+each term;
+– DS-2: topic “data structures course syllabi”, considering the IDF values equal to
+1 for all terms;
+– DB-1: topic “databases course syllabi”, using the IDF values calculated for each
+term;
+– DB-2: topic “databases course syllabi”, considering the IDF values equal to 1 for
+all terms;
+– IR-1: topic “information retrieval course syllabi”, using the IDF values calculated
+for each term;
+– IR-2: topic “information retrieval course syllabi”, considering the IDF values
+equal to 1 for all terms;
+– Job-1: topic “job offers in computer science”, using the IDF values calculated for
+each term;
+– Job-2: topic “job offers in computer science”, considering the IDF values equal
+to 1 for all terms;
+– Sale-1: topic “sale offers of computer equipments”, using the IDF values
+calculated for each term;
+– Sale-2: topic “sale offers of computer equipments”, considering the IDF values
+equal to 1 for all terms.
+4.1.2 Baselines
+As discussed in Section 2, classifiers are a natural option to guide a focused crawler.
+Therefore, in order to establish a baseline for comparing the results obtained with our
+genre-aware approach, we developed a focused crawler guided by an SVM Radial
+Basis Function (RBF) classifier, one of the best classifiers for this kind of application
+according to [27], in two distinct ways: (1) following the traditional focused crawling
+strategy described in Figure 1 and (2) following our proposed queuing strategy
+(changing the score of URLs in the priority queue that correspond to the sibling
+pages of a relevant URL). Thus, we considered as our baseline the following crawling
+processes, which have been executed using a focused crawler guided by an SVM RBF
+classifier:
+– RBF-DS-1: topic “data structures course syllabi”, following the traditional
+focused crawling strategy;
+– RBF-DS-2: topic “data structures course syllabi”, following our proposed
+queuing strategy;
+– RBF-DB-1: topic “databases course syllabi”, following the traditional focused
+crawling strategy;
+– RBF-DB-2: topic “databases course syllabi”, following our proposed queuing
+strategy;
+– RBF-IR-1: topic “information retrieval course syllabi”, following the traditional
+focused crawling strategy;
+– RBF-IR-2: topic “information retrieval course syllabi”, following our proposed
+queuing strategy;
+World Wide Web
+Table 3 F1 levels obtained
+by the baseline crawling
+processes.
+Baseline crawling process F1
+RBF-DS 46.48%
+RBF-DB 45.83%
+RBF-IR 23.26%
+RBF-Job 45.71%
+RBF-Sale 66.87%
+– RBF-Job-1: topic “job offers in computer science”, following the traditional
+focused crawling strategy;
+– RBF-Job-2: topic “job offers in computer science”, following our proposed
+queuing strategy;
+– RBF-Sale-1: topic “sale offers of computer equipments”, following the
+traditional focused crawling strategy;
+– RBF-Sale-2: topic “sale offers of computer equipments”, following our proposed
+queuing strategy.
+For each topic, the SVM RBF classifier was trained considering at least 30 pages
+related to the desired topic (i.e., positive examples of pages), a collection of 500,000
+pages, chosen from WBR05, not related to the desired topic (negative examples of
+pages), and appropriate cost and gamma parameters determined experimentally. For
+instance, for the topic “databases course syllabi”, the positive and negative examples
+were Web pages that correspond, respectively, to syllabi of databases courses and
+other distinct subjects not related to syllabi of databases courses. The content of the
+examples pages was parsed by eliminating accents, capital letters and stopwords.
+In the performed experiments, we measured the F1 level after the execution
+of each baseline crawling process. Table 3 shows the F1 levels obtained in these
+experiments. In order to measure the precision and mainly recall of the crawling
+process, it was necessary to consider a restricted subset of the Brazilian Web formed
+only by the pages included in the hosts of the specified seed pages. All pages in this
+subset were manually verified as relevant or not for the specified topics. Notice that
+these results correspond to both queuing strategies, since the F1 values remain the
+same and only the order in which the pages are visited changes.
+4.1.3 Parameters setting
+According to steps 07 and 09 of the procedure FCrawl, in order to determine
+the relevance of a fetched page to the topic of interest, we perform arithmetic
+combinations among previously calculated similarity values. Each combination is
+performed, simply, by calculating the weighted average of the similarity scores
+involved. Thus, it was necessary to establish a “weight of importance” for each
+similarity value. We established such a weighting scheme experimentally, varying the
+values of the weights and analyzing the results obtained. With respect to step 07, for
+all crawling processes, good results were reached using weight 5 for both genre (GW)
+and content (CW), since we considered them equally important. With respect to step
+09, for all crawling processes, the best results were reached considering the weights
+7 and 3, respectively for the genre-content combination (GCW) and the URL string
+(UW), since, for most pages, the terms that form their URLs are usually not very
+relevant.
+World Wide Web
+We should stress that in the experiments described next, we have chosen to
+consider equally important terms of genre and content. Other settings with different
+weights, in the experimented or in other domains, may produce better results and
+our approach provides the flexibility for this, but we want to illustrate that even this
+simple strategy of using equal weights produces good results. Notice also that setting
+of good weights can be easily performed by looking at the results obtained from the
+crawling process. Starting from an initial configuration with equal weights a user can,
+on the fly, play with these weights in order to obtain a better configuration.
+Finally, for practical reasons, in our experiments we made the following decisions:
+(1) we disregarded pages of certain Brazilian Web domains (e.g., “.gov.br” that refers
+to Brazilian government sites) or that included some type of undesired content (e.g.,
+“.exe”), which were not relevant to the context of the topics considered; (2) we
+limited the depth that the crawlers could reach within a site (maximum number of
+levels of the Web sub-graph of a site); (3) likewise, we limited the maximum number
+of URLs present in a page that should be followed; and (4) we standardized the
+content of the visited pages, by eliminating accents, capital letters and stop-words.
+The maximum depth was set to 7 and the maximum width to 200 pages. These
+values were determined experimentally and values beyond these did not produce
+any significant gains.
+Decisions 2 and 3 were key to make the experiment feasible in terms of time and
+necessary effort to determine the sets of relevant pages. Decision 3 is also based on
+results reported in the literature [16], that indicate that the best pages are in the
+higher levels of a site hierarchy and going deeper in the hierarchy does not provide
+gains. More importantly, these decisions were applied to both, our crawler and the
+baselines.
+4.2 Effectiveness
+As mentioned before, our genre-aware approach to focused crawling uses a set of
+guiding heuristics that has been designed with two main objectives: improving the F1
+level of the crawling process and speeding up the crawling of relevant pages. In our
+experiments, we measured the F1 level after the execution of each crawling process.
+In order to measure the precision and recall of a crawling process, it was necessary
+to consider a restricted subset of the Brazilian Web formed only by the pages that
+present the host of the seed pages, making it easy identifying all the relevant pages
+that should be retrieved. Thus, we notice that, in the executed crawling processes, our
+crawler visited almost 60,000 pages for the course syllabus subject, almost 200,000
+pages for the job offer one and almost 300,000 pages for the sale offer one. Figures 4
+and 5 show the F1 levels obtained by the crawling processes that use the IDF values
+calculated for each term and that consider the IDF values equal to 1 for all terms
+respectively, considering different threshold options.
+According to Figures 4 and 5, it can be observed that, for all topics, our focused
+crawler reached F1 levels superior to 88%, with different similarity thresholds. That
+is, even considering topics with distinct characteristics, the results achieved by our
+focused crawler are very good. Moreover, once the F1 value starts to diminish, it
+never surpasses its peak value again since the recall measure also starts to diminish,
+meaning that it is not necessary to vary the threshold anymore. The crawling
+processes for job offers showed the worst results since, in these cases, the genre and
+World Wide Web
+ 0
+ 10
+ 20
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 100
+ 0.36  0.37  0.38  0.39  0.4  0.41  0.42  0.43  0.44  0.45  0.46  0.47  0.48  0.49  0.5  0.51  0.52  0.53  0.54  0.55
+F
+1
+Similarity Threshold
+DS-1
+DB-1
+IR-1
+Job-1
+Sale-1
+Figure 4 F1 x similarity threshold (our approach—IDF values calculated for each term).
+content terms varies a lot, i.e., this topic does not use common terms that clearly
+characterize both the genre and the content. Regarding the crawling processes for
+course syllabi, the discipline “data structures” shows the worst results due to the fact
+that the content of this discipline is dispersed in many distinct courses; thus, some
+syllabi have not been classified correctly because many content terms specified for
+this discipline did not appear in these syllabi.
+ 0
+ 10
+ 20
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 100
+ 0.36  0.37  0.38  0.39  0.4  0.41  0.42  0.43  0.44  0.45  0.46  0.47  0.48  0.49  0.5  0.51  0.52  0.53  0.54  0.55
+F
+1
+Similarity Threshold
+DS-2
+DB-2
+IR-2
+Job-2
+Sale-2
+Figure 5 F1 x similarity threshold (our approach—IDF values equal to 1 for all terms).
+World Wide Web
+We also notice that most crawling processes did not achieve 100% of F1. By
+manual inspection, we verified that this was mainly due to precision errors; for
+example, certain course syllabi included the content of other courses (e.g., a software
+engineering course included a databases module) and sale offers of certain products,
+such as digital cameras and cell phones, included content terms related to computer
+equipments. Moreover, some recall errors were due to ill designed syllabi, job offers
+or sale offers (e.g., some course syllabi, computer science job offers and computer
+equipment sale offers did not show any term that could properly characterize the
+respective genres).
+It can also be observed, from Figures 4 and 5, that the pre-crawling phase (i.e., the
+calculation of the IDF values to each term specified by the expert) does not have a
+strong influence on the effectiveness of our genre-aware approach, since, for a wide
+range of threshold values, it reaches similar or even better F1 levels when we consider
+the IDF value equal to 1 for all terms. This allows us to disregard this pre-crawling,
+which has obvious implications in terms of performance.
+In addition, these results show that our crawler clearly outperforms the crawler
+guided by the SVM RBF classifier, since it achieves, for all crawling processes, F1
+levels that are significantly higher than the ones achieved by the crawler guided by
+the SVM RBF classifier (see Table 3). We also notice that the way we implement
+a focused crawler guided by a classifier (either following the traditional focused
+crawling strategy or following our proposed queuing strategy) does not influence the
+F1 level achieved. This is an important remark because it shows that the improve-
+ments we achieve with our queuing policy (see Subsection 4.3) are a consequence
+of our approach that considers separately two kinds of evidence when analyzing the
+relevance of a Web page to a specific topic.
+In sum, the great benefit of our proposed focused crawling strategy is to explicitly
+separate subject and genre concerns, which form, in fact, two orthogonal feature
+spaces. In order to further demonstrate the importance of considering separately
+these two sets of evidence, we also run, for all topics, our focused crawler without
+separating such evidence, i.e., considering a single set containing all genre and con-
+tent terms specified for a topic together. Table 4 shows, for each crawling process run,
+the best F1 level achieved and the respective similarity threshold used to determine
+the relevance of a page to the corresponding topic. As we can see, the results of
+these experiments were much worse that the results obtained by the focused crawler
+constructed according to our genre-aware approach (Figures 4 and 5).
+4.3 Efficiency and scalability
+A key issue for any crawler is efficiency, i.e., its capability of crawling relevant
+pages as fast as possible. Figures 6 and 7 show, for the similarity thresholds that
+Table 4 F1 levels obtained
+by our approach without
+separating genre and content.
+Crawling F1 Similarity Crawling F1 Similarity
+process threshold process threshold
+DS-1 72.39 0.44 DS-2 77.99 0.50
+DB-1 78.26 0.39 DB-2 78.86 0.43
+IR-1 51.43 0.39 IR-2 51.72 0.41
+Job-1 28.60 0.39 Job-2 34.62 0.41
+Sale-1 68.73 0.41 Sale-2 71.05 0.44
+World Wide Web
+ 0
+ 10
+ 20
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 100
+ 5  10  15  20  25  30  35  40  45  50  55  60  65  70  75  80  85  90  95  100
+R
+el
+ev
+an
+t P
+ag
+es
+ P
+er
+ce
+nt
+ag
+e
+Visited Pages Percentage
+DS-1
+DB-1
+IR-1
+Job-1
+Sale-1
+Figure 6 Percentage of relevant pages x percentage of visited pages (our approach—IDF values
+calculated for each term).
+achieved the best levels of F1 in the crawling processes DS-1, DB-1, IR-1, Job-1,
+Sale-1 (see Figure 4) and DS-2, DB-2, IR-2, Job-2, Sale-2 (see Figure 5) respectively,
+the percentage of relevant pages retrieved in comparison with the percentage of
+pages visited during the crawling processes. As we can see, our genre-aware approach
+is quite efficient, since a large percentage of relevant pages are retrieved after
+ 0
+ 10
+ 20
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 100
+ 5  10  15  20  25  30  35  40  45  50  55  60  65  70  75  80  85  90  95  100
+R
+el
+ev
+an
+t P
+ag
+es
+ P
+er
+ce
+nt
+ag
+e
+Visited Pages Percentage
+DS-2
+DB-2
+IR-2
+Job-2
+Sale-2
+Figure 7 Percentage of relevant pages x percentage of visited pages (our approach—IDF values
+equal to 1 for all terms).
+World Wide Web
+visiting only 15% of the pages and all crawling processes, except Job-1, were able
+to retrieve at least 90% of all relevant pages after visiting 65% of the pages. This is
+a consequence of our strategy of dynamically changing the crawling priority of the
+non-visited pages, as discussed in Section 3.
+Analyzing Figures 6 and 7 more detailedly, we can see that once again the crawling
+processes for job offers showed the worst results for the same reason mentioned
+before. Likewise, regarding the crawling processes for course syllabi, the discipline
+“data structures” is again the one that shows the worst results due to the fact that
+its content is often scattered among pages from many distinct courses, which means
+that there would be more relevant pages to be crawled in other sites. On the other
+hand, the discipline “information retrieval”, that corresponds to a discipline not well-
+consolidated yet, shows the best results (only 20% of the visited pages required to
+find all relevant pages). This good performance might be due to the fact that there
+are few relevant pages on this subject to be crawled.
+Figures 8 and 9 show the percentage of relevant pages retrieved in comparison
+with the percentage of visited pages for the baseline crawling processes. As we can
+see, our crawler is much more efficient than the crawler guided by the SVM RBF
+classifier since, for all crawling processes, it presents a better convergence to 100%
+of coverage of the relevant pages. Moreover, the traditional focused crawling strategy
+produces worse results than our proposed queuing strategy.
+To evaluate the scalability of our genre-aware approach, an analysis of the average
+amount of visited pages per relevant page retrieved was performed. The results
+are shown in Table 5, considering only the crawling processes that yielded the best
+results. As we can see, the baseline crawling processes, independently of the crawling
+strategy used, present an average amount of visited pages per relevant page retrieved
+much higher than those presented by the crawling processes executed according to
+our approach. Moreover, comparing the average amount of visited pages per relevant
+ 0
+ 10
+ 20
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 100
+ 5  10  15  20  25  30  35  40  45  50  55  60  65  70  75  80  85  90  95  100
+R
+el
+ev
+an
+t P
+ag
+es
+ P
+er
+ce
+nt
+ag
+e
+Visited Pages Percentage
+RBF-DS-1
+RBF-DB-1
+RBF-IR-1
+RBF-Job-1
+RBF-Sale-1
+Figure 8 Percentage of relevant pages x percentage of visited pages (baselines—traditional focused
+crawling strategy).
+World Wide Web
+ 0
+ 10
+ 20
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 100
+ 5  10  15  20  25  30  35  40  45  50  55  60  65  70  75  80  85  90  95  100
+R
+el
+ev
+an
+t P
+ag
+es
+ P
+er
+ce
+nt
+ag
+e
+Visited Pages Percentage
+RBF-DS-2
+RBF-DB-2
+RBF-IR-2
+RBF-Job-2
+RBF-Sale-2
+Figure 9 Percentage of relevant pages x percentage of visited pages (baselines—our proposed
+queuing strategy).
+page in the baseline crawling processes, we notice that our proposed queuing strategy
+performs better than the traditional focused crawling strategy.
+All crawling processes were executed on an Intel(R) 3 GHz Pentium(R) 4 CPU,
+with 1 GByte of RAM and 150 GBytes of hard disk. Our focused crawler took 3 to
+4 h to complete each crawling process, due to the simplicity of the set of heuristics it
+uses. On the other hand, the baseline crawling processes took 3 to 4 days to perform
+the same tasks; moreover, they required an additional training phase that took
+around 4 h.
+4.4 Queuing policies
+As described in Section 3, our genre-aware focused crawling approach uses a strategy
+to improve the crawling process that consists in dynamically changing the score of
+Table 5 Amount of visited pages per relevant page retrieved.
+Crawling Average amount Crawling Average amount
+(our approach) of visited pages (baseline) of visited pages
+DS-1 719.01 RBF-DS-1 1675.85
+DS-2 710.55 RBF-DS-2 1625.97
+DB-1 1046.30 RBF-DB-1 3984.00
+DB-2 1105.40 RBF-DB-2 2037.30
+IR-1 1104.33 RBF-IR-1 9178.00
+IR-2 1199.00 RBF-IR-2 7656.67
+Job-1 173.47 RBF-Job-1 336.00
+Job-2 146.92 RBF-Job-2 232.88
+Sale-1 90.86 RBF-Sale-1 172.81
+Sale-2 80.45 RBF-Sale-2 161.55
+World Wide Web
+the URLs in the priority queue. This is done by changing the score of the URLs that
+correspond to sibling pages of a visited page with URL U to the score of U, if the
+score of U is higher than a given change threshold. In the experiment described in the
+previous subsection, we used a change threshold equal to 0.20, which was empirically
+determined as a suitable value.
+In order to compare this queuing policy with others, another set of experiments
+was performed, considering the crawling process DB-2 with similarity threshold
+equal to 0.47 (the best threshold for this crawling process) and varying the queuing
+policies. The results are graphically illustrated in Figure 10. For a specific URL U
+with score S, the following queuing policies were considered:
+– PS: change of the score of the URLs that correspond to child pages of U; this is
+the queuing policy used in traditional focused crawlers [6, 7, 15, 23, 27, 33];
+– FS-1: change of the score of the URLs that correspond to sibling pages of U,
+independently of the value of S;
+– FS-2: change of the score of the URLs that correspond to sibling pages of U, if S
+is higher than 0.20;
+– PFS-1: change of the score of the URLs that correspond to child pages of U and
+of the URLs that correspond sibling pages of U, independently of the value of S;
+– PFS-2: change of the score of the URLs that correspond to child pages of U and
+of the URLs that correspond to sibling pages of U, if S is higher than 0.20.
+From Figure 10, we can see that the PS queuing policy is much worse than the
+other policies that involve the change of the score of the URLs of the pages that are
+siblings of a visited page, especially when the percentage of visited pages is small.
+Comparing the FS-1 queuing policy with FS-2 and the PFS-1 queuing policy with
+PFS-2, we notice that, in general, using a change threshold yields better results, since
+it makes possible to change the score of URLs of child or sibling pages that only refer
+to relevant pages.
+ 0
+ 10
+ 20
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 100
+ 5  10  15  20  25  30  35  40  45  50  55  60  65  70  75  80  85  90  95  100
+R
+el
+ev
+an
+t P
+ag
+es
+ P
+er
+ce
+nt
+ag
+e
+Visited Pages Percentage
+PS
+FS-1
+FS-2
+PFS-1
+PFS-2
+Figure 10 Percentage of relevant pages x percentage of visited pages (varying the queuing policies).
+World Wide Web
+Moreover, considering the visited pages percentages lower than 30%, we notice
+that the queuing policies that change only the URLs of sibling pages of a visited page
+(FS-1 and FS-2) show better results than the queuing policies that change both the
+URLs of child pages and the URLs of sibling pages of a visited page (PFS-1 and
+PFS-2). However, the more pages our crawler visits, the worse the convergence to
+100% of coverage of relevant pages. Thus, it can be concluded that queuing policies
+that change only the URLs of sibling pages of a visited page should be used when
+one wants to retrieve the highest possible amount of relevant pages, with little time
+of execution for the specific tasks that we are considering in this paper. On the other
+hand, the queuing policies that change the URLs of child and sibling pages of a visited
+page should be used when there is the need of retrieving the entire collection of
+relevant pages as fast as possible.
+4.5 Validation in a real application scenario
+In order to validate our genre-aware approach in a real application scenario, we
+conducted a new series of experiments. Our crawler was again run in the context
+of the Brazilian Web, but now with the purpose of crawling pages related to product
+reviews (genre) for a large shopping portal. Two product categories (subjects) with
+distinct characteristics were chosen: “TV” and “MP3”. An expert, from the shopping
+portal, manually specified the set of terms required to both genre and content. In
+these experiments, distinctly from the previous ones, our crawler run in a totally
+uncontrolled environment. Thus, for this reason, we did not measure the levels of
+recall achieved, because the complete set of relevant pages is not known.
+After executing the crawling processes, considering similar configurations as be-
+fore, the expert analyzed, for each category, a sample of the crawled pages containing
+the 65 most relevant Web pages as considered by the crawler. Table 6 shows a
+summary of the analysis done by the expert. We can see that, for both categories:
+(1) the majority of the crawled pages considered as the most relevant by the crawler
+were also considered relevant by the expert, indicating good precision; (2) among the
+pages not considered as completely relevant, the majority are related to either the
+specified genre or the subject; and (3) only for the “MP3” category, a few completely
+irrelevant pages were returned by the crawler.
+Similarly to what was done before for the other experiments, we measured the
+precision level for each crawling process executed as the number of crawled pages
+increases (Figure 11). The recall level was not measured since the complete set of
+relevant pages is not known. As we can see, for both product categories, our focused
+crawler achieved good precision levels, reaching values superior to 90% for the “TV”
+category. It is important to notice that, in these experiments, the similarity threshold
+was not defined, since it is not necessary in real application scenarios.
+Table 6 Summary of the
+results of the crawling
+processes (real application
+scenario).
+Result type TV MP3
+Pages completely relevant for the topic 59 46
+Pages relevant only to the genre of the topic 2 9
+Pages relevant only to the content of the topic 4 6
+Pages totally irrelevant to the topic 0 4
+World Wide Web
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 1
+ 5  10  15  20  25  30  35  40  45  50  55  60  65
+P
+re
+ci
+si
+on
+Number of Crawled Pages
+TV
+MP3
+Figure 11 Precision x number of crawled pages (real application scenario).
+5 Impact of term selection on the crawling process
+In this section, we analyze the impact of term selection on our genre-aware approach
+to focused crawling, by varying the number of genre and content terms specified by
+the expert used in the crawling process (Subsection 5.1) and considering genre and
+content terms chosen for typical users familiar with the topics (Subsection 5.2).
+5.1 Impact of the number of terms
+In the experiments reported so far, the sets of genre and content terms used to
+describe the respective topics of interest were specified by experts based exclusively
+on their judgment of which terms would be the most relevant to represent them.
+Particularly, no restriction was imposed on the number of such terms. Considering
+that the number of genre and content terms used to guide a crawler has a direct
+influence on the levels of F1 achieved by our approach, for instance, a large number
+of terms may improve precision but with a decreasing in the recall level, it was
+necessary to analyze the impact of such terms on the crawling process.
+Thus, in this subsection we analyze the impact of the number terms on the
+effectiveness of a crawler implemented according to our approach. For this, we
+performed another series of experiments in which we run a sequence of crawling
+processes for the same topics considered in Section 4, varying the number of genre
+and content terms specified by the expert. We notice that, based on the results
+reported in Subsection 4.2, we run all crawling processes considering the IDF value
+equal to 1 for all terms.
+For each topic, we run distinct crawling processes considering, respectively,
+100%, 75%, 50% and 25% of the number of genre and content terms specified in
+Table 1. Then, to separately evaluate the influence of genre and content terms in
+the approach, for each topic, we run a sequence of crawling processes considering:
+World Wide Web
+Table 7 Best F1 (varying number of terms)—topics related to the “course syllabi” genre.
+Discipline “data structures” Discipline “databases” Discipline “information retrieval”
+Crawling F1 Similarity Crawling F1 Similarity Crawling F1 Similarity
+process threshold process threshold process threshold
+16g16c 92.41 0.54 16g24c 92.54 0.47 16g24c 100.0 0.50
+12g12c 87.65 0.65 12g18c 88.61 0.57 12g18c 96.77 0.63
+08g08c 89.33 0.74 08g12c 92.11 0.65 08g12c 93.33 0.65
+04g04c 84.35 0.79 04g06c 78.26 0.66 04g06c 75.00 0.76
+16g12c 82.08 0.63 16g18c 86.75 0.52 16g18c 93.75 0.55
+16g08c 84.47 0.68 16g12c 87.50 0.56 16g12c 75.68 0.61
+16g04c 75.90 0.76 16g06c 72.73 0.61 16g06c 69.57 0.66
+12g16c 90.32 0.67 12g24c 84.93 0.57 12g24c 96.77 0.67
+08g16c 88.62 0.69 08g24c 88.00 0.58 08g24c 93.33 0.66
+04g16c 83.33 0.73 04g24c 90.91 0.61 04g24c 76.92 0.70
+(a) 100% of the genre terms and 75%, 50% and 25% of the content terms, and
+(b) 100% of content terms and 75%, 50% and 25% of the genre terms. For each
+crawling process, the reduction of the number of terms was done based on the expert
+judgment about which terms were less relevant to represent the subject. Tables 7
+and 8 show, for each crawling process run, the best F1 level achieved and the respec-
+tive similarity threshold used to determine the relevance of a page to the correspond-
+ing topic. For a better understanding of these tables, for each topic the following
+comments are due: (a) a crawling process named “16g24c”, for example, means that
+it used 16 genre terms and 24 content terms to represent its topic; (b) the first four
+crawling processes vary the number of both genre and content terms simultaneously;
+(c) the middle three crawling processes vary the number of content terms, keeping
+fixed the number of genre terms; and (d) the last three crawling processes vary the
+number of genre terms, keeping fixed the number of content terms.
+Analyzing the results shown in Tables 7 and 8, we can observe the following:
+(1) in the crawling processes for which we vary the number of genre and content
+terms simultaneously, as the number of terms diminishes, the best F1 levels are
+achieved when we consider higher similarity thresholds, since this prevents reducing
+precision, and (2) the crawling processes for which we vary only the number of genre
+Table 8 Best F1 (varying number of terms)—topics related to the “job offers” and “sale offers”
+genres.
+Topic “job offers in computer science” Topic “sale offers of computer equipments”
+Crawling F1 Similarity Crawling F1 Similarity
+process threshold process threshold
+24g24c 88.37 0.40 24g48c 97.07 0.37
+18g18c 65.87 0.55 18g36c 91.64 0.44
+12g12c 61.11 0.63 12g24c 87.71 0.45
+06g06c 73.17 0.68 06g12c 92.25 0.53
+24g18c 63.41 0.55 24g36c 91.80 0.43
+24g12c 59.09 0.59 24g24c 85.24 0.41
+24g06c 70.00 0.63 24g12c 86.52 0.41
+18g24c 65.52 0.47 18g48c 94.13 0.45
+12g24c 64.29 0.52 12g48c 93.34 0.47
+06g24c 70.29 0.59 06g48c 90.51 0.50
+World Wide Web
+terms achieve, in general, better F1 levels than the ones for which we vary only the
+number of content terms, implying that the number of genre terms has less impact
+on the crawling results than the number of content terms, i.e., the genre of the pages
+associated with a specific topic of interest are, in general, more easily characterized
+than their content, which is usually broader.
+We can also notice that, for the “course syllabi” crawling processes in which
+we varied only the number of genre terms, for two subjects (data structures and
+information retrieval), the fewer the number of terms, the lower the F1, as expected.
+The opposite phenomenon though occurred for the subject databases. This can be ex-
+plained by the fact that, being databases a discipline with a well-consolidated content,
+course syllabi in this subject are more homogeneous and well structured. This even
+suggests a more common reuse of material. On the other hand, the dispersion of
+the content of data structures in many distinct and different courses as well as the
+constant evolution of the content in information retrieval courses promotes less
+homogeneous and structured syllabi for these disciplines. As such, the removal of
+genre terms for database courses allowed the retrieval of more syllabi, since matching
+constraints were reduced without loosing the characterization of the document genre.
+Evidence of this is given by the increasing in recall levels without loss of precision,
+when the corresponding similarity threshold was raised. This is an interesting finding
+that may show that the characterization of the genre of Web pages of a specific topic
+may not be completely dissociated from its subject.
+Finally, it is important to notice that all crawling processes reported in Tables 7
+and 8 achieved F1 levels higher than those achieved by the SVM-based crawler
+we implemented as our baseline (see Table 3). Thus, even using a small number
+of genre and content terms, focused crawlers implemented according to our genre-
+aware approach are more effective than traditional classifier-based crawlers.
+5.2 Assessment of user selected terms
+In order to investigate how complex is the task of choosing representative terms by
+typical users, we designed a small experiment in which three users had to choose
+terms for genre and content related to the topics of the three experiments run before
+(see Subsection 4.1). The three users were familiar with the topics, but could not be
+considered experts. We provided them with our notions and definitions of genre and
+content (as discussed in Section 1) and asked them to choose, without the use of any
+auxiliary material, terms they thought would be useful for describing the respective
+topics in terms of genre and content. Table 9 shows the percentage of intersection
+Table 9 Percentage of intersection between the terms chosen by the users and the terms in Table 2.
+Topic Genre/Content User 1 User 2 User 3 Mean
+Databases course Genre 53.9 56.3 57.2 55.7
+syllabi Content 52.9 31.8 36.4 40.4
+Job offers in Genre 50.0 29.8 28.6 35.9
+computer science Content 47.4 25.0 13.1 28.5
+Sale offers of Genre 28.6 30.4 35.7 31.6
+computer equipments Content 48.5 36.2 33.3 39.3
+Overall mean 38.6
+World Wide Web
+Table 10 Percentage of intersection between the terms adjusted by the users and the terms in
+Table 2.
+Topic Genre/Content User 1 User 2 User 3 Mean
+Databases course Genre 61.6 56.3 62.5 60.1
+syllabi Content 55.6 47.4 37.5 46.9
+Job offers in Genre 60.0 37.5 30.0 42.5
+computer science Content 63.2 29.2 16.7 36.4
+Sale offers of Genre 37.5 37.5 33.3 36.2
+computer equipments Content 55.9 40.4 35.2 43.9
+Overall mean 44.3
+between the terms chosen by each of these three users and the terms used before in
+our previous experiments (see Table 2).
+Notice that in average, the terms chosen by the three users match in almost 40%
+the ones chosen by the expert for both genre and content and that, in the best case,
+the match was about 57%. Considering classical results that show that professional
+indexers using a controlled vocabulary may only agree in 30% of common terms to
+describe a document [36], ours can be considered as very good results. It is interesting
+to notice that choosing terms to represent the “syllabi” genre seemed to be the easiest
+task for the users, while for the content “computer science”, a broad topic, they had
+some difficulty, producing the lower results in the intersection.
+In order to simulate what would happen in a real usage scenario, in which the
+users could adjust their terms to the results of the crawling process in a feedback
+manner, we also run an additional experiment. In this experiment, by looking at the
+best documents returned (with higher similarity) by the crawling process and their
+respective terms, the user could change their terms, for both genre and content, by
+including new terms deemed as useful, removing useless ones, etc. Table 10 shows
+the results of this experiment.
+It can be noticed that we obtained gains in all means. The average gain for the
+percentage of intersection for genre was about 12.7% (highest gain: 18.4% for the
+“job offer” genre) and for content was 17.5% (highest gain: 27% for the “computer
+science” content). The highest absolute percentage of intersection is now higher than
+60% (for the “syllabi” genre) while the lowest percentage is higher than 35% (for
+“sales offer” genre). This feedback process could continue in a real scenario until the
+users were satisfied with the results.
+Finally, in order to further stress that different sets of terms provided by our users
+could also produce good crawling results, we run a series of crawling processes for
+each of the topics defined above with the terms chosen by each one of the users. Then,
+we asked these three users to evaluate the top 20 results returned by the crawler
+after 10,000 visited pages. The users had to specify the relevance of each page for
+Table 11 Evaluation of the
+top 20 pages returned by our
+crawler—topic “databases
+course syllabi”.
+Category User 1 User 2 User 3 Mean
+1 19 18 14
+2 0 1 3
+3 0 0 1
+4 1 1 2
+P@20 0.95 0.90 0.70 0.85
+World Wide Web
+Table 12 Evaluation of the
+top 20 pages returned by our
+crawler—topic “job offers in
+computer science”.
+Category User 1 User 2 User 3 Mean
+1 19 20 17
+2 1 0 0
+3 0 0 1
+4 0 0 2
+P@20 0.95 1.00 0.85 0.93
+the topic using a four-point scale set of result types, similar to the ones used in the
+real-world validation experiment: (1) pages completely relevant for the topic (genre
+AND content), (2) pages relevant only to the genre of the topic, (3) pages relevant
+only to the content of the topic, and (4) pages totally irrelevant to the topic.
+Tables 11, 12 and 13 summarize the results. As can be seen, all the crawling
+processes produced very good results, giving additional evidence that choosing terms
+for describing genre and content of topics to be crawled can be easily done by the
+users. The final value for the precision at the 20 top results (P@20) shown below was
+calculated considering as relevant only documents marked as completely relevant for
+genre and content (category 1).
+6 Semi-automatic generation of terms
+As already shown, although not a complex task, the selection of the genre and
+content terms required to describe the pages of interest and, therefore, to guide a
+crawling process according to our approach, is usually done with the assistance of an
+expert or a typical user familiar with the topic. In order to facilitate even further this
+task and help a user to find the terms that most appropriately represent the pages of
+interest, we describe and evaluate in this section a strategy for the semi-automatic
+generation of such terms. This strategy becomes particularly appropriate when the
+user already has a set of URLs of Web pages expressing the genre of interest or
+relevant Web pages related to the topic of interest.
+Our strategy for the semi-automatic generation of genre and content terms related
+to a specific topic of interest is based on the procedure GenerateTerms described
+by Algorithm 2. This procedure takes as input the following parameters: (1) a set
+of URLs of Web pages that express the genre of interest (GenreURLs), (2) a set
+of URLs of relevant Web pages that are related to the topic of interest (Rele-
+vantURLs),4 (3) the number of genre terms required (NG), and (4) the number of
+content terms required (NC). For instance, if a user wants to crawl Web pages that
+include syllabi (genre) of database courses (content), the GenreURLs and Relevan-
+tURLs sets must contain URLs of pages that correspond, respectively, to syllabi of
+distinct courses and syllabi of database courses, and the NG and NC parameters must
+define, respectively, the number of genre and content terms required. This procedure
+outputs the sets of terms that represent the genre (GenreTerms) and the desired
+information content (ContentTerms). Here, we consider a term as being a sequence
+of, at most, three consecutive words.
+In order to generate the sets of genre and content terms, procedure Gener-
+ateTerms uses a table, called TermTable, to keep track of the frequency of all terms
+4These were the same set of pages used before to train the SVM.
+World Wide Web
+Table 13 Evaluation of the
+top 20 pages returned by our
+crawler—topic “sale offers of
+computer equipments”.
+Category User 1 User 2 User 3 Mean
+1 19 20 19
+2 1 0 0
+3 0 0 1
+4 0 0 0
+P@20 0.95 1.00 0.95 0.97
+found in the given pages and invokes the following pre-defined procedures and
+functions:
+– FetchParsePage (URL, L): fetches and parses the page pointed by URL, return-
+ing in L the list of all its terms;
+– UpdateTermTable (L): includes in TermTable the terms contained in the list L,
+updating their respective frequencies;
+– FilterTerms (N): returns a set containing the N most frequent terms in the
+TermTable.
+As we can see from Algorithm 2, procedure GenerateTerms works as follows.
+For each URL in GenreURLs (step 01), steps 02 and 03 are performed as follows:
+(a) the corresponding page is fetched and its content parsed, being the list of all
+its terms returned in PageTerms; (b) TermTable is then updated with the list of
+terms in PageTerms. After fetching and parsing all pages that express the desired
+genre, FilterTerms returns into GenreTerms the set of NG most frequent genre terms
+found in TermTable (step 04). Next, following similar steps (05 to 09), the set of
+content terms is generated. Notice that in step 07 we remove from the list of terms
+of each fetched page the set of genre terms previously generated since we now want
+to generate a set of terms that represents only the content (subject) of the pages of
+interest.
+The strategy for semi-automatic generation of genre and content related terms
+expressed by procedure GenerateTerms is very simple, very effective and requires
+World Wide Web
+Table 14 Number of URLs
+provided for each topic.
+Topic Pages of the Relevant
+desire genre syllabus pages
+Data structures course syllabi 36 31
+Databases course syllabi 36 26
+Information retrieval 36 13
+course syllabi
+Job offers in computer science 30 30
+Sale offers of computer 25 35
+equipments
+only a small set of example pages. To evaluate such a strategy, we implemented the
+procedure GenerateTerms described by Algorithm 2 and run it to generate, for each
+topic used in the previous experiments, two sets of 40 terms to represent, respectively,
+the genre and the content of pages of interest. Table 14 shows the number of URLs
+of example pages provided for generating the sets of terms for each topic. We notice
+that we used exactly the same pages as examples for the genre “course syllabi” for
+all three disciplines.
+Then, for each topic, we run four crawling processes using, respectively, 100%,
+75%, 50%, and 25% of the genre and content terms generated by procedure
+GenerateTerms, selected according to their decreasing order of frequency. Next, for
+each topic, we run another crawling process using a subset of the generated genre and
+content terms, now selected by an expert. Tables 15 and 16 show, for each crawling
+process, the best F1 level achieved and the respective similarity threshold used to
+determine the relevance of a page to the corresponding topic. The four first crawling
+processes are those for which we selected the terms according to their frequency and
+the last one is the one whose terms were selected by the expert. As in the previous
+section, we named the crawling processes according to the number of genre and
+content terms used to represent the topic of interest.
+Analyzing the results shown in Tables 15 and 16, we can observe the following:
+(1) the F1 levels achieved by the crawling processes are better than those achieved
+by the SVM-based crawler we used as a baseline (see Table 3), and (2) the F1 levels
+achieved by all crawling processes that used terms selected by the expert are very
+significant and correspond, for all topics but one (“data structures course syllabi”),
+to the best result. Therefore, we can say that our strategy for semi-automatic term
+generation, although very simple, is very effective and provides a means to assist an
+expert or a typical user in the task of specifying the sets of genre and content terms
+required by our genre-aware approach to focused crawling.
+Table 15 Best F1 (generated terms)—topics related to the “course syllabi” genre.
+Discipline “data structures” Discipline “databases” Discipline “information retrieval”
+Crawling F1 Similarity Crawling F1 Similarity Crawling F1 Similarity
+process threshold process threshold process threshold
+40g40c 78.95 0.67 40g40c 67.69 0.64 40g40c 64.29 0.73
+30g30c 84.39 0.71 30g30c 67.61 0.68 30g30c 64.29 0.76
+20g20c 78.26 0.76 20g20c 69.23 0.66 20g20c 64.29 0.79
+10g10c 78.95 0.79 10g10c 63.64 0.72 10g10c 58.06 0.80
+15g19c 79.03 0.79 15g21c 80.90 0.66 15g15c 67.14 0.79
+World Wide Web
+Table 16 Best F1 (generated terms)—topics related to the “job offers” and “sale offers” genres.
+Topic “job offers in computer science” Topic “sale offers of computer equipments”
+Crawling F1 Similarity Crawling F1 Similarity
+process threshold process threshold
+40g40c 50.90 0.56 40g40c 85.00 0.42
+30g30c 50.12 0.57 30g30c 84.81 0.46
+20g20c 53.45 0.65 20g20c 85.06 0.52
+10g10c 51.39 0.74 10g10c 84.63 0.58
+22g18c 60.87 0.64 18g18c 86.49 0.51
+Finally, comparing the results shown in Tables 7 and 8 with the results shown in
+Tables 15 and 16, we again notice that, as the number of terms diminishes, the best F1
+levels are achieved when we consider higher similarity thresholds, since this prevents
+reducing precision.
+7 Conclusions
+Focused crawlers are an important class of programs that have as their main goal
+to efficiently crawl Web pages that are relevant to a specific topic of interest. The
+work presented in this article proposes a novel focused crawling approach aimed at
+crawling pages related to specific topics that can be expressed in terms of genre and
+content information. Our approach adopts a particular queuing policy that is the
+main reason for its good performance since this policy allows for relevant pages to
+be crawled as soon as possible. The effectiveness, efficiency and scalability of our
+genre-aware approach are demonstrated by a set of experiments we conducted for
+crawling pages related to syllabi of specific computer science courses, job offers in
+the computer science field and sale offers of computer equipments. The results of
+these experiments show that focused crawlers constructed according to our approach
+achieve levels of F1 superior to 88%, requiring the analysis of no more than 65% of
+the visited pages in order to find 90% of the relevant pages. Moreover, we have
+evaluated the impact of term selection to describe the genre and content of the
+pages of interest on the crawling results using our genre-aware approach to focused
+crawling. In addition, we have proposed and experimentally evaluated a strategy for
+semi-automatic generation of these terms.
+As shown by our experimental results, the major benefits of our focused crawling
+approach, compared with traditional ones based on classifiers, are: (1) improvement
+of the level of F1 in the crawling process, (2) more efficiency in the crawling process
+since only a small percentage of pages is required to be visited to crawl a large
+percentage of relevant pages, and (3) higher scalability since our approach adopts
+a simple set of heuristics to determine the relevance of a page as well as to guide
+the crawling, and does not require a training or any preprocessing phase. In addition,
+specifying a set of genre and content terms for a crawling process is not a complex
+task. A small set of terms selected by an expert or a typical user familiar with the
+topic is usually enough to produce good results. The task of selecting a proper set
+of terms is facilitated by the fact that the attention of the user should be focused on
+the content terms, since the genre can be characterized by a very small number of
+terms. Moreover, our proposed strategy for semi-automatic generation of terms has
+World Wide Web
+shown to be very effective in assisting in the task of specifying the sets of genre and
+content terms for a crawling process. We notice that more sophisticated strategies
+for automatic term generation, such as the one described in [14] and [20], could have
+been used but our main focus in this work was to show that our genre-aware approach
+to focused crawling does not depend on an expert or a typical user to specify the sets
+of genre and content terms required to describe the pages of interest.
+As future work, we intend to: (1) evaluate our strategy for semi-automatic term
+generation varying the number of URLs of example pages used; (2) extend our
+genre-aware approach to consider, besides genre and content, other aspects (e.g.,
+geographic region, page structure); (3) investigate whether context graphs [12] can
+be exploited in our approach to improve crawling results; and (4) use the idea behind
+our genre-aware approach to other IR problems such as search and classification.
+Acknowledgements This research was partially funded by the Brazilian National Institute of
+Science and Technology for the Web (MCT/CNPq grant number 573871/2008-6), by the InfoWeb
+project (MCT/CNPq/CT-INFO grant number 550874/2007-0), by UOL (www.uol.com.br), through
+its UOL Bolsa Pesquisa program (process number 20060520105932), and by the authors’ individual
+grants from CAPES and CNPq.
+References
+1. Almpanidis, G., Kotropoulos, C., Pitas, I.: Combining text and link analysis for focused
+crawling—an application for vertical search engines. Inf. Syst. 32(6), 886–908 (2007)
+2. Assis, G.T., Laender, A.H.F., Gonçalves, M.A., da Silva, A.S.: Exploiting genre in focused
+crawling. In: Proceedings of the 14th Symposium on String Processing and Information Retrieval,
+pp. 49–60, Santiago, 29–31 October 2007
+3. Baeza-Yates, R.A., Ribeiro-Neto, B.A.: Modern Information Retrieval. ACM/Addison-Wesley,
+New York (1999)
+4. Boese, E.S.: Stereotyping the Web: Genre Classification of Web Documents. Master’s thesis,
+Computer Science Department, Colorado State University, Boulder, Colorado, USA (2005)
+5. Borges, K.A.V., Laender, A.H.F., Medeiros, C.B., Davis, C.A.: Discovering geographic locations
+in web pages using urban addresses. In: Proceedings of the 4th ACM Workshop On Geographic
+Information Retrieval, pp. 31–36. Lisbon, Portugal (2007)
+6. Bra, P.D., Post, R.D.J.: Information retrieval in the world wide web: making client-based search-
+ing feasible. Comput. Netw. ISDN Syst. 27(2), 183–192 (1994)
+7. Chakrabarti, S., van den Berg, M., Dom, B.: Focused crawling: a new approach to topic-specific
+web resource discovery. Comput. Networks 31(11–16), 1623–1640 (1999)
+8. Chen, G., Choi, B.: Web page genre classification. In: Proceedings of the 23th ACM Symposium
+on Applied Computing, pp. 2353–2357, Fortaleza, 16–20 March 2008
+9. Chen, J., Li, Q., Jia, W.: Automatically generating an E-textbook on the web. World Wide Web
+8(4), 377–394 (2005)
+10. Cortes, C., Vapnik, V.: Support-vector networks. Mach. Learn. 20(3), 273–297 (1995)
+11. Dellandrea, E., Harb, H., Chen, L.: Zipf, neural networks and svm for musical genre classi-
+fication. In: Proceedings of the 5th IEEE International Symposium on Signal Processing and
+Information Technology, pp. 57–62, Athens, 18–21 December 2005
+12. Diligenti, M., Coetzee, F., Lawrence, S., Giles, C.L., Gori, M.: Focused crawling using con-
+text graphs. In: Proceedings of the 26th International Conference on Very Large Data Bases,
+pp. 527–534. Cairo, 10–14 September 2000
+13. Foltz, P.: Improving human-proceedings interaction: indexing the CHI index. In: Proceedings of
+the Conference on Human Factors in Computing Systems, pp. 101–102, Denver, 7–11 May 1995
+14. Glover, E., Pennock, D., Lawrence, S., Krovetz, R.: Inferring hierarchical descriptions. In: Pro-
+ceedings of the 11th International Conference on Information and Knowledge Management,
+pp. 507–514, McLean, 4–9 November 2002
+15. Herscovici, M., Jacovi, M., Maarek, Y.S., Pelleg, D., Shtalhaim, M., Ur, S.: The shark-search
+algorithm—an application: tailored web site mapping. Comput. Networks 30(1–7), 317–326
+(1998)
+World Wide Web
+16. Heydon, A., Najork, M.: Mercator: a scalable, extensible web crawler. World Wide Web 2(4),
+219–229 (1999)
+17. Johnson, J., Tsioutsiouliklis, K., Giles, C.L.: Evolving strategies for focused web crawling. In: Pro-
+ceedings of the 20th International Conference on Machine Learning, pp. 298–305, Washington,
+DC, 21–24 August 2003
+18. Kontostathis, A.: Essential dimensions of latent semantic indexing (LSI). In: Proceedings of the
+40th Hawaii International Conference on Systems Science, p. 73, Waikoloa, 3–6 January 2007
+19. Lage, J.P., da Silva, A.S., Golgher, P.B., Laender, A.H.F.: Automatic generation of agents for
+collecting hidden web pages for data extraction. Data Knowl. Eng. 49(2), 177–196 (2004)
+20. Lagus, K., Kaski, S.: Keyword selection method for characterizing text document maps. In:
+Proceedings of the 9th International Conference on Artificial Neural Networks, pp. 371–376,
+Edinburgh, 7–10 September 1999
+21. Liu, H., Janssen, J., Milios, E.E.: Using HMM to learn user browsing patterns for focused web
+crawling. Data Knowl. Eng. 59(2), 270–291 (2006)
+22. McCallum, A., Nigam, K., Rennie, J., Seymore, K.: Automating the construction of internet
+portals with machine learning. Inf. Retr. 3(2), 127–163 (2000)
+23. Menczer, F., Pant, G., Srinivasan, P.: Topical web crawlers: evaluating adaptive algorithms. ACM
+Trans. Internet Technol. 4(4), 378–419 (2004)
+24. Menczer, F., Pant, G., Srinivasan, P., Ruiz, M.E.: Evaluating topic-driven web crawlers. In:
+Proceedings of the 24th Annual International ACM SIGIR Conference on Research and
+Development in Information Retrieval, pp. 241–249, New Orleans, September 2001
+25. Muller, P., Insua, D.R.: Issues in Bayesian analysis of neural network models. Neural Comput.
+10(3), 749–770 (1998)
+26. Pant, G., Menczer, F.: Topical crawling for business intelligence. In: Proceedings of the 7th
+European Conference on Research and Advanced Technology for Digital Libraries, pp. 233–
+244, Trondheim, 17–22 August 2003
+27. Pant, G., Srinivasan, P.: Learning to crawl: comparing classification schemes. ACM Trans. Inf.
+Sys. 23(4), 430–462 (2005)
+28. Pant, G., Srinivasan, P.: Link contexts in classifier-guided topical crawlers. IEEE Trans. Knowl.
+Data Eng. 18(1), 107–122 (2006)
+29. Pant, G., Tsioutsiouliklis, K., Johnson, J., Giles, C.L.: Panorama: extending digital libraries
+with topical crawlers. In: Proceedings of the 4th ACM/IEEE-CS Joint Conference on Digital
+Libraries, pp. 142–150, Tuscon, 7–11 June 2004
+30. Rish, I.: An empirical study of the Naïve Bayes classifier. In: Proceedings of the 17th Interna-
+tional Joint Conference on Artificial Intelligence, pp. 41–46, Seattle, 4–10 August 2001
+31. Rosso, M.A.: Using Genre to Improve Web Search. Master’s thesis, School of Information and
+Library Science, University of North Carolina, Chapel Hill (2005)
+32. Sizov, S., Theobald, M., Siersdorfer, S., Weikum, G., Graupmann, J., Biwer, M., Zimmer, P.: The
+BINGO! system for information portal generation and expert web search. In: Proceedings of the
+First Biennial Conference on Innovative Data Systems Research, Asilomar, 5–8 January 2003
+33. Srinivasan, P., Menczer, F., Pant, G.: A general evaluation framework for topical crawlers. Inf.
+Retr. 8(3), 417–447 (2005)
+34. Stamatatos, E., Kokkinakis, G., Fakotakis, N.: Automatic text categorization in terms of genre
+and author. Comput. Linguist. 26(4), 471–495 (2000)
+35. Tantug, C., Eryigit, G.: Performance Analysis of Naïve Bayes Classification, Support Vector
+Machines and Neural Networks for Spam Categorization, pp. 495–504. Springer, New York
+(2006)
+36. Tarr, D., Borko, H.: Factors influencing inter-indexer consistency. In: Proceedings of the 37th
+Annual Meeting of the American Society for Information Science, pp. 50–55, Washington, DC,
+1974
+37. van der Walt, C., Barnard, E.: Data characteristics that determine classifier performance. In:
+Proceedings of the 16th Annual Symposium of the Pattern Recognition Association of South
+Africa, pp. 160–165, Parys, November 2006
+38. Vidal, M.L.A., Silva, A.S., Moura, E.S., Cavalcanti, J.M.B.: Structure-driven crawler generation
+by example. In: Proceedings of the 29th Annual International ACM SIGIR Conference on
+Research and Development in Information Retrieval, pp. 292–299, Seattle, 6–11 August 2006
+39. Yoshioka, T., Herman, G., Yates, J., Orlikowski, W.: Genre taxonomy: a knowledge repository
+of communicative actions. ACM Trans. Inf. Syst. 19(4), 431–456 (2001)
+40. zu Eissen, S.M., Stein, B.: Genre classification of web pages: user study and feasibility analysis. In:
+Biundo, S., Frühwirth, T., Palm, G. (eds.) KI 2004: Advances in Artificial Intelligence. Lecture
+Notes in Artificial Intelligence, LNAI, vol. 3228, pp. 256–269. Springer, New York (2004)

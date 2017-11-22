@@ -1,0 +1,318 @@
+ 
+1 
+ 
+TÍTULO: ADAPTACIÓN DEL MÉTODO DE REDUCCIÓN NO LINEAL LLE PARA LA 
+SELECCIÓN DE ATRIBUTOS EN WEKA 
+Autores: Isabel Cristina Pérez-Verona1, isabelcristina@uclv.cu 
+     Reinier Millo-Sánchez2, rmillo@uclv.cu 
+RESUMEN 
+El problema de selección de atributos consiste en encontrar un subconjunto que describa los 
+objetos del dominio a través de la redimensión de los datos. Entre los algoritmos de embebido 
+de datos que realizan reducción de dimensión no lineal, destaca LLE por su efectivo mecanismo 
+de preservar las estructuras locales de vecindad. En el presente trabajo se describe una 
+adaptación de este método para la selección de atributos, el cual fue programado como plugin 
+para utilizarse en la herramienta para el aprendizaje automático WEKA. 
+Palabras clave: reducción de dimensión no lineal, selección de rasgos, detección de ortólogos, 
+WEKA 
+ABSTRACT 
+The goal in feature selection is to find a subset describing domain objects by resizing the data. 
+Among the data embedded algorithms that perform non-linear dimension reduction, LLE stands 
+by its effective mechanism to preserve local neighborhood structures. Here, we describe an 
+adaptation of LLE for feature selection. We programmed the method as a plug-in tool for the 
+machine learning software WEKA. 
+Keywords: manifold learning, feature selection, orthologous detection, WEKA 
+INTRODUCCIÓN 
+El aprendizaje automatizado (machine learning, ML) es una rama de la inteligencia artificial, en 
+gran parte inspirada en el razonamiento humano, que comprende el aprendizaje a partir de 
+experiencia. Esta rama comprende los problemas de clasificación, asociación, agrupamiento 
+(clustering), y selección de rasgos (Cong, Pérez, & Morell, 2015; Sammut & Webb, 2011).  
+La selección de rasgos (variables, rasgos, características) es una etapa fundamental de cualquier 
+proceso de modelado, la cual consiste en seleccionar un subconjunto de rasgos relevantes para 
+usar en la construcción de un modelo (Han, Kamber, & Pei, 2011; Zaïane, 1999). Dado a que la 
+selección de rasgos es aplicable a disimiles situaciones reales, es difícil llegar a un consenso en 
+cuanto a cuál es la mejor selección posible. Esto posibilita que existan múltiples algoritmos de 
+este tipo. Un método de selección de rasgos típicamente incluye un criterio de evaluación para 
+comparar el subconjunto de características, un procedimiento de búsqueda y un criterio de 
+parada, típicamente un umbral de relevancia o la dimensión final del espacio de características. 
+Si bien la manera de abordar el problema puede cambiar en dependencia del método, todos se 
+basan en 3 principios fundamentales: la reducción de la dimensión de los datos, mantener estable 
+la tasa de aciertos de manera que no disminuya significativamente y que la distribución de la 
+clase resultante sea lo más semejante posible a la distribución de la clase original, dado todos 
+los atributos.  
+ 
+2 
+ 
+En el presente artículo se describe la adaptación el método de embebido no lineal Locally Lineal 
+Embedding (LLE) para la selección de atributos en WEKA. En las secciones 0 y 1 se introduce 
+brevemente el aprendizaje de distancias y se explica el funcionamiento del método original LLE. 
+La descripción detallada del diseño de la experimentación, y las modificaciones realizadas al 
+algoritmo paso a paso pueden encontrarse en la sección 0. Finalmente, en la sección 0 se 
+analizan los resultados obtenidos y se da pie a futuras líneas de trabajo.  
+DESARROLLO 
+La necesidad de vías concretas para medir la distancia o semejanza entre datos es un factor 
+clave en los métodos de selección de rasgos. El uso de técnicas de aprendizaje de distancia para 
+automatizar el aprendizaje de la métrica facilita dicha tarea. El aprendizaje de métricas de 
+distancia clásico (metric learning) tiene como principio la adaptación de una métrica de distancia 
+a una aplicación específica, utilizando para ello información de conjunto de entrenamiento, como 
+por ejemplo: modificar la métrica de distancia de un k-NN para implementar la distancia de 
+Mahalanobis, donde el objetivo final es inducir una métrica de distancia más potente a partir de 
+los datos conocidos (Bellet, Habrard, & Sebban, 2013a; Garakani, Liu, Sha, & Liang, 2014)║. 
+Los métodos de aprendizaje de métricas de distancia pueden clasificarse en dos grupos 
+fundamentales: aprendizaje supervisado de métricas de distancia (supervised metric learning) y 
+aprendizaje no supervisado de métricas de distancia (unsupervised metric learning) (Bellet, 
+Habrard, & Sebban, 2013a), si bien algunos autores también consideran la clasificación de 
+métodos semi-supervisados de aprendizaje de distancias(L Yang & Jin, 2006).  
+ 
+Figura 0.1 Clasificación de algunos métodos de metric learning (Kulis, 2013; Liu Yang, 2006) 
+ 
+3 
+ 
+Los algoritmos no supervisados de aprendizaje de métricas de distancias no conocen las 
+etiquetas de las instancias de entrenamiento individuales, en su lugar utilizan información 
+adicional (o criterios que son asumidos) en forma de conjuntos de restricciones  𝓢, 𝓓, 𝓡. Esta 
+peculiaridad resulta particularmente útil en una variedad de aplicaciones donde los datos 
+etiquetados son difíciles de obtener, mientras que resulta relativamente fácil obtener información 
+adicional (Bellet et al., 2013b). 
+Existen métodos en el embebido no lineal que trabajan con un espectro sparse este es el caso 
+de métodos LLE ( Ziegelmeier, Kirby, & Peterson, 2012;Liu et al., 2013), un método que está 
+fundamentalmente orientado a la preservación de las estructuras locales de los datos. Las 
+matrices dispersas permiten el procesamiento de grandes volúmenes de información de 
+conjuntos de datos no densos. El aprovechamiento de este conocimiento permite reducir el costo 
+computacional de las operaciones que se pueden realizar sobre estas matrices, así como el costo 
+espacial para el almacenamiento de la información (Millo Sánchez et al., 2015).  
+LOCALLY LINEAR EMBEDDING 
+Entre los algoritmos de embebido de datos que realizan reducción de dimensión no lineal, 
+destaca LLE (Locally Linear Embedding),  por su efectivo mecanismo de preservar las estructuras 
+locales de vecindad. En los métodos hasta el momento como MDS o Isomap, se dependía del 
+cálculo de las distancias (en línea recta) entre los puntos de los datos, LLE, en su lugar recupera 
+una estructura no lineal de las localidades del manifold.  
+Este algoritmo, visualiza el espacio manifold como una colección de parches, o puntos de 
+coordenadas que se solapan entre sí. Si el manifold es lo suficientemente uniforme y las 
+vecindades son pequeñas, entonces el algoritmo considera estas zonas como lineales. El 
+objetivo es identificar cada uno de esos parches y caracterizar la geometría interna en ellos, para 
+luego construir las vecindades (Cayton, 2005). Se asume que estas regiones locales se 
+superponen una con otra de manera tal que las reconstrucciones locales se combinaran en una 
+local.  
+En un paso inicial, el algoritmo representa los puntos 𝑥𝑖 del espacio de alta dimensionalidad como 
+una combinación lineal 𝐰𝑖 de sus 𝑘 vecinos más cercanos en el espacio (𝑥𝑖𝑗) a través de una 
+reconstrucción de pesos, y recrea esa representación en el plano reducido. En otras palabras, el 
+algoritmo crea un hiperplano entre 𝑥𝑖 y sus vecinos más cercanos, asumiendo que el manifold es 
+linealmente local. Estas características hacen el manifold invariante a operaciones de 
+modificación como el escalado, traslaciones, rotaciones, y reconstrucciones invariantes; lo que 
+permite que un mapeo lineal de este hiperplano a la representación reducida preserve la 
+reconstrucción de los pesos en ese espacio. Un esquema detallado de los pasos del LLE pueden 
+verse en la Figura 0.2. 
+ 
+ 
+ 
+ 
+ 
+ 
+4 
+ 
+ 
+Locally Linear Embedding 
+ 
+Figura 0.2 Pasos del algoritmo LLE 
+Fuente: (Cayton, 2005) 
+El algoritmo estándar comprende 3 etapas: la búsqueda de los vecinos más cercanos, a partir 
+de lo cual construye una matriz de pesos que contiene la solución a la ecuación 𝑘 × 𝑘 para cada 
+uno de las vecindades locales y finalmente un paso de descomposición parcial de vectores 
+propios. La complejidad total del algoritmo viene dada por la ecuación 0.1 donde 𝑁 es el número 
+de puntos de datos de entrenamiento, 𝐷 la dimensión de entrada, 𝑘 el número de vecinos más 
+cercanos y 𝑑 la dimensión de salida 
+𝑂𝐷 log 𝑘𝑁 log 𝑁 + 𝑂𝐷𝑁𝑘3 + 𝑂𝑑𝑁2 0.1 
+DESCRIPCIÓN DE LA EXPERIMENTACIÓN 
+En la implementación de esta variante de LLE se emplea como base el primer paso del algoritmo 
+original (Ver figura Figura 0.1), para luego realizar la selección de rasgos a partir de la matriz de 
+reconstrucción de pesos mediante un método de comparación. La comparación se puede realizar 
+mediante la norma de las diferencias absolutas  o la similitud coseno (Barkman & others, 1958; 
+Sidorov, Gelbukh, Gómez-Adorno, & Pinto, 2014; Sidorov, Velasquez, Stamatatos, Gelbukh, & 
+Chanona-Hernández, 2013; Singhal, 2001). En el algoritmo propuesto se calcula una matriz de 
+reconstrucción empleando los atributos del subconjunto y se compara con la matriz de 
+reconstrucción global para ver cuál subconjunto de atributos produce diferencias más 
+significativas. 
+La selección de rasgos o atributos en el WEKA se puede realizar de dos formas diferentes, 
+mediante ranking como realiza el algoritmo de análisis de componentes principales PCA o 
+mediante subconjuntos como realiza CfsSubsetEval. La implementación de LLE para realizar 
+selección de atributos en el WEKA descrita en este artículo realiza la reducción de dimensiones 
+por agrupación de subconjuntos. 
+ 
+5 
+ 
+Para definir un nuevo algoritmo para la selección de rasgos o atributos en WEKA, se agregó una 
+clase llamada LocallyLinearEmbedding en el paquete weka.attributeSelection. Esta clase 
+hereda de la clase UnsupervisedSubsetEvaluator e implementa la interfaz OptionHandler. 
+Para implementar el algoritmo se empleron los métodos:  
+ public double evaluateSubset(BitSet arg0) 
+ public void buildEvaluator(Instances instances) 
+El método buildEvaluator, calcula una matriz de reconstrucción de pesos empleando todos los 
+atributos de la base de casos, matriz que se denominó matriz de reconstrucción global. 
+Posteriormente se ejecuta el método evaluateSubset, para evaluar evalúan cada uno de los 
+subconjuntos de atributos para determinar cuál produce mejores resultados.  
+BÚSQUEDA DE LOS N VECINOS PARA CADA INSTANCIA. 
+Al igual que en el algoritmo original LLE es necesario realizar la búsqueda de los N vecinos más 
+cercanos a cada una de las instancias. Para establecer este parámetro N se emplean 
+anotaciones de Java junto a los métodos: 
+ public Enumeration listOptions() 
+ public void setOptions(String[] options) 
+ public String[] getOptions() 
+Para hallar los N vecinos más cercanos se implementó un método que permitiese el cálculo de 
+los N vecinos de cada instancia a partir de un subconjunto de atributos: private Instances 
+getKNN(Instance point, int knn_size, BitSet attr) Donde point es la instancia a la cual se le 
+calculan los N vecinos más cercanos, knn_size es la cantidad de vecinos que se desean calcular 
+y attr es el conjunto de atributos que se emplearán para el cálculo de los vecinos. 
+Para el cálculo de los vecinos se empleó la clase EuclideanDistance de WEKA que implementa 
+el cálculo de la distancia euclidiana, para dos instancias, siendo posible indicar el conjunto de 
+atributos que se emplea para el cálculo de la distancia y se utilizaron árboles balanceados de 
+Java (TreeSet) para obtener los N vecinos más cercanos al objeto. 
+CÁLCULO DE LA MATRIZ DE RECONSTRUCCIÓN DE LOS PESOS 
+El cálculo de la matriz de reconstrucción de los pesos se implementó como está definido en el 
+algoritmo del LLE. Para manejar la alta dimensonalidad de los datos se decidio utilizar matrices 
+sparse. Las matrices dispersas permiten el procesamiento de grandes volúmenes de información 
+de conjuntos de datos no densos. El aprovechamiento de este conocimiento permite reducir el 
+costo computacional de las operaciones que se pueden realizar sobre estas matrices, así como 
+el costo espacial para el almacenamiento de la información (Millo Sánchez et al., 2015). Dado a 
+que WEKA no dispone de una implementación de matrices sparses, se realizó una 
+implementación de matrices sparse que emplea árboles balanceados para optimizar el empleo 
+de la memoria y permitir el acceso a la información de la matriz con una complejidad temporal 
+de 𝑂 (𝑙𝑜𝑔𝑛 𝑙𝑜𝑔𝑚) donde n y m son la cantidad de filas y columnas de la matriz. Esta 
+implementación de matriz sparse permite operaciones básicas como son la multiplicación de 
+matrices, multiplicación por un escalar, suma de matrices, división por un escalar, traspuesta de 
+una matriz, entre otras.se analizo. Si bien se consultaron varias bibliotecas de Java para el 
+ 
+6 
+ 
+trabajo con matrices, en las bibliotecas consultadas la implementación de matrices sparse se 
+realiza empleando arreglos dinámicos, siendo en ocasiones muy lenta la implementación de 
+operaciones básicas con matrices, como es el caso de la multiplicación, muy empleada en la 
+implementación del algoritmo, por lo cual se decidió optar por la representación de árboles 
+balanceados. 
+SELECCIÓN DE ATRIBUTOS A PARTIR DE LAS MATRICES DE RECONSTRUCCIÓN DE 
+PESOS 
+Para realizar la selección de rasgos o atributos se realizó una comparación entre la matriz de 
+reconstrucción de pesos de un conjunto de atributos y la matriz de reconstrucción de pesos global 
+que emplea todos los atributos. La idea tras esta comparación es hallar la diferencia absoluta 
+entre ambas matrices, restando la matriz de reconstrucción del conjunto de atributos de la matriz 
+de reconstrucción global, hallando el valor absoluto de los valores calculados. Una vez calculada 
+la nueva matriz se promedian las diferencias por cada instancia obteniéndose un vector con las 
+diferencias promedios para cada una de las instancias. Posterior a esto se toma como la 
+diferencia entre ambas matrices de reconstrucción el valor medio de estas diferencias promedios. 
+RESULTADOS 
+El método realiza una selección de atributos menos exhaustiva que métodos tradicionales como 
+el CfsSubsetEval, al considerar más atributos, La idea de tras del método es construir la matriz 
+de pesos y hallar una matriz que sea similar  ella, por lo cual trata de eliminar la menor cantidad 
+de atributos manteniendo la similitud con la matriz de pesos. En la experimentación se utilizó 
+k=3. 
+Tabla 1 Descripción de las bases de datos 
+nombre instancias atributos 
+anneal 789 38 
+car 1728 6 
+diabetes 768 8 
+ionosphere 351 34 
+mfeat-fourier 2000 649 
+wine 178 13 
+zoo 101 18 
+ 
+Para validar los resultados de la selección de atributos del método propuesto, se emplearon 7 
+datasets del UCI Repository, los cuales se describen en la tabla Tabla 1. Para realizar la selección 
+de atributos se utilizó GreedySteepwise como método de búsqueda. 
+ 
+7 
+ 
+ 
+Una vez seleccionados los atributos con el nuevo método, se realizaron pruebas de clasificación 
+sobre los datasets empleando los métodos J48 y IBK. Se emplearon los parámetros por defecto 
+del WEKA, variando solo en el método IBK la cantidad de vecinos a 3. La validación de la 
+clasificación se realizó utilizando validación cruzada en 10 partes. Los resultados de la 
+clasificación (¡Error! No se encuentra el origen de la referencia.) muestran que el método 
+propuesto obtiene resultados similares a los métodos clásicos de aprendizaje, y en algunos casos 
+un mejor desempeño se aprecia en las figuras Figura 0.3 y Figura 0.4.  
+ 
+Figura 0.3 Porcentaje de clasificación correcta con el método IBK 
+ 
+ 
+Figura 0.4 Porcentaje de clasificación correcta con el método J48 
+ 
+ 
+60
+65
+70
+75
+80
+85
+90
+95
+100
+anneal car diabetes ionosphere mfeat-fourier wine zoo
+IBK CfsSubsetEval LLE (Norma) LLE (Cosine Similarity)
+60
+70
+80
+90
+100
+anneal car diabetes ionosphere mfeat-fourier wine zoo
+J48 CfsSubsetEval LLE (Normal) LLE (Cosine Similarity)
+ 
+8 
+ 
+CONCLUSIONES 
+Originalmente el método LLE, es un método de reducción de dimensión no lineal, que se alcanza 
+buenos resultados preservando las vecindades locales. El método LLE modificado para la 
+selección de atributos, se enfoca en preservar eliminar la menor cantidad de atributos 
+manteniendo la similitud con la matriz de pesos que constituyen las soluciones halladas por LLE. 
+Si bien, esta modificación para la selección de rasgos es menos exhaustiva que métodos 
+tradicionales; esta, no afecta los resultados de la clasificación. El método propuesto obtiene 
+resultados similares a los métodos clásicos de aprendizaje, y en algunos casos un mejor 
+desempeño, tal como puede apreciarse en Figura 0.3 y Figura 0.4.  
+  
+ 
+9 
+ 
+REFERENCIAS BIBLIOGRÁFICAS 
+Barkman, J. J., & others. (1958). Phytosociology and ecology of cryptogamic epiphytes, 
+including a taxonomic survey and description of their vegetation units in Europe. 
+Phytosociology and Ecology of Cryptogamic Epiphytes, Including a Taxonomic Survey and 
+Description of Their Vegetation Units in Europe. 
+Bellet, A., Habrard, A., & Sebban, M. (2013b). A Survey on Metric Learning for Feature Vectors 
+and Structured Data. arXiv Preprint arXiv:1306.6709, 57. 
+http://doi.org/10.1073/pnas.0809777106 
+Bellet, A., Habrard, A., & Sebban, M. (2013a). A Survey on Metric Learning for Feature Vectors 
+and Structured Data. arXiv Preprint arXiv:1306.6709, 57. 
+http://doi.org/10.1073/pnas.0809777106 
+Cayton, L. (2005). Algorithms for manifold learning. 
+Cong, B. N., Pérez, J. L. R., & Morell, C. (2015). Aprendizaje supervisado de funciones de 
+distancia: estado del arte Supervised distance metric learning: state of the art. Revista 
+Cubana de Ciencias Inform{á}ticas, 9(2). 
+Garakani, B., Liu, K., Sha, F., & Liang, Y. (2014). Metric Learning. 
+Han, J., Kamber, M., & Pei, J. (2011). Data mining: concepts and techniques: concepts and 
+techniques. Elsevier. 
+Kulis, B. (2013). Metric Learning : A Survey By Brian Kulis, 5(4), 287–364. 
+http://doi.org/10.1561/2200000019 
+Liu, X., Tosun, D., Weiner, M. W., Schuff, N., Initiative, A. D. N., & others. (2013). Locally linear 
+embedding (LLE) for MRI based Alzheimer’s disease classification. NeuroImage, 83, 148–
+157. 
+Millo Sánchez, R., Pérez Verona, I. C., Vargas, J. A., Hernández, T. R., Central, U., Abreu, M., 
+… Clara, S. (2015). Matrices dispersas en Java para el procesamiento de grandes 
+volúmenes de datos. Revista Cubana de Ciencias Informáticas, 1–8. 
+Sammut, C., & Webb, G. I. (2011). Encyclopedia of machine learning. Springer Science & 
+Business Media. 
+Sidorov, G., Gelbukh, A., Gómez-Adorno, H., & Pinto, D. (2014). Soft similarity and soft cosine 
+measure: Similarity of features in vector space model. Computaci{ó}n Y Sistemas, 18(3), 
+491–504. 
+Meyer, C. D. (2000). Matrix analysis and applied linear algebra. Siam. 
+Watrous, J. (2011). Theory of quantum information. University of Waterloo Fall. 
+Sidorov, G., Velasquez, F., Stamatatos, E., Gelbukh, A., & Chanona-Hernández, L. (2013). 
+Syntactic dependency-based n-grams as classification features. In Advances in 
+Computational Intelligence (pp. 1–11). Springer. 
+Singhal, A. (2001). Modern information retrieval: A brief overview. IEEE Data Eng. Bull., 24(4), 
+35–43. 
+ 
+10 
+ 
+Yang, L. (2006). Distance Metric Learning : A Comprehensive Survey, 1–51. 
+Yang, L., & Jin, R. (2006). Distance metric learning: A comprehensive survey. Unpublished 
+Manuscript, 1–51. http://doi.org/10.1073/pnas.0809777106 
+Zaïane, O. R. (1999). Introduction to data mining. 
+Ziegelmeier, L., Kirby, M., & Peterson, C. (2012). Locally Linear Embedding Clustering 
+Algorithm for Natural Imagery. arXiv Preprint arXiv:1202.4387. 

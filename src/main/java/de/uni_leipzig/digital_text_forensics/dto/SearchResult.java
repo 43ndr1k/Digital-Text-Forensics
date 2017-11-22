@@ -1,5 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.dto;
 
+import java.io.File;
+import java.nio.file.Paths;
 import de.uni_leipzig.digital_text_forensics.controller.RedirectController;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
@@ -17,8 +19,9 @@ public class SearchResult {
 	private Link docUrl;
 
 	private String query;
+	
 
-	public SearchResult(String query, Long docId, String title, String snippet, Link docUrl) {
+  public SearchResult(String query, Long docId, String title, String snippet, Link docUrl) {
 		this.query = query;
 		this.docId = docId;
 		this.title = title;
@@ -27,6 +30,7 @@ public class SearchResult {
 		this.docUrl = docUrl;
 
 	}
+  
 
 	public SearchResult() {
 	}

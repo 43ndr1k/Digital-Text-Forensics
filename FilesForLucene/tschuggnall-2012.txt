@@ -1,0 +1,315 @@
+Plag-Inn: Intrinsic Plagiarism Detection
+Using Grammar Trees
+Michael Tschuggnall and Günther Specht
+Databases and Information Systems,
+Institute of Computer Science, University of Innsbruck
+{michael.tschuggnall,guenther.specht}@uibk.ac.at
+Abstract. Intrinsic plagiarism detection deals with the task of finding
+plagiarized sections of text documents without using a reference corpus.
+This paper describes a novel approach to this task by processing and
+analyzing the grammar of a suspicious document. The main idea is to
+split a text into single sentences and to calculate grammar trees. To find
+suspicious sentences, these grammar trees are compared in a distance
+matrix by using the pq-gram-distance, an alternative for the tree edit
+distance. Finally, significantly different sentences regarding their gram-
+mar and with respect to the Gaussian normal distribution are marked
+as suspicious.
+Keywords: intrinsic plagiarism detection, grammar trees, stylistic in-
+consistencies, pq-gram distance, NLP applications.
+1 Introduction
+With the increasing amount of data available on the web it becomes more and
+more important to verify authorships. Especially on text documents like Master-
+or PhD theses written in an academic context, the identification of plagiarized
+passages is crucial. Currently, this problem is encountered using two main ap-
+proaches [9]:
+1. External plagiarism detection algorithms, which compare a suspicious docu-
+ment with a given set of source documents (e.g. the whole web), and
+2. Intrinsic plagiarism detection algorithms, which try to find plagiarized sec-
+tions by inspecting the suspicious document only.
+The most successful algorithms currently existing in the intrinsic detection field
+use n-grams [12] or other features like the frequency of words from predefined
+word-classes [8] to find suspicious sections. The idea of the approach described
+in this paper is to use a syntactical feature, namely the grammar used by an
+author, to identify passages that might have been plagiarized. Due to the fact
+that an author has many different choices of how to formulate a sentence using
+the existing grammar rules of a natural language, the assumption is that the
+way of constructing sentences is significantly different for individual authors.
+For example, the sentence1
+1 example taken and modified from the Stanford Parser website [15]
+G. Bouma et al. (Eds.): NLDB 2012, LNCS 7337, pp. 284–289, 2012.
+c© Springer-Verlag Berlin Heidelberg 2012
+Plag-Inn: Intrinsic Plagiarism Detection Using Grammar Trees 285
+(1) The strongest rain ever recorded in India shut down the financial hub of
+Mumbai, officials said today.
+could also be formulated as
+(2) Today, officials said that the strongest Indian rain which was ever recorded
+forced Mumbai’s financial hub to shut down.
+which is semantically equivalent but differs significantly according to its syntax.
+The main idea of this approach is to quantify those differences and to find
+outstanding sentences which are assumed to have a different author and thus
+may be plagiarized.
+The rest of this paper is organized as follows: Section 2 describes the algorithm
+in detail, while its evaluation is shown in Section 3. Finally, Section 4 summarizes
+related work and Section 5 recaps the main ideas and discusses future work.
+2 The Plag-Inn Algorithm
+The aim of the algorithm is to analyze a suspicious document and to find poten-
+tially plagiarized sections based on syntactical changes within that document.
+According to the task of intrinsic plagiarism detection, the algorithm inspects
+the given document only and needs no reference corpus. In detail, the algorithm
+consists of the following basic steps:
+1. Parse the document and split it into single sentences using Sentence Bound-
+ary Detection (SBD) algorithms [14], which detect beginnings and endings of
+sentences, respectively. Currently, this is implemented by using OpenNLP2,
+an open source tool that integrates SBD algorithms.
+2. Analyze each sentence according to the grammar that was used to build the
+sentence. Figure 1 shows an examplary grammar tree which results from
+parsing sentence (2) in Section 1. The labels of the tree correspond to the
+tag definitions of the Penn Treebank [7], where e.g. NP corresponds to a
+noun phrase or JJS corresponds to a superlative adjective. This step can be
+done e.g. by using the Stanford Parser [6], an open source NLP tool that
+extracts grammatical features of a sentence. Besides information like part-of-
+speech tagging or dependencies between words [3], the parser also generates
+a grammar tree which is used in this case for further calculations.
+3. The result of the last step is a set of grammar trees representing a document.
+Now these trees are evaluated by calculating the distance between each tree.
+I.e. every sentence is compared to every sentence in the document, and the
+distance is recorded. Because the general tree edit distance is very costly [2],
+the much more efficient pq-gram-distance [1] is used to identify the distance
+between two grammar trees. As it is shown by Augsten et al. the pq-gram-
+distance is a lower bound of the fanout weighted tree edit distance, i.e.
+sensitive to structure changes and thus very suitable. Although the usage of
+2 Apache OpenNLP, http://incubator.apache.org/opennlp,visitedJanuary2012
+286 M. Tschuggnall and G. Specht
+S
+NP ,
+NN
+(Today)
+NP VP
+NNS
+(officials)
+VBD
+(said) SBAR
+IN
+(that) S
+NP
+NP
+DT
+(the)
+JJS
+(strongest)
+JJ
+(Indian)
+NN
+(rain)
+SBAR
+WHNP
+WDT
+(which)
+VBD
+(was)
+S
+VP
+ADVP VP
+RB
+(ever)
+VBN
+(recorded)
+VP
+VBD
+(forced) NP S
+NP
+JJ
+(financial)
+NN
+(hub)
+NNP
+(Mumbai)
+POS
+('s)
+VP
+TO
+(to) VP
+VB
+(shut) PRT
+RP
+(down)
+Fig. 1. Grammar Tree resulting from parsing sentence (2)
+individual words may be informative as well for further improvements, this
+approach only takes the structure of a sentence into account and removes
+the words of each tree, i.e. the leafs.
+Each distance is finally stored into a distance matrix D which is triangular
+and hence requires
+(
+n
+2
+)
+= n(n−1)2 distance computations, where n corresponds
+to the number of sentences in the document:
+Dn =
+⎛
+⎜⎜
+⎜
+⎜
+⎜
+⎝
+d1,1 d1,2 d1,3 · · · d1,n
+d1,2 d2,2 d2,3 · · · d2,n
+d1,3 d2,3 d3,3 · · · d3,n
+...
+...
+...
+. . .
+...
+d1,n d2,n d3,n · · · dn,n
+⎞
+⎟⎟
+⎟
+⎟
+⎟
+⎠
+=
+⎛
+⎜⎜
+⎜
+⎜
+⎜
+⎝
+0 d1,2 d1,3 · · · d1,n
+∗ 0 d2,3 · · · d2,n
+∗ ∗ 0 · · · d3,n
+...
+...
+...
+. . .
+...
+∗ ∗ ∗ · · · 0
+⎞
+⎟⎟
+⎟
+⎟
+⎟
+⎠
+4. Having computed all distances between every sentence regarding its grammar
+tree, the last task is to identify sentences which have a significantly higher
+distance to most of the other sentences. To find these sentences, first the me-
+dian distance value for each row in D is calculated, i.e. for each sentence. By
+applying the inverse Gaussian normal distribution over the resulting vector
+(x̄1, x̄2, x̄3, . . . , x̄n) the mean value μ and standard deviation σ are calculated
+in the second step. Every sentence i that has a higher mean distance than a
+predefined threshold δ is marked as plagiarized, i.e. where x̄i > δ. As shown
+in Section 3, the best results could be achieved by choosing δ ≈ μ+ 3σ.
+5. Finally, the algorithm tries to combine sets of plagiarized sentences into
+sections if marked sentences are close to each other. This is a very useful
+step, because e.g. sentences with few words do not have a significant grammar
+tree and are therefore not detected. However, if they are positioned in the
+middle of two marked sentences it is likely that these sentences are also
+plagiarized. The decision whether clean sentences should be grouped into
+marked sentences and thus also be marked depends on several thresholds
+Plag-Inn: Intrinsic Plagiarism Detection Using Grammar Trees 287
+which will not be discussed in detail in this paper: for example the number
+of sentence-lookaheads or the minimum mean distance of a clean sentence.
+Moreover, marked sentences can also be unmarked if they are isolated and
+if they meet predefined conditions.
+3 Experimental Results
+The described algorithm was implemented and evaluated using seven randomly
+selected documents out of the PAN 2011 test corpus [10]. They are all written
+in English, consist of 170 up to 6200 sentences and contain up to 11 sections of
+plagiarism per document. Figure 2 shows a selected documents visualization of
+the distance matrix after having calculated the distances between the grammar
+trees of all sentences. Although the original matrix is triangular and computed
+as stated in Section 2, the visualization contains the mirrored values as well to
+provide better visibility. It can be seen easily that there are sentences for which
+the grammar tree differs significantly from all other trees.
+Fig. 2. Visualized Distance matrix of a selected English Document
+According to the algorithm the next step computes the mean distance value for
+each sentence, i.e. traverses each row of the matrix shown in Figure 2. The result-
+ing mean distance values for each sentence can be seen in Figure 3. All sentences
+with a mean distance exceeding the threshold δ are marked as suspicious. Eval-
+uations showed that the best results could be gained with δ = μ + 3σ − σ4 . By
+inspecting various combinations of all other thresholds required, the best setting
+produced an average precision and recall value of about 32%, respectively3. In
+some test cases, an F measure of over 60% could be reached. Despite the fact that
+3 Precision and recall values are calculated as stated in the PAN workshop [10], i.e.
+based on detected sections rather than words.
+288 M. Tschuggnall and G. Specht
+m
+ea
+n 
+di
+st
+an
+ce
+sentence
+μ
+μ + 2σ
+μ + σ
+μ + 3σ
+threshold ∂
+Fig. 3. Mean Distance per Sentence incl. Gaussian Mean and Standard deviation.
+these values were adjusted to several documents only, this result is very promis-
+ing4. By optimizing the algorithm including its thresholds the performance can
+surely be increased in the future.
+4 Related Work
+An often applied concept in the intrinsic plagiarism detection task is the usage
+of n-grams [12][5], where the document is split up into chunks of three or four
+letters, grouped and analyzed through sliding windows. Another approach also
+uses the sliding window technique but is based on word frequencies, i.e. the
+assumption that the set of words used by authors is significantly different [8].
+An approach that uses the comparison of binary strings calculated from word
+groups like nouns or verbs using complexity analysis is described in [11]. Finally,
+approaches in the field of author detection and genre categorization use NLP tools
+to analyze documents based on syntactic annotations [13] or word- and text-based
+statistics like the average sentence length or the average parse tree depth [4].
+5 Conclusion
+In this paper a new approach for intrinsic plagiarism detection is presented
+which tries to find suspicious sentences by analyzing the grammar of an author.
+By comparing grammar trees and applying statistics the algorithm searches for
+significant different sentences and marks them as suspicious. First evaluations
+showed that this approach is feasible and reached promising results with an
+average F-measure of about 32%. Future work includes optimization and the
+4 The currently (2012) best intrinsic plagiarism detector achieves a recall and a preci-
+sion value of about 33%, respectively, in average over thousands of documents [8].
+Plag-Inn: Intrinsic Plagiarism Detection Using Grammar Trees 289
+evaluation of the algorithm on a bigger, representative test set as well as doing
+error analysis and research on a possible application on other languages. This
+approach could also be combined with other existing approaches to enhance
+the overall quality of an intrinsic and/or external plagiarism detection system.
+Moreover, the Plag-Inn algorithm could also be adjusted to attribute authors in
+multi-author documents.
+References
+1. Augsten, N., Böhlen, M., Gamper, J.: The pq-Gram Distance between Ordered
+Labeled Trees. ACM Transactions on Database Systems (2010)
+2. Bille, P.: A survey on tree edit distance and related problems. Theoretical Com-
+putuer Science 337, 217–239 (2005)
+3. Catherine De Marneffe, M., Maccartney, B., Manning, C.D.: Generating typed
+dependency parses from phrase structure parses. In: LREC (2006)
+4. Karlgren, J.: Stylistic Experiments For Information Retrieval. PhD thesis, Swedish
+Institute for Computer Science (2000)
+5. Kestemont, M., Luyckx, K., Daelemans, W.: Intrinsic Plagiarism Detection Using
+Character Trigram Distance Scores. In: CLEF 2011 Labs and Workshop, Notebook
+Papers, Amsterdam, The Netherlands (2011)
+6. Klein, D., Manning, C.D.: Accurate unlexicalized parsing. In: Proceedings of the
+41st Annual Meeting on Association for Computational Linguistics, ACL 2003,
+Stroudsburg, PA, USA, vol. 1, pp. 423–430 (2003)
+7. Marcus, M.P., Marcinkiewicz, M.A., Santorini, B.: Building a large annotated cor-
+pus of English: The Penn Treebank. Comp. Linguistics Linguistics (June 1993)
+8. Oberreuter, G., L’Huillier, G., Ŕıos, S.A., Velásquez, J.D.: Approaches for Intrinsic
+and External Plagiarism Detection. In: CLEF 2011 Labs and Workshop, Notebook
+Papers, Amsterdam, The Netherlands (2011)
+9. Potthast, M., Eiselt, A., Barrón-Cedeño, A., Stein, B., Rosso, P.: Overview of the
+3rd International Competition on Plagiarism Detection. In: Petras, V., Forner, P.,
+Clough, P. (eds.) Notebook Papers of CLEF 11 Labs and Workshops (2011)
+10. Potthast, M., Stein, B., Barrón-Cedeño, A., Rosso, P.: An Evaluation Framework
+for Plagiarism Detection. In: Proceedings of the 23rd International Conference on
+Computational Linguistics (COLING 2010), Beijing, China (August 2010)
+11. Seaward, L., Matwin, S.: Intrinsic Plagiarism Detection using Complexity Analysis.
+In: CLEF (Notebook Papers/Labs/Workshop) (2009)
+12. Stamatatos, E.: Intrinsic Plagiarism Detection Using Character n-gram Profiles.
+In: CLEF (Notebook Papers/Labs/Workshop) (2009)
+13. Stamatatos, E., Kokkinakis, G., Fakotakis, N.: Automatic text categorization in
+terms of genre and author. Comput. Linguist. 26, 471–495 (2000)
+14. Stevenson, M., Gaizauskas, R.: Experiments on sentence boundary detection. In:
+Proc. of the 6th Conference on Applied Natural Language Processing, ANLC 2000,
+Stroudsburg, PA, USA, pp. 84–89 (2000)
+15. The Stanford Parser, http://nlp.stanford.edu/software/lex-parser.shtml
+(visited January 2012)
