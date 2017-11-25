@@ -27,9 +27,11 @@ $(function () {
   })
   .data("ui-autocomplete")._renderItem = function (ul, item) {
     // only change here was to replace .text() with .html()
-    return $("<li></li>")
+    return $("<li class=\"ui-menu-item\"></li>")
     .data("ui-autocomplete-item", item)
-    .append($("<a></a>").html(item.label))
+    .append(
+        $("<a ></a>").html(
+            item.label))
     .appendTo(ul);
   };
 
