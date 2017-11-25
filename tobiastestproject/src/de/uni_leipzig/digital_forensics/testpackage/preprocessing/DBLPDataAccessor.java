@@ -47,11 +47,11 @@ public class DBLPDataAccessor {
 		return sb.toString();
 	}
 	
-	/**
+	/** call dplb-api to get an article object
 	 * @param pubQuery
 	 * @return Article
 	 */
-	public Article getArticleObj(String pubQuery) {
+	public Article getArticleObj(String pubQuery) throws java.net.UnknownHostException {
 
 		String requestUrl = this.getRequestUrl(pubQuery);
 		URL url = null;
@@ -83,8 +83,8 @@ public class DBLPDataAccessor {
 		try {
 			response = con.getInputStream();
 		} catch (IOException e) {
-			System.out.println("weird title");
-		}
+			System.out.println("weird title:\t"+pubQuery);
+		} 
 		try {
 			if (con.getResponseCode() == 200 || con.getResponseCode() ==201){
 			jsonStrigResponse = convertStreamToString(response);
@@ -105,7 +105,7 @@ public class DBLPDataAccessor {
 		}
 		Article article = new Article();
 		article.setTitle((String) jsonObject.getJSONObject("info").get("title"));
-		article.setYear((String) jsonObject.getJSONObject("info").get("year"));
+		article.setPublicationDate((String) jsonObject.getJSONObject("info").get("year"));
 		article.setKey((String) jsonObject.getJSONObject("info").get("key")); // we don't need this.
 		article.setScore((String) jsonObject.get("@score"));
 		try {

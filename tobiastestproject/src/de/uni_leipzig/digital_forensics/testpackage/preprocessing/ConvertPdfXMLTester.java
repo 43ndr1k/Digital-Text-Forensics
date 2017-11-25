@@ -6,9 +6,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 
+import com.google.common.base.Objects;
+
 public class ConvertPdfXMLTester {
 	static String dataDirPath =  "/home/tobias/Dokumente/authorship-material-stathis/";
-	
+	static String xmlFilePath = "/home/tobias/mygits/Digital-Text-Forensics/xmlFiles";
 	
 	/**
 	 * 
@@ -17,7 +19,6 @@ public class ConvertPdfXMLTester {
 		File[] files = new File(dataDirPath).listFiles();
 		PdfFileFilter filter = new PdfFileFilter();
 		ConvertPdfXML converter = new ConvertPdfXML();
-		Writer output = new BufferedWriter(new FileWriter("missed.log", true));
 	      int index = 0;
 	      int fileNumber = files.length;
 	      String anim= "|/-\\";
@@ -28,9 +29,10 @@ public class ConvertPdfXMLTester {
 	            && file.canRead()
 	            && filter.accept(file)
 	         ){
-	 			String outputName = file.toString().substring(0, file.toString().length()-".pdf".length())+".xml";
-				String outputPath = "~/Dokumente/xmlOutput/"+ outputName;
+	 			String outputName = file.getName().toString().substring(0, file.getName().toString().length()-".pdf".length())+".xml";
+				String outputPath = "/home/tobias/mygits/Digital-Text-Forensics/xmlFiles/"+ outputName;
 				File f = new File(outputPath);
+				index++;
 				if(f.exists() && !f.isDirectory()) { 
 				    continue;
 				}
@@ -40,49 +42,48 @@ public class ConvertPdfXMLTester {
 					converter.run(file,index);
 				} catch (IOException e) {
 					e.printStackTrace();
-					output.append("\t"+file.toString()+"\n");
 				} 
 
-	            index++;
 	         }
 	      }
-		output.close();
 	}
 	
 	/**
-	 * @TODO if statement to check if title equals "No proper data found."
+	 * Can be used to modify xml data
 	 */
-	public void fixNames() {
-		ConvertPdfXML converter = new ConvertPdfXML();
+	public static void fixNames() {
 
-		File[] files = new File(dataDirPath).listFiles();
+		File[] files = new File(xmlFilePath).listFiles();
 		XMLFileFilter filter = new XMLFileFilter();
 		ConvertPdfXML myconverter = new ConvertPdfXML();
-	      for (File file : files) {
-	         if(!file.isDirectory()
-	            && !file.isHidden()
-	            && file.exists()
-	            && file.canRead()
-	            && filter.accept(file)
-	         ){
-	        	 Article article = myconverter.getArticleFromXML(file);
-	        	 // check if title ok
-	        	 // maybe change it
-	        	 //..
-	        	 try {
-		        	 // and write it back
-					converter.writeToXML(article,file.getCanonicalPath());
+		for (File file : files) {
+			if (!file.isDirectory() && !file.isHidden() && file.exists()
+					&& file.canRead() && filter.accept(file)) {
+				Article article = null;
+
+				article = myconverter.getArticleFromXML(file);
+
+				if (article != null) {
+					String newFilePath = article.getFilePath().replace(
+							"/home/tobias/mygits/Digital-Text-Forensics/", "");
+					article.setFilePath(newFilePath);
+				}
+				try {
+					// and write it back
+					myconverter.writeToXML(article, file.getCanonicalPath());
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-	         }
-	      }
+			}
+		}
 	}// end of function
 	
 	public static void main(String argv[]) throws IOException {
+		//fixNames();
 		//runPreproccessing();
-		ConvertPdfXML converter = new ConvertPdfXML();
-		File testFile = new File("/home/tobias/Dokumente/xmlOutput/aldebei-diarization-2015.xml");
-		converter.insertIndexerDOCID("newDoi", testFile);
+//		ConvertPdfXML converter = new ConvertPdfXML();
+//		File testFile = new File("/home/tobias/mygits/Digital-Text-Forensics/pdfDocs/meyer-2015.pdf");
+//		converter.run(testFile, 0);
+		System.out.println("ready");
 	}
 }

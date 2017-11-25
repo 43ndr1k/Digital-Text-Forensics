@@ -24,10 +24,12 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.docear.pdf.PdfDataExtractor;
 
@@ -169,7 +171,6 @@ public class ConvertPdfXML {
 		Element fullTextElement = doc.createElement("fullText");
 		fullTextElement.appendChild(doc.createCDATASection(article.getFullText()));
 		textElements.appendChild(fullTextElement);
-		//System.out.println(article.getFullText());
 		
 		try {
 			// write the content into xml file
@@ -193,6 +194,48 @@ public class ConvertPdfXML {
 			System.out.println("hey"+outputFile);
 		}
 	} // end of function
+	
+	public String escape_xml_with_apache_commons (String text) {
+
+	    String escapedXML = StringEscapeUtils.escapeXml(text);
+	    
+	    //assertEquals(text, escapedXML);
+	    return escapedXML;
+	}
+	@Deprecated
+	public String escape_xml_with_straight_java (String XML_TO_ESCAPE) {
+		XML_TO_ESCAPE = XML_TO_ESCAPE.replaceAll("\\p{Cntrl}", "");
+		
+	    StringBuilder escapedXML = new StringBuilder();
+	    for (int i = 0; i < XML_TO_ESCAPE.length(); i++) {
+	        char c = XML_TO_ESCAPE.charAt(i);
+	        switch (c) {
+	        case '<':
+	            escapedXML.append("");
+	            break;
+	        case '>':
+	            escapedXML.append(" ");
+	            break;
+	        case '\"':
+	            escapedXML.append(" ");
+	            break;
+	        case '&':
+	            escapedXML.append(" ");
+	            break;
+	        //case ' ': escapedXML.append("&apos;");
+	        //break;
+	        default:
+	        	if (c > 0x7e){
+	        		escapedXML.append(" ");// + ((int) c) + ";"); 
+	        		}
+//	        	if (Character.isWhitespace(c)){
+//	        		escapedXML.append(" ");
+//	        	}
+	        	else escapedXML.append(c);
+	        	}
+	        } 
+	    	return escapedXML.toString(); 
+	    	}
 	
 	/**
 	 * 
@@ -231,9 +274,12 @@ public class ConvertPdfXML {
 		return sb.toString();
 	}
 	
-	/** converts pdf file to xml-data
-	 *  writing in writeToXML
-	 *  @todo: also accept doc and html
+	/** Converts PDF file to XML-data
+	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
+	 *  and similar methods.
+	 *  - writing in writeToXML
+	 *  TODO: also accept doc and HTML
+	 *  TODO: take result with highest score. (DBLP)
 	 *  
 	 * @param file
 	 * @param id
@@ -248,7 +294,8 @@ public class ConvertPdfXML {
 	        String parseTime = now.format(formatter);
 			String originalFilename = file.getName();
 			String outputName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
-			String outputPath = "xmlFiles/"+ outputName;			
+			// because i run the function from outside. change if used 'dynamically'
+			String outputPath = "/home/tobias/mygits/Digital-Text-Forensics/xmlFiles/"+ outputName;			
 			String title = null;
 			String author = null;
 			String pubDateString = null;
@@ -273,10 +320,14 @@ public class ConvertPdfXML {
 			 *----------------------------------------------*/
 			String pdfbox_title = clean_field(myDoc.getDocumentInformation().getTitle());
 			Boolean success = false;
+
 			if (Objects.equal(pdfbox_title, NO_ENTRY) || (pdfbox_title.length()==0)) {
-				title = clean_field(getFieldDocearStyle(file).trim());
-				// titleLike!
-				//title = NO_TITLE;
+				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
+				
+				if (!Objects.equal(pdfbox_title, NO_ENTRY)) {
+					title = secondTryTitle;
+					success = true;
+				} // else is handled like discussed with "titleLike"
 			} else {
 				title = pdfbox_title;
 				success = true;
@@ -287,11 +338,16 @@ public class ConvertPdfXML {
 				/*----------------------------------------------
 				 * only use dblp if we have an ok title
 				 *----------------------------------------------*/
-				article = da.getArticleObj(title);
+				try{
+					article = da.getArticleObj(title);
+				} catch(java.net.UnknownHostException uhe){
+					System.out.println(file.getName());
+				}
+				
 			}
 			if (article != null) {
 				// wenn er was findet, dann nimm das auch: natuerlich fehleranfaellig.
-				// idee: nimm das mit dem hoechsten score.
+				// idee: nimm das mit dem hoechsten score. TODO
 				List<String> authors = article.getAuthors();
 				StringBuilder sb = new StringBuilder();
 				for (int i=0;i<authors.size();i++){
@@ -309,11 +365,11 @@ public class ConvertPdfXML {
 						.getAuthor());
 				if (Objects.equal(first_try_author, NO_ENTRY)
 						|| (first_try_author.length()==0)) {
-					// try to extract name with NE in upper text
+					// try to extract name with NE in first section.
 					String second_try_author = clean_field(extractAuthors(stripper, myDoc));
+					
 					if (Objects.equal(second_try_author, NO_ENTRY) 
 							|| (first_try_author.length()==0)) {
-						// try to extract name with NE
 						author = NO_ENTRY;
 					} else {
 						author = second_try_author;
@@ -330,16 +386,8 @@ public class ConvertPdfXML {
 					pubDateString = NO_ENTRY;
 				}
 			}
-			article.setAuthors(author);
-			article.setPublicationDate(pubDateString);
-			article.setMyAbstract("Dummy. Please Implement.");
-			article.setFileName(originalFilename);
-			article.setFilePath(outputPath);
-			article.setDoi(String.valueOf(id));
-			article.setParseDate(parseTime.replace(" ", "T"));
+
 			
-
-
 			String fullText = null;
 			try {
 				/*----------------------------------------------
@@ -349,18 +397,66 @@ public class ConvertPdfXML {
 				stripper.setEndPage(Integer.MAX_VALUE);
 				fullText =  stripper.getText(myDoc);
 			} catch (IOException e) {
-				e.printStackTrace();
-			} 
+				System.out.println(file.getName());
+			} catch (java.lang.NullPointerException npe){
+				System.out.println(file.getName());
+			}
+			//\"§$%&/()=\\ß{}[]€@]
+			// \\p{Punct}
+			//fullText = Normalizer.normalize(fullText, Normalizer.Form.NFD);
+			//fullText = fullText.replaceAll("\\p{C}", " ");
+			//fullText = fullText.replaceAll("[^A-Za-z0-9] ","").replace("\\s+", "+");//p{Cntrl}
+			fullText = stripNonValidXMLCharacters(fullText);
+			if (!success){
+				title = fullText.substring(0, Math.min(fullText.length(), 200));
+			}
+			article.setTitle(title);
+			article.setAuthors(author);
+			article.setPublicationDate(pubDateString);
+			article.setMyAbstract("Dummy. Please Implement.");
+			article.setFileName(originalFilename);
+			article.setFilePath(outputPath);
+			article.setDoi(String.valueOf(id));
+			article.setParseDate(parseTime.replace(" ", "T"));
 			article.setFullText(fullText);
+			
 			// finally write the article to xml.
+			//System.out.println(article.getFullText());
 			writeToXML(article,outputPath);
 
 		} catch (DOMException e1) {
 			e1.printStackTrace();
-		} 
+		} catch (java.lang.NullPointerException npe){
+			System.out.println(file.getName());
+		}
 
 
 	} // end of function
+	
+	/** There are some characters which should not occur in a cdata section
+	 *  these are filtered out in this function. Probably there is a more efficient
+	 *  solution.
+	 *  http://blog.mark-mclaren.info/2007/02/invalid-xml-characters-when-valid-utf8_5873.html
+	 * @param in
+	 * @return
+	 */
+	public String stripNonValidXMLCharacters(String in) {
+	    StringBuffer out = new StringBuffer(); // Used to hold the output.
+	    char current; // Used to reference the current character.
+
+	    if (in == null || ("".equals(in))) return ""; // vacancy test.
+	    for (int i = 0; i < in.length(); i++) {
+	        current = in.charAt(i); // NOTE: No IndexOutOfBoundsException caught here; it should not happen.
+	        if ((current == 0x9) ||
+	            (current == 0xA) ||
+	            (current == 0xD) ||
+	            ((current >= 0x20) && (current <= 0xD7FF)) ||
+	            ((current >= 0xE000) && (current <= 0xFFFD)) ||
+	            ((current >= 0x10000) && (current <= 0x10FFFF)))
+	            out.append(current);
+	    }
+	    return out.toString();
+	}  
 	
 	/**
 	 * gets the index created in the indexing process and corresponding file,
@@ -387,7 +483,7 @@ public class ConvertPdfXML {
 	 * @param file
 	 * @return
 	 */
-	public Article getArticleFromXML(File file){
+	public Article getArticleFromXML (File file){
 		Article article = null;
 		SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
 	    try {
