@@ -38,7 +38,7 @@ public class AutoCompleteController {
 			return query1.getQuery().trim();
 		}).collect(Collectors.toList());
 
-		List<LookupResult> ret = fuzzySuggester.lookup(query, Boolean.FALSE, 10);
+		List<LookupResult> ret = fuzzySuggester.lookup(query.toLowerCase(), Boolean.FALSE, 10);
 
 		list.addAll(ret.stream()
 				.map(i -> String.valueOf(i.key))

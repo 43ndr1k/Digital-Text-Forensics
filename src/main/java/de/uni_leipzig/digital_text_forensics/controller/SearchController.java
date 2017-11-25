@@ -53,7 +53,7 @@ public class SearchController {
 
 		List<SearchResult> searchResultList;
 		try {
-			searchResultList = searcher.search(query);
+			searchResultList = searcher.search(query.toLowerCase());
 			List<SearchResult> split = pager.split(searchResultList, currentPage);
 			searchResultPage.setTotalResults(searchResultList.size());
 			searchResultPage.setResultsOnPage(split);
