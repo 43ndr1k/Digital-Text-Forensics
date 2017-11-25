@@ -1,37 +1,46 @@
 package de.uni_leipzig.digital_text_forensics.dto;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.lucene.document.Document;
+import java.io.File;
+import java.nio.file.Paths;
+import de.uni_leipzig.digital_text_forensics.controller.RedirectController;
 import org.springframework.hateoas.Link;
+import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
 public class SearchResult {
-	public static final String INDEX_FIELD_TITLE = "title";
 
-	public static final String INDEX_FIELD_CONTENT = "content";
-
-	public static final String INDEX_FIELD_LINK = "link";
+	private Long docId;
 
 	private String title;
 
 	private String snippet;
 
-	private Link url;
+	private Link webUrl;
 
-	// TODO: 26.10.17
-	// url anpassen
-	public SearchResult(Pair<Document, Integer> result) {
-		setTitle(result.getLeft().get(INDEX_FIELD_TITLE));
-		setSnippet(result.getLeft().get(INDEX_FIELD_CONTENT));
-		setUrl(createTargetLink(result.getRight()));
-	}
+	private Link docUrl;
 
-	public SearchResult(String title, String snippet, Link url) {
+	private String query;
+	
+
+  public SearchResult(String query, Long docId, String title, String snippet, Link docUrl) {
+		this.query = query;
+		this.docId = docId;
 		this.title = title;
 		this.snippet = snippet;
-		this.url = url;
+		this.webUrl = createLink(docId, query, title);
+		this.docUrl = docUrl;
+
 	}
+  
 
 	public SearchResult() {
+	}
+
+	public Long getDocId() {
+		return docId;
+	}
+
+	public void setDocId(Long docId) {
+		this.docId = docId;
 	}
 
 	public String getTitle() {
@@ -50,17 +59,34 @@ public class SearchResult {
 		this.snippet = snippet;
 	}
 
-	public Link getUrl() {
-		return url;
+	public Link getWebUrl() {
+		return webUrl;
 	}
 
-	public void setUrl(Link url) {
-		this.url = url;
+	public void setWebUrl(Link webUrl) {
+		this.webUrl = webUrl;
 	}
 
-	private static Link createTargetLink(Integer docID) {
-		return null;//ControllerLinkBuilder.linkTo(
-		//ControllerLinkBuilder.methodOn(RedirectController.class).redirect(docID))
-		//.withRel("targetUrl");
+	public Link getDocUrl() {
+		return docUrl;
+	}
+
+	public void setDocUrl(Link docUrl) {
+		this.docUrl = docUrl;
+	}
+
+	public String getQuery() {
+		return query;
+	}
+
+	public void setQuery(String query) {
+		this.query = query;
+	}
+
+	private static Link createLink(Long docID, String query, String title) {
+		return
+				ControllerLinkBuilder.linkTo(
+						ControllerLinkBuilder.methodOn(RedirectController.class).redirect(docID, query, title))
+						.withRel("targetUrl");
 	}
 }

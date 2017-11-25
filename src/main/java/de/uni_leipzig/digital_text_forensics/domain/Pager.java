@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.lucene.document.Document;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.LinkBuilder;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
@@ -16,14 +15,21 @@ public class Pager {
 
 	public static final int RESULTS_PER_PAGE = 10;
 
-	public List<Document> split(List<Document> searchDocList, int currentPage) {
+	public List<SearchResult> split(List<SearchResult> searchDocList, int currentPage) {
 		if (searchDocList == null || searchDocList.size() == 0) {
 			return new ArrayList<>();
 		}
 
 		int from = (currentPage * RESULTS_PER_PAGE) - RESULTS_PER_PAGE;
+		if (from == 0) {
+			from = 1;
+		}
 		int to = currentPage * RESULTS_PER_PAGE;
-		List<Document> ret = searchDocList.subList(from, to);
+
+		if (searchDocList.size() < 10) {
+			to = searchDocList.size();
+		}
+		List<SearchResult> ret = searchDocList.subList(from, to);
 
 		return ret;
 	}
@@ -31,14 +37,6 @@ public class Pager {
 	private static LinkBuilder searchLink(String query, Integer page) {
 		return ControllerLinkBuilder
 				.linkTo(ControllerLinkBuilder.methodOn(SearchController.class).searchPage(query, page));
-	}
-
-	public List<SearchResult> mapDocumentListToSearchResults(List<Document> docs) {
-
-		return docs.stream()
-				.map(document -> new SearchResult(document.get("filename"), "sinppel", new Link(document.get("path"))))
-				.collect(Collectors.toList());
-
 	}
 
 	/**

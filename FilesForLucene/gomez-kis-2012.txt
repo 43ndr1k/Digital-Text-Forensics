@@ -1,0 +1,1070 @@
+Knowl Inf Syst (2012) 31:23–53
+DOI 10.1007/s10115-011-0403-7
+REGULAR PAPER
+Highly discriminative statistical features for email
+classification
+Juan Carlos Gomez · Erik Boiy ·
+Marie-Francine Moens
+Received: 1 February 2010 / Revised: 26 January 2011 / Accepted: 24 February 2011 /
+Published online: 18 May 2011
+© Springer-Verlag London Limited 2011
+Abstract This paper reports on email classification and filtering, more specifically on
+spam versus ham and phishing versus spam classification, based on content features. We
+test the validity of several novel statistical feature extraction methods. The methods rely on
+dimensionality reduction in order to retain the most informative and discriminative features.
+We successfully test our methods under two schemas. The first one is a classic classifica-
+tion scenario using a 10-fold cross-validation technique for several corpora, including four
+ground truth standard corpora: Ling-Spam, SpamAssassin, PU1, and a subset of the TREC
+2007 spam corpus, and one proprietary corpus. In the second schema, we test the anticipatory
+properties of our extracted features and classification models with two proprietary datasets,
+formed by phishing and spam emails sorted by date, and with the public TREC 2007 spam
+corpus. The contributions of our work are an exhaustive comparison of several feature selec-
+tion and extraction methods in the frame of email classification on different benchmarking
+corpora, and the evidence that especially the technique of biased discriminant analysis offers
+better discriminative features for the classification, gives stable classification results notwith-
+standing the amount of features chosen, and robustly retains their discriminative value over
+time and data setups. These findings are especially useful in a commercial setting, where
+short profile rules are built based on a limited number of features for filtering emails.
+Keywords Data mining · Dimensionality reduction · Email classification ·
+Feature extraction · Feature selection
+1 Introduction
+In the field of data mining, where the aim is to find previously unknown and potentially inter-
+esting patterns and relations in large databases [22], a common task is automatic classification.
+Where, given a collection of instances with known values of their attributes or features
+J. C. Gomez (B) · E. Boiy · M.-F. Moens
+Department of Computer Science, Katholieke Universiteit Leuven, Leuven, Belgium
+e-mail: jcgcarranza@gmail.com
+123
+24 J. C. Gomez et al.
+and their classes assigned by an expert, the aim of this task is to predict automatically
+the class of a new instance, when only the values of the features of the new instance are
+known.
+When classifying email messages, often the data contained in messages are very complex,
+multidimensional, or represented by a large number of features. Then, the use of dimension-
+ality reduction methods is useful in the classification task in order to avoid the curse of
+dimensionality. When using many features, we need a corresponding increase in the number
+of annotated examples to train from to ensure a correct mapping between the features and
+the classes [3,6].
+In general, the dimensionality reduction methods are divided into two categories [22,46]:
+the first one is Feature selection (FS), where the dimensionality is reduced by selecting a sub-
+set of original features, and the removed features are not used in the computations anymore.
+The aim of FS methods is to determine a subset of l features from a set of d , by maximizing
+a given criterion. The second one is Feature extraction (FE), where the original vector space
+is transformed into a new one with some special proprieties, and the reduction is made in
+this new space. Comparing with FS, in this case, all the original data features are present in
+a certain way but transformed to a reduced dimensional space, with the aim of replacing the
+original features by a smaller, but representative set of underlying features.
+In this paper, we apply several novel approaches to statistical feature extraction from text
+to the problem of email or electronic message classification. We want to discriminate between
+two classes of email messages (e.g., spam from ham, or phishing from spam) with the pur-
+pose of being able to detect potentially dangerous emails; since spam and phishing are costly
+problems for users, IT organizations, and companies in general. Unethical email senders bear
+little or no cost for mass distribution of messages; yet normal email users are forced to spend
+time and effort purging fraudulent and otherwise unwanted mail from their mailboxes. The
+task of identifying phishing emails inside a spam corpus is important in practical settings, in
+order to better learn and understand phishing phenomena. Phishing is an instance of spam,
+but is the most dangerous one, since phishing emails aim at stealing personal information,
+which can be used to commit identity theft. In our work, we assume that spammers are very
+inventive and disguise their messages in different packages by different phrasings. However,
+core information by which humans classify the mail as spam or phishing exist throughout the
+stream of messages. The task is then to identify the informative and discriminative features
+of the messages.
+The approaches we advocate regard variations of the traditional Principal Component
+Analysis (PCA) [32] and Linear Discriminant Analysis (LDA) models. The proposed PCA
+variant, named here PCAII, differs from the standard PCA method because it combines the
+projections of the features of both classes. In this sense, we use PCA in a supervised set-
+ting. In addition, we apply two approaches for feature extraction that are extensions of LDA.
+The first technique is named Biased Discriminant Analysis (BDA) [5], which is especially
+suited for the classification of a data set where the positive examples are derived from one
+class, whereas negative examples might come from multiple classes. The goal is to find a
+feature space transformation that closely clusters the positive examples while pushing away
+the negative ones. The second technique is named Average Neighborhood Margin Maximi-
+zation (ANMM), which was recently proposed by Wang and Zhang [48]. For each data point,
+ANMM aims to pull the neighboring points with the same class label toward it as near as
+possible, while simultaneously pushing the neighboring points with different labels away
+from it as far as possible.
+We compare the results of the proposed feature extraction techniques for email classi-
+fication with the results of classical feature selection techniques using the chi-square (χ2)
+123
+Highly discriminative statistical features for email classification 25
+statistic, Linear Classifier Weights (LCW), and Frequent Closed Itemsets (FCI), which have
+an established reputation in text classification [10,17,37,41,53]. We also compare our tech-
+niques with the basic PCA and LDA methods to see the improvements included with the new
+algorithms. Additionally for comparison, we present the results for a classifier trained with
+the complete vocabulary composed by all the unique terms in each dataset.
+Our techniques allow us to test several hypotheses. First, can we have an as good perfor-
+mance when classifying emails with only a small number of features or even obtain a better
+performance? In that case, these features can be understood as the core profile of a dataset,
+allowing classification in systems with a limited memory. Commercial spam filters often rely
+on a small set of signature rules that form a profile. This hypothesis is tested using a 10-fold
+cross-validation over several corpora. They include four standard public corpora formed by
+ham and spam messages: Ling-Spam (LS), PU1, SpamAssassin (SA) and a subset of the
+TREC 2007 spam corpus (TREC), and one proprietary corpus formed by phishing and spam
+emails. Second, we test the capability of these core profiles of persisting over time, in order
+to anticipate new dangerous messages. We do this by ordering emails by date and by training
+our methods on older emails and testing on more recent ones. This schema is tested on two
+proprietary corpora containing phishing and spam messages, and on the TREC corpus.
+The contributions of our work are an exhaustive comparison of several feature selection
+and extraction methods in the frame of email classification, and the evidence that the tech-
+niques of BDA, PCAII, and ANMM offer good discriminative features for the classification;
+specially, the BDA method gives stable classification results with a small number of features
+and robustly retain their discriminative value over time. The statistical features extracted
+can be understood as robust profiles of spamming and phishing characteristics. Our findings
+contribute to the development of more advanced email filters and open new opportunities for
+text classification in general.
+The remainder of this paper is organized as follows. Section 2 overviews related work on
+dimensionality reduction. Section 3 introduces our different dimensionality reduction meth-
+ods. Section 4 describes the corpora used in this work, the preprocessing step and the training
+and testing of the models. Section 5 discusses our experimental evaluation of the methods
+for email classification. Section 6 concludes this work with lessons learnt and future research
+directions.
+2 Related work
+In order to deal with the problem of email filtering, many different methods have been pro-
+posed [23]. Within the several existing techniques, a very promising approach is the use
+of content-based filters [54], using the text content of the messages rather than black lists,
+header, or sender information. In this sense, machine learning and data mining techniques
+are especially attractive for this task. They are capable of adapting to the evolving features
+of spam and phishing messages’ content, and data are often available for training such mod-
+els. There is plenty of work devoted to email filtering [25]. We cite here some seminal
+papers for spam classification using traditional Bayesian filters like [4,43] and [15]. There
+are also interesting works on phishing detection like [21] and [1], describing a set of fea-
+tures to distinguish phishing emails. Brutlag and Meek [13] investigate the effect of feature
+selection by means of mutual information statistic on email filtering. Xia and Wong [51] dis-
+cusse email categorization in the context of personal information management. Nevertheless
+most of the methods devoted to email classification use bag of words as features to perform
+the classification. Recently, works like [11] and [33] where the authors use compression
+123
+26 J. C. Gomez et al.
+models and n-grams to produce more robust features and more sophisticated classifiers like
+support vector machines are starting to emerge. Although state-of-the-art spam filtering
+methods perform with high true-positive and low false-positive rates, there is a constant
+search into novel ways of improving the results. Our work pretends to contribute with a new
+approach in the task of email classification specifically focusing on feature extraction and
+selection.
+Because texts are often represented by a large vocabulary of individual terms, dimen-
+sionality reduction has been popular since the early 90s in text processing tasks, like, for
+example, the technique of latent semantic analysis (LSA) [20]. LSA is an application of
+principal component analysis where a document is represented along its semantic axes or
+topics. The dimensions in LSA are computed by singular value decomposition of the term
+correlation matrix obtained from a large document collection. In a text categorization task,
+documents are represented by a LSA vector model both when training and testing the cate-
+gorization system (e.g., [30,40]). The computation of the latent components that represent
+correlated features is very valuable. However, these models do not exploit class information
+in the principal component analysis framework.
+Latent components can also be probabilistically modeled. Probabilistic topic models such
+as probabilistic latent semantic analysis (pLSA) [27] and Latent Dirichlet Allocation [8] are
+currently popular as topic representation models. Documents are represented as a mixture
+of topic distributions and topics as a mixture of words distributions. The representations are
+inferred from a large training corpus, and when used for text categorization, information
+about the text categories is not taken into account (e.g., [14,52,55,56]). Interestingly, Siefkes
+et al. [45] perform spam filtering based on orthogonal sparse bigrams. Very recently, the
+Latent Dirichlet Allocation model has been used for spam classification [31]. In these mod-
+els, identifying the correct number of latent components is a difficult and computationally
+expensive problem [7].
+Conventional PCA is based on extracting the axes on which the data show the high-
+est variability. Although this approach “spreads” out the data in the new basis, and can be
+of great help in regression problems and unsupervised learning, there is no guarantee that
+the new axes are consistent with the discriminatory features in a classification problem.
+Tsymbal et al. [47] propose two variants of PCA that use the within- and between-class
+covariance matrices and thus do take into account the class information and test the results
+on typical database data, but these authors do not apply their methods to text categoriza-
+tion.
+Linear discriminant analysis (LDA) uses class information in order to find a good
+discrimination between the classes. Recently, the computer vision community has suc-
+cessfully proposed several variants of LDA that artificially pull apart the positive and
+the negative examples. Biased discriminant analysis (BDA) and Average Neighborhood
+Margin Maximization (ANMM) have recently been researched for image indexing and
+search [48,29]. These LDA variants have not been used for text classification or email
+filtering.
+PCA, ANMM, and BDA are eigenvalue-based methods. An eigenvalue is a number indi-
+cating the weight of a particular pattern or cluster expressed by the corresponding eigenvector.
+The larger the eigenvalue the more important the pattern is. When performing a dimension-
+ality reduction, the most important eigenvectors span the vector space, in which the data
+are projected. A projected data point is described by the degree it is represented by these
+important patterns. The models have the advantage of modeling latent components composed
+of correlated features. In this paper, we will show that they possess a highly discriminative
+power for spam classification when using only the most important components.
+123
+Highly discriminative statistical features for email classification 27
+3 Dimensionality reduction architecture
+The general aim of this work is to classify email messages in a priori defined mutual exclusive
+classes. Our concrete aim is to transform the original feature space of emails into another
+space that has fewer dimensions. This space would be expressed in terms of statistical sim-
+ilarities and differences between messages. The new space is intended to be easier to deal
+with because of its size, and also to carry the most important part of the information needed
+to discriminate between emails, allowing for the creation of profiles that describe the data set.
+3.1 General architecture for feature extraction methods
+Let (x1, c1), (x2, c2), . . . , (xn, cn) be a set of email messages with their corresponding clas-
+ses, where xi ∈ Rd is the i-th email, represented by a d dimensional row vector, and ci ∈ C
+is the label of xi .
+The goal of the data dimensionality reduction is to learn a d × l projection matrix W,
+which can project to:
+zi = xi W (1)
+where zi ∈ Rl is the projected data with l  d , such that in the projected space the data from
+different classes can be effectively discriminated.
+Since in this work, we are concentrated on the binary classification problem, where we
+want to discriminate malicious emails (or a type of malicious emails) from another type of
+email; then, we have that C = {−1,+1}, where −1 refers to the negative class N and +1 to
+the positive class P .
+In order to compute the projection matrix, different methods can be implemented. Our
+requirements are that the positive and negative training examples are represented in a lower-
+dimensional space with highly discriminative features, and that the representations can deal
+with a degree of noise and heterogeneity in the data. Spam mails often contain noisy content
+that is found in regular mails and mails can contain very heterogeneous contents. For these
+reasons, we implemented three approaches: one is a variation of a supervised PCA and two
+others are variants of LDA. PCA and LDA are well-established methods to identify correlated
+features that characterize or separate two or more classes. The variations that we propose
+attempt to better separate the positive from negative examples by artificially enhancing the
+difference between the examples and as such smooth out some noise. The two LDA-based
+methods are very similar with regard to their general architecture, but differ in the way they
+represent the set of positive and negative training examples. They are assumed to perform
+well in binary classification problems where one of the classes is characterized by heteroge-
+neous patterns. By comparing three methods, we hope to gain insights into the difficulty of
+extracting robust features for email classification.
+3.1.1 Principal component analysis
+When applying linear PCA, the mean μ of the training dataset is first computed and from it
+the covariance matrix Co is calculated as follows:
+Co = 1
+n
+(X − μ)T (X − μ) (2)
+In a next step, we compute the eigenvalues of the covariance matrix and their correspond-
+ing eigenvectors. The eigenvectors are then sorted in decreasing order using the eigenvalues
+123
+28 J. C. Gomez et al.
+Fig. 1 General graphical description of PCAII projection for the training examples
+as references. The “best” l eigenvectors (i.e., the ones with highest eigenvalues) are selected
+to form the columns of the projection matrix W:
+W ∈ Rd×l (3)
+In regular PCA, the projection matrix is created for the complete dataset. All data points are
+projected in the new vector space using the same projection matrix, and the class information
+is not exploited.
+In the PCA that we propose (called here PCAII), we take into account the class information
+as follows. We have the positive X P and negative examples X N , from them two covariances
+matrices are compute CoP and CoN . We compute the eigenvalues of each of these matrices
+and we obtain the projection matrix WP based on the positive examples, and the projection
+matrix WN based on the negative examples. All training examples are represented by the
+dimensions obtained by projection with WP , represented by ZP P for positive examples and
+ZP N for negative examples, and with the dimensions obtained by projection with WN , rep-
+resented by ZN P for positive examples and ZN N for negative examples (see Fig. 1). In other
+terms, the training examples of the positive or negative class are represented as:
+[
+ZP P ZP N
+ZN P ZN N
+]
+(4)
+The test examples, for which we do not know the class, are projected using the positive
+WP and negative WN matrices to be represented in the new space of PCAII. Then, if q is a
+test example, its general projection using PCAII will be u = [qWP qWN ].
+In our system, we compute the eigenvectors using the implementation provided by the
+Jama package, which is based on the QZ algorithm [38].
+123
+Highly discriminative statistical features for email classification 29
+Fig. 2 General graphical description for BDA illustrating the creation of the projection matrix based on the
+training examples
+3.1.2 Biased discriminant analysis
+Biased Discriminant Analysis (BDA) is a variant of Linear Discriminant Analysis (LDA).
+Traditional LDA learns W by maximizing the objective function in (5).
+W∗ = arg max
+W
+|WT SP N W|
+|WT SP W| (5)
+The inter-class scatter matrix SP N is defined as:
+SP N = pP (μP − μ)T (μP − μ) + pN (μN − μ)T (μN − μ) (6)
+where pP and μP are respectively the prior and the mean of the positive class, and pN and
+μN , the ones of the negative class. μ is the mean of the entire data set.
+The intra-class scatter matrix SP is defined as:
+SP = x∈P (x − μP )T (x − μP ) (7)
+BDA (see Fig. 2) is developed to address the problem of negative examples coming from
+a variety of different classes [29] or of having two classes where one of the classes is char-
+acterized by a large variety of patterns.
+The BDA technique seeks to transform the feature space so that the positive examples
+cluster together and each negative instance is pushed away as far as possible from this positive
+cluster, resulting in the centroids of both the negative and the positive examples being moved.
+123
+30 J. C. Gomez et al.
+BDA aims at maximizing the same function than LDA, but redefining the inter-class scatter
+matrix SP N , which is computed as follows:
+SP N = y∈N (y − μP )T (y − μP ) (8)
+And the intra-class matrix, which is the scatter matrix SP of the positive class, is computed
+with (7).
+We then perform an eigenvalue decomposition on S−1P − SP N (see Fig. 2), and con-
+struct the d × l matrix W whose columns are composed by the eigenvectors of S−1P − SP N
+corresponding to its largest eigenvalues.
+As was already established, the goal of BDA is to represent a dataset X in a lower-
+dimensional space using the d × l computed projection matrix W. This matrix projects each
+xi to zi (see supra) in such a way that the examples inside the dataset are well separated by
+class in the new space.
+3.1.3 Average neighborhood margin maximization
+Similar to BDA, the Average Neighborhood Margin Maximization (ANMM) is also a linear
+feature extraction method, which aims at learning a projection matrix W such that the data in
+the projected space have a high within-class similarity and between-class separability. The
+general idea is to reduce the dimensionality of the data by pulling the neighboring points with
+the same class label toward it as near as possible, while simultaneously pushing the neigh-
+boring points with different labels away from it as far as possible. This is accomplished by
+maximization of the average neighborhood margin γi for a particular instance xi , where we
+push away the data whose labels are different from xi , while pulling the data points having the
+same class label as xi toward it. The difference in the BDA method is that the ANMN method
+takes into account pairwise distances between data points, where in the former method dis-
+tances between a data point and a class centroid are considered instead. Consequently, the
+ANMM method performs a finer separation of the examples.
+The method first defines the concepts of a homogeneous and heterogeneous neighborhood.
+For a data point xi , its ξ nearest homogeneous neighborhood Neoi is the set of ξ most similar
+data which are in the same class with xi . For a data point xi , its ζ nearest heterogeneous
+neighborhood Neei is the set of ζ most similar data which are not in the same class with xi . ξ
+and ζ or the numbers of neighbors are set empirically after inspection of a held-out validation
+set. In this work, we use the Euclidean distance as the value to measure the similarity between
+examples.
+Then, the average neighborhood margin γi for xi is defined as:
+γi = yk∈Neei
+||xi − yk ||2
+|Neei |
+− y j ∈Neoi
+||xi − y j ||2
+|Neoi |
+(9)
+This margin measures the difference between the average distance from an instance xi
+to the data points in its heterogeneous neighborhood and the average distance from it to the
+data points in its homogeneous neighborhood. In this way, we can compute the total average
+neighborhood margin γ as the sum of γi for all instances and the final goal is to maximize γ .
+The margin γ can be incorporated into a dimensionality reduction process by considering
+the following scatterness matrices.
+The inter-class scatter matrix S becomes:
+S = i,k:yk∈Neei
+(xi − yk)T (xi − yk)
+|Neei |
+(10)
+123
+Highly discriminative statistical features for email classification 31
+Fig. 3 General graphical description for ANMM illustrating the creation of the projection matrix based on
+the training examples
+The intra-class scatter matrix C (called compactness matrix) is computed as follows:
+C = i, j :y j ∈Ne0i
+(xi − y j )T (xi − y j )
+|Neoi |
+(11)
+We then perform an eigenvalue decomposition on S−C and finally, we construct the d × l
+matrix W whose columns are composed by the eigenvectors of S − C corresponding to its
+largest eigenvalues (see Fig. 3).
+Similar to the other two methods, ANMM intends to represent a dataset X in a lower-
+dimensional space using the d × l computed projection matrix W, which projects each
+example xi to zi (see supra).
+The three novel FE methods are based on an eigenvalue decomposition which has a com-
+plexity of O(N 3) during training. This complexity could be a problem for our methods
+in settings where a fast training of the model is important. Nevertheless, there are faster
+alternatives to compute good approximations for the eigenbase of a matrix, like the Power
+Factorization method [26], a technique employed in image analysis, which for a small number
+of eigenvectors can perform the decomposition in linear time. PCAII has the same complexity
+than the eigenvalue decomposition, since it does not perform extra calculations. BDA besides
+the eigenvalue decomposition has to perform a computation of the intra-class and inter-class
+matrices which are computed with complexity O(N 2) and the time is added linearly; addi-
+tionally this method has to compute the inverse of a matrix, which has a complexity O(N 3),
+nevertheless in this case we implemented a modified version of the Hotelling’s method [49]
+123
+32 J. C. Gomez et al.
+Table 1 Contingency table for investigating the (in)dependence between term f and class c j by determining
+which (labeled) documents contain f
+class = c j class = c j
+Contains f nc j + nn+ nc j + + nn+
+¬ Contains f nc j − nn− nc j − + nn−
+nc j + + nc j − nn+ + nn− nc j + + nn+ + nc j − + nn− = n
+for computing the inverse of a matrix, which reduces the complexity to O( N
+3
+4 ). There are
+more sophisticated methods to compute the inverse of a matrix, nevertheless in BDA the
+computation time remains more or less constant no matter the size of the training set, since
+the matrix to invert in BDA is a squared matrix produced by multiplying each vector by
+its transpose. Given the matrix processes, BDA is the slowest method of the three showed
+here. ANMM similarly to BDA, has to perform in addition to the eigenvalue decomposition
+a computation of the inter- and intra-class matrices but in this case, since for each example
+we have to estimate the nearest neighbors we obtain a complexity of O(N 2) which is added
+linearly.
+3.2 Feature selection methods
+In order to have a better overview of our proposed feature extraction methods discussed
+earlier, we compare the performance of these with several well-known techniques for feature
+selection (FS), which actually also perform a kind of dimensionality reduction by selecting
+(according to certain criteria) the most important features to describe a set of documents
+or messages. We will test FS using the Chi Square (χ2) statistic, Linear Classifier Weights
+(LCW) and Frequent Closed Itemsets (FCI). These feature selection techniques have a proven
+reputation and a high performance in text categorization [10,17,37,41,53]. The basic idea
+is that each feature receives a score that reflects its discriminative power between classes,
+then the features are sorted according to this score and the K best features are chosen for
+representing the messages.
+3.2.1 Chi square
+The χ2 test [36] (indicated in the results section as chi2) is the standard asymptotic test for
+independence in mathematical statistics. We state the hypothesis that a certain feature appears
+independently from the considered classes and investigate this using (12), in which we mea-
+sure how much the expected co-occurrence of a certain feature and class deviate from the
+observed co-occurrence. Here Ei, j is the expected value for Oi, j , the observed value found
+at position i, j in the contingency table where n is the total number of examples (Table 1).
+Using the table’s values we can write the equation as (13).
+X2( f, c j ) =
+∑
+i, j
+(Oi, j − Ei, j )2
+Ei, j
+(12)
+X2( f, c j ) =
+n(nc j +nn− − nc j −nn+)2
+(nc j + + nc j −)(nn+ + nn−)(nc j + + nn+)(nc j − + nn−)
+(13)
+123
+Highly discriminative statistical features for email classification 33
+The resulting values are χ2 distributed. High values indicate that the hypothesis of
+independence does not hold. Thus, these features are dependent on the investigated clas-
+ses and are good candidates to keep for classification.
+3.2.2 Linear classifier weights
+This technique uses a Support Vector Machine (SVM) [19] to compute the feature scores or
+weights. We can look at our examples as occurring in a F-dimensional space, where F is
+the number of features. The goal is to divide this space into two subspaces, each containing
+the examples of one class. The division has the form of a function of dimension F − 1
+which is called the hyperplane (e.g., line in a two-dimensional feature space, plane in a
+three-dimensional feature space, etc.), written as (14) in case of linearly separable data. Here
+w is a vector perpendicular to the hyperplane, containing the weight of each feature, and b is
+called the bias. In a classical linear discriminant analysis, we thus find a linear combination
+of the training points xi that form the hyperplane, writing w as (15), where yi is 1 or −1, and
+n is the number of training examples.
+w · x + b = 0 (14)
+w =
+n∑
+i=1
+αi yi xi (15)
+where αi represents the non-negative Lagrange multipliers, which provide a strategy for find-
+ing the maximum/minimum of a function subject to constraints. Generally, many different
+hyperplanes exist that separate the examples of the training set in positive and negative exam-
+ples, among these the best one should be chosen. In general, we can choose the hyperplane
+that realizes the maximum margin between the positive and negative examples. The hope is
+that this leads to a better generalization performance on unseen examples. Or in other words,
+the hyperplane with the margin that has the maximum Euclidean distance to the closest
+training examples (support vectors) is chosen.
+In order to use the found hyperplane in feature selection, Guyon et al. [24] use a recursive
+feature selection method which works in three, repeated steps:
+1. Train the SVM on the surviving features and obtain the weight vector w
+2. Compute/update the ranking criteria (wi )2 from w
+3. Eliminate the feature with the lowest rank
+The Weka toolkit [50] implemented the recursive approach outlined in Guyon et al. [24],
+which we used.
+3.2.3 Frequent closed itemsets
+The concept of frequent closed itemsets (FCI) stems from data mining and is here applied
+to a set of emails, each containing a number of terms (items). A frequent itemset (FIS) is
+then defined as a collection of terms (or a single term) that has a support above a manually
+set threshold, where support of an itemset is defined as the number of emails containing all
+terms in the set, divided by the total number of emails. An itemset is closed if no superset
+(i.e., a set containing the same terms plus at least one more) has the same support.
+We compute the FCI features for each class following the Apriori algorithm [2], a classic
+algorithm for learning association rules (for which the generation of FIS is a first step). The
+algorithm operates bottom-up: FIS is generated starting from a single term, by adding new
+123
+34 J. C. Gomez et al.
+terms step by step; and in a breadth first manner: in each collection L containing FIS of size
+m (i.e., m = the number of terms in each of the FIS), a collection L +1 (containing FIS of size
+m + 1) is built by merging all pairs of FIS that have m terms in common. In order to reduce
+computations, the generated sets are pruned by requiring that all possible subsets of size m
+are frequent, i.e., appear in L (the apriori property). The algorithm ends when no new FIS
+were generated for a certain size m. We used an implementation by Christian Borgelt [9].
+4 Experimental setup
+4.1 Corpora
+The four public email corpora we use for performing our tests are: Ling-Spam (LS)1 [4],
+PU12 [4], SpamAssassin (SA)3 and TREC 2007 Public Spam Corpus (TREC)4[18]. The LS
+corpus consists of 2,412 messages posted to a linguistics newsgroup and 481 spam messages.
+In this corpus, attachments, HTML tags, and all email headers, except the Subject line, have
+been removed by the authors of the corpus. We use the bare version of the corpus, without
+lemmatizing and no stop words removal. The PU1 corpus consists of 618 English ham mes-
+sages and 481 spam messages. Messages in this corpus are encrypted in the following way:
+each word has been replaced by a unique number, such that different occurrences of the same
+word get the same number, with the only exception of the Subject word in the header. Similar
+to LS, we used the bare version without lemmatizing and no stop words removal. The SA
+corpus contains legitimate and spam email collected from the SpamAssassin developer mail-
+ing list, presented in an unencrypted form and retaining all the tags and headers. This corpus
+is composed by 4,150 ham messages and 1,897 spam messages. The TREC corpus is formed
+by 25,220 English ham messages and 50,199 spam messages delivered to a particular server
+during 3 months in 2007. Messages are in a bare form, including all the tags and headers and
+without any encryption.
+The two proprietary corpora are formed by email messages collected from different private
+accounts. The first one, named SI, has a size of 137 Mb and is formed by 31,039 messages,
+divided in 1,527 phishing emails and 29,512 spam emails, this corpus contains messages
+from nearly 6 months of 2007. The second corpus, named SII, has a size of 169 Mb and is
+formed by 37,883 messages, divided in 1,880 phishing emails and 36,003 spam emails, this
+corpus contains messages from 4 months of 2008. The two corpora contain messages in a
+raw form, having all the tags and headers, and having no encryption.
+4.2 Preprocessing
+In general, an email consists of two parts: the header and the body message. The header con-
+tains information about the message in the form of many fields like sender, subject, receiver,
+servers, etc. The body contains the message itself and usually takes one of two forms: HTML
+or plain-text, in the case of HTML emails, these contain a set of tags to format the text to be
+displayed on screen. Before applying our methods, the corpora of emails are preprocessed
+1 Available at: http://nlp.cs.aueb.gr/software.html.
+2 Available at: http://nlp.cs.aueb.gr/software.html.
+3 Available at: http://spamassassin.apache.org/publiccorpus/.
+4 Available at: http://plg.uwaterloo.ca/~gvcormac/treccorpus07/.
+123
+Highly discriminative statistical features for email classification 35
+by removing all the structure information, i.e., the header and the HTML tags. In this way,
+only the text content from the document is extracted.
+The next step consists of building the vocabulary of the email messages. In a baseline set-
+ting, we use all distinct words of an email corpus as features. In all other tests, we performed
+feature selection and extraction. We choose to remove stop words and words that are evenly
+distributed over the classes, the latter by means of a mutual information statistic, obtaining
+5,000 initial features. Additionally, we weight the remaining words in each document by a
+TF-IDF schema. In this way, the importance of each term increases proportionally to the
+number of times it appears in the document, but is offset by the frequency of the term in
+the whole corpus. In a next step, we can apply the feature extraction and selection methods
+discussed in Sect. 3.
+4.3 Training the classification model and testing
+The model for training is constructed by applying the feature extraction and selection meth-
+ods to the message vectors of the training and test sets. Then, given the representations of the
+messages, a classifier is trained based on the annotated examples and tested using the new
+messages.
+We trained different types of classifiers from the Weka classifier package [50], using the
+default options of the program for building the classification models in all of them. After
+several trials and comparisons, we decided to focus in the bagging classifier [12], with the
+decision tree algorithm J48 based on the C4.5 model [42], as the single classifier to construct
+the ensemble. The rationale for this decision is that, for our datasets and methods for feature
+extraction and selection, bagging presents a generally good behavior by weighting the results
+of the trees and by reducing the variance of the data set and the overfitting. Also, the decision
+tree algorithm is a good choice, which might be explained by the fewer number of features
+used, and the greedy search algorithm used in the C4.5 model. After all, we are interested in a
+small set of signature rules for classifying emails. Additionally, in the case of the experiments
+using no feature extraction or selection, i.e., using the whole set of unique terms, we used for
+comparison the bagging classifier and the SMO classifier [39], a linear SVM that performs
+very good in sparse data and which is especially well suited for text classification. We used the
+defaults settings from the Weka package for the SMO classifier: a lineal kernel (polynomial
+with exponent 1), complexity constant equal to 1, gamma of 0.01, and normalization of the
+variables. In the results section, the “all terms” experiments are refereed as “A/T Bagging”
+or “A/T SVM” depending on the classifier used.
+We performed two types of experiments: 10-fold cross-validation and anticipatory testing.
+We applied 10-fold cross-validation to the three public corpora PU1, LS, SA and a subset
+of TREC, and the proprietary corpus SI. For PU1 and LS, they were already divided by the
+creators [4] into 10 parts of equal size, with equal proportion of ham and spam messages
+across the 10 parts. In the case of the SA corpus, we performed the same test, but we split the
+corpus randomly in 10 parts before the experiments. For the experiment that uses the subset
+of TREC, we first selected from the original TREC 2007 spam corpus a subset of 2,500 ham
+and 2,500 spam messages randomly and then we split this sub-corpus in 10 parts. In the case
+of SI, we did the same as for TREC, by taking a subset of 1,527 phishing (which actually
+represent the whole phishing in the dataset) and 2,500 spam messages.
+Additionally, we performed several experiments in order to evaluate the anticipatory pro-
+prieties of our methods by training with data in the past and testing with data in the future.
+These experiments were done for the two proprietary corpora SI and SII and for TREC, of
+which the emails are sorted by date. For SII and TREC, we performed one-off tests, by taking
+123
+36 J. C. Gomez et al.
+a small part of the examples with an early date in the beginning of the dataset for training,
+and the later data for testing. With SII we took 4,452 messages, corresponding to the first
+4 weeks for training, and the rest 33,431 messages, corresponding to (almost) 13 weeks in the
+future, for testing. In the case of TREC, we took 9,020 messages, corresponding to the first
+week, for training and the remaining 66,399 messages, corresponding to (almost) 11 weeks
+in the future for testing.
+Another anticipatory classification experiment for the SI corpus was done in the following
+way: first we split the total corpus in 21 weeks in chronological order, then the methods were
+trained during periods of four weeks and tested with the data from the fifth week (the next
+one in the future), then we move the block of weeks for the training period forward one week
+and testing with the next fifth week, creating in this manner a “sliding window”.
+Finally, we performed a last experiment to test the behavior of the statistical feature extrac-
+tion algorithms under a more drastic scenario in time and in data structure. Here, we train the
+models with a subset of 1,200 messages from the TREC corpus (600 spam and 600 ham),
+which contains more recent data, and we test with a subset of 1,200 messages from the SA
+corpus (600 spam and 600 ham), which contains older data.
+Because all feature extraction and selection methods result in a ranked list of features,
+we perform experiments by considering 2, 4, 8, 16, 32, 64, 128, 256, 512, 1,024, and 2,048
+features for each method, and then, we compare all the results.
+4.4 Evaluation metrics
+The results shown below are presented in the form of the area under the ROC (Receiver Oper-
+ating Characteristic) curve, which aims at a high true-positive rate and a low false-positive
+rate, where the ROC metric reaches its best value at 1 and worst value at 0. In the four public
+corpora (where we classify between ham and spam), spam is considered as the positive class
+for all the experiments. The ROC metric is a very important measure for commercial settings,
+where the cost for misclassifying a legitimate email as spam is really high. In the case of the
+proprietary corpora (where we classify between phishing and spam), phishing is the positive
+class, because we aim at a high true-positive rate of the phishing mail recognition. In addition,
+we provide results in terms of overall accuracy of the classification for better understanding
+the behavior of the algorithms.
+We performed the Wilcoxon signed rank test on the results for the area under the ROC
+curve for each method paired with each other for each type of experiment (10-fold and antic-
+ipatory), testing the hypothesis that F(x) > G(y), i.e., the values of one method tend to be
+better than the values of the other. Additionally, although our results are shown as plot graphs,
+we decided not to include standard error bars since, even when our FE methods would have
+small bars, the other methods often have bigger bars, and overlap with each other, making
+the plots difficult to read.
+5 Experimental results and discussion
+5.1 General classification performance
+Figures 4, 5, 6 and 7 show the results of the extraction methods applied to the four public
+corpora and the proprietary corpora, when a normal classification is performed using 10-fold
+cross-validation. From these results, we can observe that the statistical features extracted
+are well suited to discriminate between ham and spam messages. The proposed methods
+123
+Highly discriminative statistical features for email classification 37
+obtain good results in terms of area under the ROC curve and of accuracy when the emails
+are represented with a small number of features. The BDA method especially shows a sta-
+ble performance irrespective of the number of features chosen. There are several published
+works where the same public corpora are used for evaluating spam filtering. They include
+[4,16,11,28,35,44] and [54]. In these works, the authors do not present complete information
+on the performance of their methods, so only a partial comparison is possible with our results.
+The published works lack results in terms of area under the ROC curve, a very important
+metric for real-life applications and commercial settings. In [16], the authors present results
+for several classification algorithms using different feature selection algorithms. They report
+an accuracy of 0.9226 on the PU1 corpus using a C4.5 classification algorithm when features
+are selected with the information gain statistic. In [11], the authors reach a misclassification
+rate of 16/1099 on the PU1 corpus and 18/2893 on the LS corpus, using compression models
+to select features.
+Our proposed statistical feature extraction methods for spam filtering, when tested on
+the public corpora, result in a large area under the ROC curve. The ROC is the preferred
+evaluation metric in commercial spam filtering. In the case of the 10-fold cross-validation
+on the public corpora: PU1, LS, SA, and TREC, our new FE methods PCAII, BDA, and
+ANMM perform better than the FS methods χ2, LCW and FCI, the original PCA and LDA
+techniques, and a baseline approach with no feature selection or extraction using the bagging
+and the SMO classifiers. We can see from the figures that the FS methods obtain competitive
+results, which means FS is also good in detecting spam in a static scenario. Nevertheless
+in general, our statistical methods exhibit a stable classification behavior while only using a
+small numbers of features. We observe the same behavior for the original techniques PCA
+and LDA. They exhibit a good performance but with more features, and the results are never
+better than the proposed FE methods. It means that the number of features chosen in the FE
+methods is a less critical parameter than in the FS methods, unless a large number of features
+is chosen. Later, we discuss the results more in detail.
+In Fig. 4, the area under de ROC curve is plotted for the LS, PU1, and SA corpora (10-fold
+cross-validation). In the experiment with the LS corpus, the BDA method performs best and
+gives stable results across different numbers of features, using an improvement of about 3%
+over the SMO and bagging classifiers that use all the terms. In the case of the PU1 corpus,
+the results of all algorithms are less stable when using different numbers of features. Again
+the BDA method presents the best behavior with a peaking performance when using 128
+features. Also, the ANMM method presents good results. The baseline approaches with no
+feature selection or extraction using the bagging and SMO classifiers present a performance
+comparable with the other FE and FS approaches. In the case of the SA corpus, again BDA
+presents a very good performance, greatly surpassing the results of all other methods, reach-
+ing a peak performance using between 32 and 1,024 features and decreasing with 2,048
+features. The results of the bagging classifier that uses all terms is comparable with the other
+FE and FS methods.
+The three FS methods present an increasing performance when more features are used,
+and with more than 512 features outperform PCAII and ANMM, but they are not able to
+outperform the results of the BDA. The same experiments were carried out with a random
+subset of the TREC corpus (Fig. 5a). BDA again presents the best performance, reaching a
+peak using between 512 and 2,048 features. ANMM also shows a good behavior surpassing
+the rest of the baseline approaches with no feature selection or extraction using bagging and
+SMO classifiers.
+Phishing email recognition was tested with the SI proprietary corpus using 10-fold cross-
+validation (Fig. 5b), where we select this kind of messages from the pool of spam mails.
+123
+38 J. C. Gomez et al.
+Fig. 4 Performance of all algorithms in terms of area under the ROC curve for LS (a), PU1 (b) and SA (c)
+corpora using 10-fold cross-validation
+123
+Highly discriminative statistical features for email classification 39
+Fig. 5 Performance of all algorithms in terms of area under the ROC curve for TREC (a) and SI (b) corpora
+using 10-fold cross-validation
+The FE methods very well detect phishing emails. The true-positive rate is high keeping the
+false-positive rate very low, reaching sometimes a value of 1 for the area under the ROC curve.
+The FS techniques have some problems to detect the phishing by increasing the number of
+false positives. The results again show the superiority of the BDA and ANMM methods,
+irrespective the number of features chosen. In spam filtering, even very small gains in per-
+formance (e.g., about 1% gain on the SI corpus compared with the case where all terms are
+used in the classification) are important in commercial settings.
+We performed a Wilcoxon signed rank test on the results for the area under the ROC curve
+for each method paired with each other, testing the hypothesis that F(x) > G(y), i.e., the
+values of one method tend to be better than the values of the other. The results of applying our
+best methods BDA and ANMM differ significantly from the results of the feature selection
+methods (p-value < 0.01). Additionally, the results given by the BDA and ANMM methods
+differ significantly from the “all terms” methods with the bagging and the SMO classifiers
+(p-values < 0.05).
+123
+40 J. C. Gomez et al.
+Fig. 6 Performance of all algorithms in terms of accuracy for the LS (a), PU1 (b) and SA (c) corpora using
+10-fold cross-validation
+123
+Highly discriminative statistical features for email classification 41
+Fig. 7 Performance of all algorithms in terms of accuracy for the TREC (a) and SI (b) corpora using 10-fold
+cross-validation
+When we compare the methods in terms of accuracy following the same 10-fold cross-
+validation task (Figs. 6, 7), we observe that the behavior of the proposed FE methods is
+similar. While having good performance with a small number of features, the performance
+is degraded when a large number of features is chosen, while the FS algorithms need most
+of the time more features for accurate classification. This is explained by the fact that FS
+methods directly select features (words) from the dataset, and need a large number of words
+to correctly discriminate between classes; on the other hand, the FE methods extract a com-
+pressed subset of features, which includes information from the whole dataset, but having the
+most important information in the first features. In terms of accuracy, the “all terms” SMO
+classifier has competitive results with the BDA method with regard to the results obtained on
+the LS and SI corpora, and it performs better than the BDA method on the PU1 and TREC
+corpus. In a commercial setting, the area under the ROC curve metric is preferred above the
+accuracy metric for evaluation.
+On average, over all the corpora and experiments, the average (rounded) numbers of fea-
+tures to reach the best performance per method are PCAII: 78, BDA: 280, ANMM: 123, χ2:
+518, LCW: 606, and FCI: 814. Following the results, over all the corpora, all the FE methods
+123
+42 J. C. Gomez et al.
+use at most 512, but commonly much less features to obtain a good classification, while on
+the other hand, FS methods are not so consistent with regard to the number of features in order
+to obtain optimal results. The FS methods present a bigger variation of the optimal number
+of selected features depending on the corpus at hand. For the FE methods, choosing more
+features tends to have no effect or might degrade the performance of the algorithms. When
+increasing the number of features, which are selected by “importance”, we might include a
+new “less important” feature in all message vectors of the data set, increasing the possibility
+that noise or useless information is considered, which will affect the classification perfor-
+mance. This is most notorious with PCAII, where the performance decreases with a large
+number of features measured using the area under the ROC curve. In general, the number of
+features used with BDA is a less critical parameter than in the other methods, unless a large
+number of features is chosen, when the performance starts to decrease. In the same direction,
+even if with a less stable performance, ANMM and PCAII perform well with small numbers
+of features.
+Since the features extracted by the FE methods are ranked based on the variance, which
+actually specifies the quantity of information retained by each feature, it would be interesting
+to rely on the variance in order to choose how much information we want to keep. In this
+way, a different number of features can be selected for the same variance depending on the
+variation of the data in the corpus at hand. Nevertheless, an indication for identifying a good
+number of features is that the dimensionality reduction should be “significative”. This means
+reducing the number of original features by one or two orders of magnitude (between 50 and
+500 for the current experimental setup), since most of the information is carried out by the
+first components of the W matrix. Specially for BDA, this kind of selection is valuable, given
+its stable performance. The FS methods select the words of the emails as features without
+any transformation. In some cases, a large number of features is required to perform a good
+classification, because the corpus presents a substantial variation of patterns and topics. This
+situation occurs in the SA, TREC, or SI corpora. On the other hand, our new statistical FE
+methods use a smaller number of features (less than the FS methods), which means that
+the features extracted with these techniques are capturing the essential information of each
+corpus, building core profiles of the datasets, as can be seen in Figs. 4, 5, 6 and 7.
+5.2 Classification performance over time
+In Figs. 8 and 9, we see the performance of all the methods for the two one-off experiments
+on the TREC and SII corpora, respectively. With this experiment, we want to test the persis-
+tency and robustness over time of the features extracted or selected by the different methods.
+When we evaluate the results in terms of area under the ROC curve (Fig. 8), the BDA method
+surpasses all the other methods in the TREC one-off experiment. Both the BDA and the
+ANMM methods show a rather stable performance with regard to the number of features
+chosen. In the case of the SII one-off experiment, BDA presents again a stable behavior
+only slightly surpassed by the LCW method when 128 features are selected. The “all terms”
+SMO classifier performs rather poorly compared with the FE methods with a difference of
+about 1.5% and about 3% with the results of the best method in the TREC and SII corpus,
+respectively.
+When the results are measured in terms of accuracy (see Fig. 9), the FE methods give more
+stable results than the FS methods over the number of features chosen. For the TREC corpus,
+the FE methods are surpassed by the FS methods given that a large number of features are
+chosen, and by the “all terms” classifiers. For the SII corpus, the BDA method gives the best
+performance, but competitive with the results of the “all terms” bagging classifier.
+123
+Highly discriminative statistical features for email classification 43
+Fig. 8 Performance of all algorithms in terms of area under the ROC curve for TREC (a) and SII (b) corpora,
+performing a one-off experiment, where we sort the corpora by date, and then, we take from the beginning of
+the corpus emails that have an early date for training and the rest of the corpus for testing
+In the case of the proprietary corpus SI, similar to the one-off experiments, we evaluated
+the persistency and robustness of the features over time. In this experiment, we use a sliding
+window schema, where we sort the data by date and then group it in sets of 4 weeks for train-
+ing and 1 week in the future for testing. Figure 10 shows the results for the sliding window
+experiment for all the methods. In terms of area under the ROC curve and accuracy, the BDA
+method shows a better performance than the other methods, only surpassed by the ANMM
+results when considering the area under the ROC curve and when 128–1,024 features are
+extracted.
+In the case of the persistency experiments, i.e., the two one-off (TREC and SII) and the
+sliding window (SI) experiments, we observe that the FE methods perform quiet well and
+create robust predictive profiles from past training data evidenced by the area under the ROC
+curve and the obtained accuracy values. The BDA and ANMM methods have better results
+compared with the FS extraction methods (p-value < 0.01) and the “all terms” methods
+with the bagging and the SMO classifiers (p-value < 0.05). The BDA method especially
+shows stable results irrespective of the number of features chosen. Moreover, we see that
+123
+44 J. C. Gomez et al.
+Fig. 9 Performance of all algorithms in terms of accuracy for TREC (a) and SII (b) corpora, performing a
+one-off experiment, where we sort the corpora by date, and then, we take from the beginning of the corpus
+emails that have an early date for training and the rest of the corpus for testing
+the number of active features is generally low, even if the corpus presents a big variation
+of topics. This situation is to be expected because the training set is actually quite small in
+comparison with the testing set. This situation presents a problem for the FS methods, which
+often are not able to generalize patterns from the raw terms to patterns in unseen messages.
+These methods require a larger number of features to reach a satisfying performance.
+We performed a last experiment to evaluate the behavior of the statistical feature extraction
+algorithms under a more drastic scenario mixing temporal information and corpora. Here, we
+train the models with messages from one corpus with data in the future and test with another
+corpus with data in the past. We randomly selected 1,200 messages from the TREC corpus
+and 1,200 messages from the SA corpus, both having 600 spam emails and 600 ham emails.
+We used the subset of the TREC corpus for training and the subset of the SA corpus for
+testing. The TREC corpus was collected in 2007, and the SA corpus was collected in 2002
+and 2003. This experimental setting is characterized by a large gap in time and a different data
+structure, since both corpora were collected and labeled under complete different conditions.
+The results of this experiment are shown in Fig. 11 where we observe that the behavior of the
+123
+Highly discriminative statistical features for email classification 45
+Fig. 10 Performance of all algorithms in terms of area under the ROC curve (a) and accuracy (b) for the
+sliding window experiment on the SI corpus; results are averaged over all test weeks
+FE methods exhibit a similar performance as in the previous experiments. BDA and ANMM
+reach a stable performance irrespective of the number of features selected and show a slightly
+decrease in performance with a large number of features. All the FE and FS methods perform
+better than the baseline methods using the “all terms” bagging and SMO classifiers (e.g., a
+difference of maximum 1.5% comparing the best results, i.e., obtained by BDA, with the
+results of the SMO classifier). In general, the figures for the area under the ROC curve and
+accuracy are lower than in the previous experiments, but this is to be expected given the large
+difference in time, data structure, and labeling setups between the corpora.
+5.3 Additional experiments
+Figure 12 shows the performance of all algorithms averaged over all the previous experiments
+in terms of area under the ROC curve and accuracy. It is possible to observe the good behavior
+of the ANMM and BDA methods, this behavior is specially apparent in lower dimensions
+and tends to decrease when a large number of features is chosen. Following the tendencies
+in the graph, the other feature extraction and feature selection methods and the “all terms”
+baselines perform similar, but do not yield the best results.
+123
+46 J. C. Gomez et al.
+Fig. 11 Performance of all algorithms in terms of area under the ROC curve (a) and accuracy (b) for training
+with a subset of the TREC corpus and testing with a subset of the SA corpus
+Overall, if we would have to choose a “best” method, we would recommend biased
+discriminant analysis (BDA), which performs the best most of the times as measured by
+the area under the ROC curve and by the accuracy (as can be seen in the Fig. 12). BDA
+works well even with a very low number of features selected and exhibits stable results when
+different numbers of features are chosen. Figure 13 shows the average performance and the
+standard error bars for the BDA method over all the experiments and their comparison with
+the average results for the “all terms” SMO and bagging methods. From this graph, we can
+observe that a number of features between 32 and 256 for the BDA method is a good number
+to obtain competent results with small errors in the classification, and to attain no overlaps
+with the error bars of the baseline methods. On the other hand, selecting a larger number of
+features for the BDA would increase the inconsistency in the email filtering.
+Table 2 shows the training and testing times in seconds for the different statistical fea-
+ture extraction techniques. The times are estimated using the LS corpus, and averaged with
+a 10-fold cross-validation schema, having 2,600 messages for training and 289 messages
+for testing in each fold. The training time includes the preprocessing (tags removal, words
+extraction, and vectorization), the W matrix calculations and the building of the classifiers.
+123
+Highly discriminative statistical features for email classification 47
+Fig. 12 Averaged performance over all the corpora and experiments for all the algorithms in terms of area
+under the ROC curve, expressed as a graph (above) and a table (below)
+Fig. 13 Error bars for the BDA, SMO, and bagging methods for the average performance in terms of area
+under the ROC curve over all the corpora and experiments
+The training time is shown only once since it is fixed for any number of features chosen. In the
+training process, the W matrix is computed completely, and during testing, it is cut depending
+on the number of features required. The testing time includes the preprocessing, the projection
+123
+48 J. C. Gomez et al.
+Table 2 Average training and testing time in seconds for the different statistical feature extraction methods
+Method Training (s) Testing (s) for different number of features
+2 4 8 16 32 64 128 256 512 1,024 2,048 5,5833
+ANMM 32708 21.4 20.3 21.1 21.7 21.5 22.2 23.6 24.6 25.0 26.9 32.9
+BDA 61379 20.2 20.3 20.4 20.8 21.6 20.9 23.2 23.7 26.5 27.0 28.7
+PCAII 5571 19.3 18.7 19.1 19.7 19.5 19.9 20.1 21.2 25.1 26.8 29.5
+PCA 7765 19.6 19.7 20.0 19.9 20.1 20.5 21.6 20.5 22.0 22.9 25.2
+LDA 32708 20.6 20.2 20.6 19.6 20.2 20.2 21.7 21.9 22.3 25.0 29.1
+A/T SVM 578 66.3
+A/T Bagging 86425 76.1
+The times are computed on the LS corpus, averaged using 10-fold cross-validation, with 2,600 messages for
+training and 289 messages for testing in each fold. Testing time is calculated for the complete testing set.
+Training time includes the preprocessing, the W matrix calculations, and the building of the classifier. Testing
+time includes the preprocessing, the projection with the W matrix, and the classification with the model
+with the W matrix (depending on the method and the number of features chosen), and the
+classification with the model. Note that this time statistic is given for the classification of the
+whole set of testing messages. The table shows the effects of choosing different numbers of
+features, where a tendency can be noted that the time complexity increases proportional with
+the number or features chosen. Nevertheless, it is probable that, given the slight differences
+in the testing times, these figures could be affected by other processes in the CPU. All the
+times were calculated using a Core2Duo 1.3 Ghz PC, with 2 GB in RAM, using Windows and
+Java. One can observe that, even if the training time for some methods is large, the testing
+time is only a fraction of a second per message, allowing a real-time classification.
+With a more powerful machine, a PC with a Core i7 1.8 Ghz CPU and 4 GB in RAM,
+using Windows and Java, we evaluate the effect of incrementally increasing the number of
+annotated examples for training the models. We used the following sizes for the training sets:
+1,024, 2,048, 4,096, 8,192, and 16,384 examples. We assess the training time in seconds and
+the performance in terms of area under the ROC curve on an unseen test set. This experiment
+is carried out with the TREC corpus, as it is the largest of the publicly available corpora used
+in our research. The results show again that the BDA method remains the best performing
+method in terms of area under the ROC curve. As expected, for some training set sizes, its
+training time is higher than the one of the other methods, but it grows almost linearly, with
+a rather flat slope, when adding more training examples. The details of this experiment are
+given in Fig. 14. It is important to notice that the most expensive method to compute is the
+singular value decomposition. Nevertheless, given that only a small number of extracted fea-
+tures suffices to attain a good classification, in future implementations, we could use a method
+like Power Factorization [26], since this method can extract a small number of eigenvectors
+in almost linear time, while saving the computation of extracting unused features.
+6 Conclusions
+In this paper, we compare several standard feature selection methods with novel content-based
+statistical feature extraction techniques for email classification. The new methods include
+a supervised form of principal component analysis (PCAII), biased discriminant analysis
+123
+Highly discriminative statistical features for email classification 49
+Fig. 14 (a) Training time in seconds for the feature extraction methods, using training sets with incremental
+size from the TREC corpus; this time includes the preprocessing of the messages, the W matrix calculations for
+each method and the building of the classifier. (b) Performance of the methods in terms of area under the ROC
+curve for the different training sets, using for testing a set formed by the last (sorted in time) 5,000 messages
+from the TREC corpus; in the case of the feature extraction methods, the testing was done by selecting 128
+features, which for most of the methods resulted in a good performance; in the case of the SMO and bagging
+classifiers, the testing was done using the whole set of terms
+(BDA), and Average Neighborhood Margin Maximization (ANMM). These approaches are
+understood as dimensionality reduction techniques, which especially aim at better discrim-
+inating positive from negative examples. The obtained essential statistical features carry
+very useful information (core profiles of the dataset) that is highly discriminative for email
+classification and robust to persist over time.
+The results show good classification performance when using the feature extraction tech-
+niques under a normal classification using 10-fold cross-validation and an anticipatory classi-
+fication, applied to several email data sets: four public corpora where the task was to classify
+123
+50 J. C. Gomez et al.
+spam versus ham, and two proprietary corpora where we want to discriminate between phish-
+ing and spam. In this sense, our methods are effective for classifying emails and robust when
+predicting the type of email when trained on older data. Of course, spam patterns appear,
+disappear, and may reappear again [34]. It would be interesting to measure how robust the
+extracted features are with regard to concept drifts and reappearances. Overall, one could
+choose BDA as the best method, since it performs excellently most of the times measured
+in terms of the area under the ROC curve and accuracy, even when emails are described
+with very few features and when training and testing the model under completely different
+setups. A very important contribution is that the BDA results are not very dependent on the
+number of features chosen, which is an advantage in a text classification task, as choosing
+the right number of features in the high-dimensional space spanned by the words of the text
+is a difficult problem.
+The main aims of this work are the filtering of spam and identification of phishing mes-
+sages, while performing this filtering with just a few features representing a small set of
+signature rules (i.e., a core profile) and proving the persistency of the core features over
+time (robustness). As is confirmed by the results presented in the previous section, we have
+accomplished these goals.
+In the future, we want to apply our technologies to other binary text classification tasks,
+where correlated and highly discriminative features play a role and where one of the classes
+is characterized by a variety of patterns. Given that we have discovered that a small num-
+ber of statistically extracted features suffices to perform a good classification, for further
+experiments and implementations, the use of an alternative method like Power Factorization
+to partially perform the singular value decomposition would help to save the most of the
+computation done in this part. Finally, our methods can possibly be customized with multi-
+linear (tensor) methods for dimensionality reduction, that have the possibility to include, for
+instance, content and non-content features in spam filtering. Here, the derivation of low-rank
+approximations of tensors that are nearly optimal is an interesting path to pursue.
+Acknowledgments We thank the EU FP6-027600 Antiphish (http://www.antiphishresearch.org/) consor-
+tium and in particular Christina Lioma, Gerhard Paaß, André Bergholz, Patrick Horkan, Brian Witten,
+Marc Dacier and Domenico Dato.
+References
+1. Abu-Nimeh S, Nappa D, Wang X, Nair S (2007) A comparison of machine learning techniques for
+phishing detection. In: eCrime ’07: proceedings of the anti-phishing working groups 2nd annual eCrime
+researchers summit. ACM, New York, pp 60–69
+2. Agrawal R, Imieliński T, Swami A (1993) Mining association rules between sets of items in large dat-
+abases. In: SIGMOD ’93: proceedings of the 1993 ACM SIGMOD international conference on manage-
+ment of Data. ACM, New York, NY, USA, pp 207–216
+3. Aha DW, Kibler DF, Albert MK (1991) Instance-based learning algorithms. Mach Learn 6:37–66
+4. Androutsopoulos I, Koutsias J, Chandrinos KV, Ch KV, Paliouras G, Spyropoulos CD (2000) An evalu-
+ation of naïve Bayesian anti-spam filtering, pp 9–17
+5. Baudat G, Anouar F (2000) Generalized discriminant analysis using a kernel approach. Neural Comput
+12(10):2385–2404
+6. Bishop C (1995) Neural networks for pattern recognition. Clarendon Press, Oxford
+7. Blei DM, Griffiths TL, Jordan MI, Tenenbaum JB (2003) Hierarchical topic models and the nested
+Chinese restaurant process. In: Thrun S, Saul LK, Schölkopf B (eds) Neural information processing
+systems. MIT Press, Cambridge
+8. Blei DM, Ng AY, Jordan MI, Lafferty J (2003) Latent dirichlet allocation. J Mach Learn Res 3:2003
+9. Borgelt C, Kruse R (2002) Induction of association rules: apriori implementation. In: Proceedings of 15th
+conference on computational statistics (COMPSTAT 2002). Physica Verlag, Heidelberg, Germany
+123
+Highly discriminative statistical features for email classification 51
+10. Brank J, Grobelnik M, Frayling MN, Mladenic D (2002) Feature selection using support vector machines.
+In: Proceedings of the third international conference on data mining methods and databases for engineer-
+ing, finance, and other fields, Bologna, Italy, pp 25–27
+11. Bratko A, Cormack G, Filipic B, Lynam T, Zupan B (2006) Spam filtering using statistical data compres-
+sion models. J Mach Learn Res 7:2673–2698
+12. Breiman L (1996) Bagging predictors. Mach Learn 24(2):123–140
+13. Brutlag JD, Meek C (2000) Challenges of the email domain for text classification. In: ICML ’00:
+proceedings of the seventeenth international conference on machine learning. Morgan Kaufmann Pub-
+lishers Inc., San Francisco, CA, USA, pp 103–110
+14. Cai L, Hofmann T (2003) Text categorization by boosting automatically extracted concepts. In: SIGIR ’03:
+proceedings of the 26th annual international ACM SIGIR conference on research and development in
+information retrievalm, pp 182–189
+15. Carreras X, Márquez L, Salgado JG (2001) Boosting trees for anti-spam email filtering. In: RANLP-01:
+4th international conference on recent advances in natural language processing pp 58–64
+16. Chen C, Tian Y, Zhang C (2008) Spam filtering with several novel Bayesian classifiers. In: ICPR ’08:
+proceedings of the 19th international conference on pattern recognition, pp 1–4
+17. Cheng H, Yan X, Han J, wei Hsu C (2007) Discriminative frequent pattern analysis for effective classifi-
+cation. In: IEEE 23rd international conference on data engineering, pp 716–725
+18. Cormack GV (2007) Spam track overview. In: TREC-2007: sixteenth text retrieval conference
+19. Cristianini N, Shawe-Taylor J (2000) An introduction to support vector machines and other Kernel-based
+learning methods. Cambridge University Press, Cambridge, UK
+20. Deerwester S, Dumais ST, Furnas GW, Landauer TK, Harshman R (1990) Indexing by latent semantic
+analysis. J Am Soc Inf Sci 41:391–407
+21. Fette I, Sadeh N, Tomasic A (2007) Learning to detect phishing emails. In: WWW ’07: proceedings of
+the 16th international conference on World Wide Web. ACM, New York, NY, USA, pp 649–656
+22. Fukunaga K (1990) Introduction to statistical pattern recognition. Academic Press, London
+23. Goodman J, Heckerman D, Rounthwaite R (2005) Stopping spam. Sci Am 292(4):42–88
+24. Guyon I, Weston J, Barnhill S, Vapnik V (2002) Gene selection for cancer classification using support
+vector machines. Mach Lear 46(1–3):389–422
+25. Guzella TS, Caminhas WM (2009) A review of machine learning approaches to spam filtering. Expert
+Syst Appl 36:10206–10222
+26. Hartley R, Schaffalizky F (2003) PowerFactorization: 3d reconstruction with missing or uncertain data.
+In: Australia–Japan advanced workshop on computer vision
+27. Hofmann T (1999) Probabilistic latent semantic indexing. In: Uncertainty in artificial intelligence,
+pp 50–57
+28. Hovold J (2005) Naïve Bayes spam filtering using word-position-based attributes and length-sensitive
+classification thresholds. In: NODALIDA ’05: proceedings of the 15th nordic conference of computational
+linguistics, pp 78–87
+29. Huang TS, Dagli CK, Rajaram S, Chang EY, Mandel MI, Poliner GE, Ellis DPW (2008) Active learning
+for interactive multimedia retrieval. Proc IEEE 96(4):648–667
+30. Ishii N, Murai T, Yamada T, Bao Y, Suzuki S (2006) Text classification: combining grouping, LSA and
+knn vs support vector machine. In: ‘Knowledge-Based Intelligent Information and Engineering Systems’
+Vol. 4252, pp. 393–400
+31. István B, Jácint S, András B (2008) Latent Dirichlet Allocation in web spam filtering. In: AIRWeb ’08:
+proceedings of the 4th international workshop on adversarial information retrieval on the Web’ pp 29–32
+32. Jolliffe IT (1986) Principal component analysis. Springer, New York
+33. Kanaris I, Kanaris K, Houvardas I, Stamatatos E (2007) Words versus character n-grams for anti-spam
+filtering. Int J Artif Intell Tools 16(6):1047–1067
+34. Katakis I, Tsoumakas G, Vlahavas I (2010) Tracking recurring contexts using ensemble classifiers: an
+application to email filtering. Knowl Inf Syst 22(3):371–391
+35. Meyer TA, Whateley B (2004) SpamBayes: effective open-source, Bayesian based, email classification
+syste. In: CEAS ’04: proceedings of the first conference on email and anti-spam
+36. Mitchell TM (1997) Machine learning. McGraw-Hill Science/Engineering/Math, NY
+37. Mladenić D, Brank J, Grobelnik M, Milic-Frayling N (2004) Feature selection using linear classifier
+weights: interaction with classification models. In: SIGIR ’04: proceedings of the 27th annual interna-
+tional ACM SIGIR conference on research and development in information retrieval. ACM, New York,
+NY, USA pp 234–241
+38. Moler CB, Stewart GW (1973) An algorithm for generalized matrix eigenvalue problems. SIAM: J Numer
+Anal (19):241–256
+39. Platt JC (1998) Fast training of SVMs using sequential minimal optimization. In: Schoelkopf B, Burges C,
+Smola A (eds) Advances in kernel methods-support vector learning. MIT Press, Cambridge, pp 185–208
+123
+52 J. C. Gomez et al.
+40. Pu Q, Yang G-W (2006) Short-text classification based on ICA and LSA. In: Advances in neural networks,
+vol 3972, pp. 265–270
+41. Qian T, Xiong H, Wang Y, Chen E (2007) On the strength of hyperclique patterns for text categorization.
+Inf Sci 177(19):4040–4058
+42. Quinlan JR (1993) C4.5: programs for machine learning. Morgan Kaufmann, San Mateo
+43. Robinson G (2003) A statistical approach to the spam problem. Linux J (107):3
+44. Schneider K-M (2003) A comparison of event models for naïve Bayes anti-spam e-mail filtering.
+In: EACL ’03: proceedings of the tenth conference on European chapter of the association for com-
+putational linguistics. Association for Computational Linguistics, Morristown, NJ, USA, pp 307–314
+45. Siefkes C, Assis F, Chhabra S, Yerazunis WS (2004) Combining winnow and orthogonal sparse bigrams
+for incremental spam filtering. In: PKDD ’04: proceedings of the 8th European conference on principles
+and practice of knowledge discovery in databases, vol 3202. Springer, Morristown, NJ, USA, pp. 410–421
+46. Torkkola K (2004) Discriminative features for document classification. Pattern Anal Appl 6:301–308
+47. Tsymbal A, Puuronen S, Pechenizkiy M, Baumgarten M, Patterson DW (2002) Eigenvector-based fea-
+ture extraction for classification. In: Haller SM, Simmons G (eds) FLAIRS conference. AAAI Press,
+pp 354–358
+48. Wang F, Zhang C (2007) Feature extraction by maximizing the average neighborhood margin. In: Pro-
+ceedings of the IEEE conference on computer vision and pattern recognition. IEEE Computer Society
+49. Waugh F (1945) A note concerning hotelling’s method of inverting a partitioned matrix. Ann Math Stat
+16(2):216–217
+50. Witten IH, Frank E (2000) Data mining: practical machine learning tools and techniques with java imple-
+mentations. Morgan Kaufmann, San Francisco
+51. Xia Y, Wong K-F (2006) Binarization approaches to email categorization. In: ICCPOL, pp 474–481
+52. Xue G-R, Dai W, Yang Q, Yu Y (2008) Topic-bridged pLSA for cross-domain text classification. In: SIGIR
+’08: proceedings of the 31st annual international ACM SIGIR conference on research and development
+in information retrieval, pp 627–634
+53. Yan J, Zhang B, Liu N, Yan S, Cheng Q, Fan W, Yang Q, Xi W, Chen Z (2006) Effective and efficient
+dimensionality reduction for large-scale and streaming data preprocessing. IEEE Trans Knowl Data Eng
+18(3):320–333
+54. Yu B, Xu Z-b (2008) A comparative study for content-based dynamic spam classification using four
+machine learning algorithms. Knowledge-Based Syst 21(4):355–362
+55. Zhang Z, Phan X-H, SH (2008) An efficient feature selection using hidden topic in text categorization.
+In: AINAW ’08: proceedings of the 22nd international conference on advanced information networking
+and applications—Workshops, pp 1223–1228
+56. Zhou S, Li K, Liu Y (2008) Text categorization based on topic model. In: Wang G, Li T, Grzymala-Busse
+J, Miao D, Skowron A, Yao Y (eds) Rough sets and knowledge technology. Lecture notes in computer
+science, vol 5009, pp 572–579
+Author Biographies
+Juan Carlos Gomez received the M.S. degree in computational
+astrophysics from the INAOE in Puebla, Mexico in 2002, and the PhD
+degree in computer science from the same institute in 2007. He worked
+at the Katholieke Universiteit Leuven, Belgium from 2008 to 2009
+as a postdoctoral fellow in the Language Intelligence and Informa-
+tion Retrieval (LIIR) group, developing algorithms for statistical fea-
+ture extraction for document classification. He worked during 2010 in
+the Evolutionary Computing Chair in the ITESM in Monterrey, Mexico
+and currently he is planning to go back to the K.U.Leuven for another
+postdoctoral stay. He has published several papers in the fields of
+astronomy, machine learning, evolutionary computing and data mining.
+123
+Highly discriminative statistical features for email classification 53
+Erik Boiy graduated as a Master in Informatics at the Katholieke
+Universiteit Leuven, Belgium in 2006. He is currently a PhD student
+in the Department of Computer Science at this university.
+Marie-Francine Moens is a research professor (BOF-ZAP) at the
+Katholieke Universiteit Leuven, Belgium. She received a PhD in
+Computer Science in 1999 from this university. She leads the Language
+Intelligence and Information Retrieval (LIIR) group at K.U.Leuven.
+Her main research interests regard text-based information retrieval,
+text mining, and natural language understanding. She is author of two
+monographs published by Springer and numerous articles in proceed-
+ings of international conferences and journals. She is involved in the
+organization or program committee of major conferences on infor-
+mation retrieval and computational linguistics (ECIR, CIKM, ACL,
+SIGIR, EACL). She is the current chair of the European Chapter of the
+Association for Computational Linguistics.
+123

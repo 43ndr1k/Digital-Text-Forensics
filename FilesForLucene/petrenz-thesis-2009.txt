@@ -1,0 +1,3942 @@
+ 
+ 
+ 
+ 
+ 
+ 
+Assessing approaches to  
+genre classification 
+ 
+ 
+Philipp Petrenz 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Master of Science 
+School of Informatics 
+University of Edinburgh 
+2009 
+ 
+ 
+  
+Abstract 
+ 
+Four formerly suggested approaches to automated genre classification are assessed and compared on a 
+unified data basis. Evaluation is done in terms of prediction accuracy as well as recall and precision 
+values. The focus is on how well the algorithms cope when tested on texts with different writing styles 
+and topics. Two U.S. based newspaper corpora are used for training and testing. The results suggest 
+that different approaches are suitable for different tasks and none can be seen as generally superior 
+genre classifier. 
+ 
+Acknowledgements 
+ 
+First and foremost, I would like to thank my supervisor, Bonnie Webber, for her outstanding support 
+throughout all stages of this project. I am also grateful to Victor Lavrenko, who provided input in 
+preceding discussions. Furthermore, helpful information was received from Geoffrey Nunberg, Brett 
+Kessler and Hinrich Schütze and was much appreciated.  
+ 
+  
+Table of Contents 
+ 
+ 
+1.  Introduction ............................................................................................................................... 1
+1.1. What are genres? ................................................................................................................ 1
+1.2. How is genre different from style and topic? ..................................................................... 2
+1.3.  Genre classification ............................................................................................................ 4
+1.4. Report Structure ................................................................................................................. 4
+2.  Previous work ............................................................................................................................ 5
+2.1. Text classification ............................................................................................................... 5
+2.2. Genre classification ............................................................................................................ 6
+3.  Project description ..................................................................................................................... 9
+3.1. Motivation .......................................................................................................................... 9
+3.2. Aims ................................................................................................................................. 10
+3.3. Methodology .................................................................................................................... 10
+3.4. Software and tools ............................................................................................................ 15
+4.  Material and Methods .............................................................................................................. 16
+4.1. The New York Times corpus ........................................................................................... 16
+4.2. The Penn Treebank Wall Street Journal corpus ............................................................... 17
+4.3. Data analysis and visualization ........................................................................................ 17
+4.3.1. Meta-data .................................................................................................................. 17
+4.3.2. Baseline genres ......................................................................................................... 18
+4.3.3. Genres and topics: Experiment one .......................................................................... 20
+4.3.4. Genres and topics: Experiment two .......................................................................... 22
+4.4. Pre-processing of data ...................................................................................................... 24
+4.4.1. Transforming contents .............................................................................................. 24
+4.4.2. Creating data sets ...................................................................................................... 26
+5. Implementation and Classification .......................................................................................... 28
+5.1. Karlgren & Cutting (1994) ............................................................................................... 28
+5.2. Kessler, Nunberg & Schütze (1997) ................................................................................. 29
+5.3. Freund, Clarke & Toms (2006) ........................................................................................ 32
+5.4. Ferizis & Bailey (2006) .................................................................................................... 33
+6. Evaluation ................................................................................................................................ 35
+6.1. Baseline experiment ......................................................................................................... 35
+6.2. The impact of style ........................................................................................................... 36
+6.3. The impact of topic ........................................................................................................... 41
+6.3.1. First experiment ........................................................................................................ 41
+6.3.1. Second experiment ................................................................................................... 42
+7. Discussion ................................................................................................................................ 45
+7.1. Conclusion of findings ..................................................................................................... 45
+7.2. Further work ..................................................................................................................... 47
+Appendix A: Text samples ............................................................................................................... 49
+Appendix B: Confusion matrices ..................................................................................................... 55
+References ........................................................................................................................................ 64
+ 
+ 
+ 
+ 
+ 1  
+1.  Introduction 
+ 
+Automated text classification has become a major subfield of data mining, which is being targeted 
+by many researchers and discussed eagerly in scientific literature. While the aim might be similar, 
+the nature of the data greatly differs from many other classification tasks. There is a variety of 
+characteristics and challenges very specific to the domain of text. This is for many reasons, 
+including its heterogeneity and the size of the feature space (typically, even small corpora consist 
+of tens or hundreds of thousands of words [1]). 
+ 
+Unsurprisingly, the focus of researchers had initially been on distinguishing documents by their 
+topics (e.g. [2][3]). However, text can also be categorized in other ways and often topical 
+classification alone is not sufficient to match the requirements of users. In information retrieval for 
+example, a search query for a fairly unambiguous topical term like Box Jellyfish will return a whole 
+range of different types of documents. They might include encyclopaedia articles, news reports and 
+blog posts. Even if every single one of them is about the correct topic, only a subset will be 
+relevant to the user. While it is surely possible to restrict this range by adding additional search 
+terms (e.g. Box Jellyfish Wikipedia), a much more elegant way would be to provide the user with a 
+choice of document genres to filter results. This is where genre classification comes into play.  
+ 
+The aim of the project described in this report is to assess and compare different approaches to 
+genre classification. To set the scene, the definitions of genre, topic and writing style are discussed 
+in the following sections. Furthermore, the characteristics and issues of classifying genres are 
+looked at. 
+ 
+1.1. What are genres? 
+ 
+Like topics, genres provide a way to describe the nature of a text, which allows for assigning 
+documents to groups. However, it is not trivial to even define what genres are. In scientific 
+literature, there is a wide range of descriptions and explanations. According to Biber [4] genres are 
+characterized by external criteria. Part of this is the targeted audience, as laid out in an example 
+taken from [5]: Press reports and even more so fiction are directed toward a more general audience 
+than academic prose, while professional letters rely on shared interpersonal backgrounds between 
+participants. Similar notions are suggested by Swales [6], who describes genres as classes of 
+communicative events, which share communicative purposes.  
+ 
+ 
+ 
+ 2  
+The two key ideas communicative purpose and shared targeted audience appear often in literature 
+on genre. This definition implies that texts within a genre class may span over a wide range of 
+linguistic variation. The degree of variation however depends on how well constrained a genre is 
+and for how much freedom of personal expression it allows [4]. It also differs for genres which can 
+contain a variety of topics (e.g. news articles about sport, politics, business etc.) and others that are 
+more topic specific (e.g. obituaries). 
+ 
+A functional definition can also be found in the work of Kessler, Nunberg & Schütze [7]. In 
+addition however, they suggest that genres should be defined narrowly enough so that texts within 
+a genre class possess common structural or linguistic properties. Similarly, Karlgren suggests a 
+definition based on both linguistic and functional characteristics. A combination of the targeted 
+audience and stylistic consistency is used to describe genres [8]. These are fundamentally different 
+views on genres, as they characterize them by internal criteria. Biber, too, examines linguistic 
+properties in [4]. However, he distinguishes between genres (external criteria) and text types 
+(internal criteria) and argues that they should be seen as independent categories. 
+ 
+The combined external and internal view on genres is what was used for this project. They were 
+defined in the way Kessler, Nunberg & Schütze put it: “We will use the term genre here to refer to 
+any widely recognized class of text defined by some common communicative purpose or other 
+functional traits, provided the function is connected to some formal cues or commonalities and that 
+the class is extensible.” [7] 
+ 
+1.2. How is genre different from style and topic? 
+ 
+Texts can be characterized in many different ways. Topic, writing style and genre are just three of 
+them. Others include register, brow and language (e.g. French). Some of them might of course 
+depend on each other and correlate. As definitions differ, the boarders between these 
+characterizations are fairly fuzzy. The focus of this project is on genres, topics and writing styles. 
+Register and brow are considered part of this.  For example, a play by Shakespeare will probably 
+be considered high-brow in comparison to an advertising text for a chocolate bar. Differences in 
+language are also not examined in this project, as all the texts used are written in English. 
+ 
+The topic of a text is what it is about. Examples are countries, sports, financial mattes or crocodiles, 
+regardless of whether it is a song or an FAQ section of a website. These would be considered 
+instances of genres. In theory, the concepts of topic and genre are orthogonal, i.e. a text of any 
+given genre can be about any given topic. However, as mentioned by Karlgren & Cutting [9], co-
+ 
+ 
+ 
+ 3  
+variances exist as certain genre-topic combinations are far more likely than others. A text about 
+dragons will usually be fiction rather than a news article. A poem is more likely to be about flowers 
+than washing machines. While the difference between the terms topic and genre is fairly obvious, 
+in practice one can be used to infer about the other. This fact has been accounted for only in a 
+fraction of previous work on genre classification. 
+ 
+Style and genre are not always seen as distinct concepts and the terms are often used 
+interchangeably. Freund, Clarke & Toms acknowledge that “specific document templates […] exist 
+within different repositories”, which may have an impact on genre classification [10]. However, 
+this is only part of why one would want to consider the sources of texts used for this kind of task. 
+The field of automated authorship attribution provides a strong motivation. Several studies have 
+been conducted on classifying documents by their author (e.g. [11][12][13]). They all confirm that 
+texts from different authors differ in terms of formal properties and can therefore be classified. This 
+variety due to the origin of documents is what is referred to as different styles in this report.  
+ 
+Strong evidence for distinguishing between genre and style comes from the work on genre and 
+author classification by Stamatatos, Fakotakis & Kokkinakis [14]. They compare the two areas of 
+research and use a set of 22 features to predict both authorship and genre. The authors also present 
+the absolute t values of the linear regression functions for both tasks and for each feature. Each of 
+them represents the usefulness of a given attribute for predicting either genres or authors. It is 
+shown that some features help to predict style much more than genre and vice versa. This motivates 
+regarding them as two distinct concepts with different effects on formal properties in a text. 
+ 
+However, just like topic, style is orthogonal to genre only in theory. A text written by Jamie Oliver 
+is more likely to be a recipe than a scientific article. Likewise, a poem is more likely to be written 
+by Sir Walter Scott than Gordon Brown. Again, these correlations have not featured much in 
+literature on genre classification. 
+ 
+For the purpose of this project, the terms topic, genre and style are strictly distinguished. By topic, 
+the subject of a text is meant. Genres are defined by a shared communicative purpose. Style is 
+defined by authorship. This is not necessarily restricted to single persons, but can be extended to 
+newspapers, companies or other institutions with binding style guides. Geographic regions and 
+periods in time can also have their own styles. Both genres and styles are defined by shared formal 
+properties as well. An example would be a letter about a trip to Inverness written by Robert Burns. 
+The trip would be considered the topic of the document. The letter is the genre and the text is 
+written in the personal style of Robert Burns.  
+ 
+ 
+ 
+ 4  
+1.3.  Genre classification 
+ 
+Generally speaking, automated genre classification is concerned with predicting the genre of an 
+unknown text correctly, independent of its topic, style or any other characteristic. This is a 
+supervised learning task. It is done on the basis of annotated example texts, selected features of 
+which are used to build and train a classification model. Like in other text classification tasks, the 
+two main issues are how to represent the text as a set of features and what classification algorithm 
+to choose.  
+ 
+Automatically classifying texts by genre can be useful in many different areas. Information 
+retrieval might be the most obvious field of application. Genre filters help users to find relevant 
+documents faster. They are particularly interesting for professional users, which might be interested 
+in a very specific type of document (e.g. scientific papers for researchers or legal texts for lawyers). 
+ 
+Spam filters for e-mails can also benefit from genre classification. Users might choose not to 
+receive certain categories of mails, like advertisements or automatically generated status messages. 
+Similar filters could be applied to RSS feeds. Another application might be the automated 
+annotation of text corpora. Trained classifiers would be able to assign genre tags to documents. As 
+manually annotating large amounts of texts is very expensive, this would be highly interesting for 
+anyone dealing with major document collections. 
+ 
+This list is not exhaustive and many other areas that could benefit from genre classification have 
+been suggested. For example, Kessler, Nunberg & Schütze propose its application to support 
+parsing, part of speech tagging and word-sense disambiguation [7]. The wealth of possible 
+applications makes genre classification worth looking into. 
+ 
+1.4. Report Structure 
+ 
+In section 2, previous work on text classification and genre classification is discussed. Section 3 
+covers the motivation for this project, as well as its aims and methodology. The data used in the 
+process is described in section 4, along with a discussion of analysis and pre-processing steps. 
+Section 5 deals with the algorithms which were re-implemented for the project. Evaluation results 
+are presented in section 6. In section 7, conclusions of the findings as well as suggestions for 
+further research are given. 
+ 
+  
+ 
+ 
+ 
+ 5  
+2.  Previous work 
+ 
+This section gives an overview of the research that has been carried out on project related topics. It 
+is meant to introduce concepts and techniques, rather than giving lengthy descriptions of 
+methodologies and research results. Studies which are particularly relevant to this project will be 
+discussed in more detail later in this report. The previous work section is divided into two parts: 
+Text classification as such and the more specific area of genre classification. 
+ 
+2.1. Text classification 
+ 
+As already stated, text classification is traditionally concerned with predicting topics, rather than 
+genres. There is a broad range of literature in this field, which is why an overview of the main ideas 
+will be given by introducing a subset of examples. Proper feature representation is crucial in any 
+data mining task. This is especially true for text classification, as the choice might be less obvious 
+than for other types of data. In scientific literature, it is commonly accepted that simple vectors 
+with word counts yield very good results [15][16]. This type of feature set is also known as bag-of-
+words representation. However, when it comes to classification algorithms, there is less consent 
+among researchers. 
+ 
+Traditionally, Naïve Bayes (NB) has been a very popular technique to classify text based data. In a 
+comparison of different classifiers and combinations of algorithms by Li & Jain [17], it is found 
+that, in spite of the obvious incorrectness of the conditional independence assumption, NB 
+performs reasonably well on text. The high dimensionality and the danger of overfitting are 
+reported to be handled well by the classifier. Similar findings are reported in [18] and [19]. 
+ 
+In the last 20 years, many researchers have proposed methods, which use Support Vector Machines 
+(SVM) for text classification. In [3], Joachims presents evidence that SVMs cope well with high 
+dimensional feature spaces and the sparseness of the data. The author argues that these classifiers 
+do not require parameter tuning or feature selection to achieve high accuracy. In [20], several 
+algorithms are compared on a text classification task by Yang and Liu. The findings include that 
+SVMs and k-Nearest-Neighbour (kNN) techniques outperform other methods significantly. Naïve 
+Bayes was found to perform particularly poor. Similar conclusions were drawn in [21] and [22]. 
+ 
+A number of other approaches are discussed as well. They include decision trees, neural networks 
+and example based classifiers like kNN [2]. While all of them have interesting features and can 
+produce good results, the majority of articles suggest the use of either NB or SVM methods. 
+ 
+ 
+ 
+ 6  
+2.2. Genre classification 
+ 
+Genre classification has been discussed for several decades. However, comparatively little work 
+has been devoted to this subfield of text classification. Kessler, Nunberg & Schütze [7] explain this 
+with the fact that language corpora are often homogeneous with respect to the genres they contain. 
+Similarly, Webber [23] found that previous research had ignored the variety of genres contained in 
+the well-known Penn Treebank Wall Street Journal corpus, due to an apparent lack of meta-data 
+indicating the type of each article. 
+ 
+When it comes to genre classification, it can be said that the focus has been on an appropriate 
+choice of features rather than classification algorithms. While the latter have been discussed, it 
+seems that, at least for the time being, optimizing feature selection is crucial. The history of this 
+field in scientific literature is mainly divided into two types of approaches: Linguistic analysis and 
+term frequency based techniques [24]. Some examples of such research are presented in this 
+section. Being by no means exhaustive, this list is meant to give a brief summary of the different 
+methods that have been studied before. 
+ 
+The 1994 study by Karlgren & Cutting [9] discusses a small and simple set of features for genre 
+classification. It includes function word counts, word and character level statistics as well as part-
+of-speech (POS) frequencies. The authors use the Brown corpus and run three experiments, using 
+different sets of genre classes. They range from two very broad genres (informative and 
+imaginative texts) to 15 narrowly defined classes (e.g. press reviews and science fiction). Karlgren 
+& Cutting use discriminant analysis to predict genres and suggest that their technique can be used 
+in information retrieval applications. The impact of topical domain transfers is not examined, 
+neither is the performance on a test set from a different source. In fact, tests are carried out on the 
+training data which impairs the significance of their results. 
+ 
+The work of Wolters & Kirsten [25] examines the use of function word frequencies and POS tags 
+to predict genres. The authors consider three different classifiers to distinguish between four 
+defined genres. They also identify several topical domains. However, these are solely used for topic 
+classification rather than domain transfer experiments. Both training and testing was performed on 
+documents taken from LIMAS, a German newspaper corpus. While texts in the LIMAS collection 
+are gathered from 500 different sources, no effort is made to separate documents by their sources in 
+the training and test sets. The study therefore reveals no insights in terms of how the approach 
+copes with stylistic differences. 
+ 
+ 
+ 
+ 
+ 7  
+Kessler, Nunberg & Schütze [7] suggest that genre classification can be useful in many different 
+areas including computational linguistics and information retrieval. Four different types of features 
+are discussed to predict genres in text.  These are structural (e.g. POS frequencies, passives, 
+nominalizations etc.), lexical (word frequencies), character level (punctuation and delimiter 
+frequencies) and derivative (ratios and variation measures) cues gathered from the texts. As the 
+first group requires parsed or tagged documents, it is not used for the experiments, which are 
+conducted on the basis of the Brown corpus. Logistic regression and artificial neural networks are 
+used to classify six distinct genres. The impact of different writing styles or topics is not 
+considered. 
+ 
+In [10], Freund, Clark & Toms propose task-based genre classification to implement a search result 
+filter in a workplace environment. The authors use a bag-of-words document representation of a 
+data set comprised of 16 defined genres. The data used for the experiments was collected from the 
+internet. The genres are classified using support vector machines. While the authors chose data 
+from various sources (i.e. server domains) to avoid stylistic biases, no evaluation was carried out on 
+their potential effect. Topical domains are not considered. In [26], a software package is presented, 
+which, among other ideas, implements this algorithm. 
+ 
+A similar approach is suggested by Stamatatos, Fakotakis & Kokkinakis [27]. However, unlike 
+Freund, Clark & Toms they do not use all of the words in the document collection. Instead, a fixed 
+amount of the most common words in the English language is used as feature set. This number is 
+varied to find the optimum in terms of classification accuracy. In addition to that, the authors also 
+examine the impact of eight different punctuation mark frequencies to complement their feature set. 
+They use discriminant analysis to predict the four genres previously identified in the Wall Street 
+Journal corpus. Again, the impact of styles or topics is not considered. 
+ 
+In their 2001 study, Dewdey, VanEss-Dykema & MacMillan [28] compare a bag-of-words 
+approach with a more elaborate set of features. They are interested in genre classification in the 
+contexts of web search and spam filtering. An information gain algorithm is employed to reduce 
+the number of features in the bag-of-words representation. The second feature set is a mixture of 
+verb tense frequencies (past, present, future and transitions), content word frequencies, punctuation 
+frequencies and statistics on character, word and sentence level. The utilized text corpus is 
+comprised of seven genres. No distinction is made between sources (i.e. styles) or topics in the data 
+set. For classification, Naïve Bayes, Support Vector Machines and C 4.5 decision trees are used 
+and compared. 
+ 
+ 
+ 
+ 
+ 8  
+To combine the strengths of linguistic analysis and term frequency approaches, Ferizis & Bailey 
+[24] suggest a method based on the approximation of crucial POS features. The approach is based 
+on the work of Karlgren & Cutting [9]. The authors show that their algorithm achieves high 
+accuracies on four selected genres while being computationally inexpensive compared to standard 
+linguistic analysis methods. However, the data used was explicitly chosen from one source only 
+and no attempts were made to evaluate the algorithm on test sets with different writing styles. 
+Topical domain transfers are not examined either. 
+  
+ 
+ 
+ 
+ 9  
+3.  Project description 
+ 
+This section aims to outline the project carried out to assess different approaches to genre 
+classification. It discusses the reasons for the work to be done, the aims and the expected outcomes. 
+An explanation of the project’s methodology and chronology is provided. Furthermore, tools and 
+techniques used in the process are discussed. 
+ 
+3.1. Motivation 
+ 
+As mentioned in section 2.2, several different algorithms have been proposed to classify genres in 
+texts. However, most of these methods are discussed in a very specific context (i.e. patent retrieval 
+or workplace search engines for software engineers). This leads to very heterogeneous focuses. 
+Some authors look for high recall values, others might favor precision. Likewise, sometimes only 
+one of many genre classes is crucial to predict, while sometimes an overall good accuracy is aimed 
+for. 
+ 
+Furthermore, the classified data differs considerably from publication to publication. This is true in 
+terms of both content and format. As a result, the amounts and natures of identified genres are very 
+distinct. Class distribution may or may not be skewed and genres are often defined in varying 
+degrees of broadness. The reported classification results are therefore impossible to compare. 
+ 
+Moreover, most articles do not take the impact of stylistic differences into consideration. Even 
+where style is an acknowledged factor (e.g. [10]), no assessment is provided for its influence. 
+Algorithms are evaluated on test sets that are either from the same source or from a different source 
+than the training set, but never on both. This is why it is hard to see how well different methods 
+cope with stylistic differences. 
+ 
+The same is true for the impact of topicality. While it has been noted that genre dependent variation 
+is not orthogonal to topical variation [9], classifiers are typically tested on documents from the 
+same topical domains they were trained on. It is therefore unknown, how well these methods 
+perform when tested on data sets with different topic distributions. Although Finn & Kushmerick 
+have investigated into this problem [29], they only took a very basic set of features into 
+consideration. Thus, the question how previously proposed algorithms compare in this respect is 
+yet to be answered. 
+ 
+ 
+ 
+ 
+ 10  
+3.2. Aims 
+ 
+This project was meant to shed light on these very questions. Its aim was to construct a unified data 
+framework in order to assess and compare different approaches to genre classification. The desired 
+evaluation was done in terms of classification accuracy, but also in terms of how well each method 
+performs for different genres. 
+ 
+In addition to this, the project aimed to answer the question of how well each approach can cope 
+with a formerly unseen writing style, when genre was kept fixed. It was considered highly 
+interesting to know whether a classifier that had been trained on documents from source A was able 
+to predict genres reliably in documents from source B. A related question was if some genres were 
+more affected by stylistic changes than others and if so, how the different approaches coped with 
+that. Finding out was another goal of this research. 
+ 
+The third aim was to determine how well formerly proposed genre classification methods deal with 
+topical domain transfers. Could a classifier predict genre 1 in a text about topic A, when it had only 
+seen samples of genre 1 about topic B and samples of genre 2 about topic A? How did different 
+approaches compare in such a situation? 
+ 
+No new way to tackle the problems of predicting genres reliably was developed in this project. 
+Therefore, it was not carried out to prove that any algorithm is particularly suited for genre 
+classification. It aimed to be an unbiased and fair empirical comparison between approaches.  
+ 
+3.3. Methodology 
+ 
+The answers to these questions could only be found by researching into the performance of genre 
+classification methods. As source code was not provided for any of the proposed algorithms, re-
+implementation according to the specifications in the respective publications was necessary. The 
+results could then be compared on the basis of a unified data framework. 
+ 
+The first task was selecting a subset of algorithms to evaluate. The choice was partly motivated by 
+the 2006 study of Finn & Kushmerick [29]. It discusses the usefulness of different ways of 
+encoding document texts in genre classification problems. The authors focus on three types of 
+simple feature sets. They include the bag-of-words method and part of speech tag frequencies. The 
+third set is referred to as text statistics and is made up of document level attributes (e.g. number of 
+words) as well as frequencies of function words (e.g. furthermore, probably) and punctuation 
+ 
+ 
+ 
+ 11  
+symbols (e.g. question marks). More sophisticated attributes (e.g. vocabulary richness, sentences 
+without verbs, standard deviations) are not examined. 
+ 
+The study was seen as a good starting point. The approaches to be assessed were chosen so that all 
+of the mentioned feature sets were represented. However, genre classification methods do typically 
+not rely on one type of features only. For example, a classifier might make use of POS frequencies 
+and function word statistics combined. Furthermore, text representations that go beyond the 
+features in the Finn & Kushmerick study have been suggested. These two facts were embraced and 
+seen as an extension to their work. 
+ 
+Four approaches were selected for the purpose of this project: 
+ 
+• The groundbreaking work of Karlgren & Cutting [9]. This early approach uses a small set 
+of features and discriminant analysis to predict genres. Most of the features would fall in 
+either the POS frequencies or the text statistics categories proposed by Finn & Kushmerick. 
+ 
+• The method of Ferizis & Bailey [24], which is based on the Karlgren & Cutting algorithm. 
+However, POS frequencies are approximated using heuristics. 
+ 
+• The approach suggested by Kessler, Nunberg & Schütze [7]. Using three different 
+classification algorithms, genres are predicted based on surface cues. This partly 
+corresponds to the text statistics mentioned by Finn & Kushmerick, but more sophisticated 
+text characteristics are included as well. 
+ 
+• The bag-of-words based approach by Freund, Clarke & Toms [10] which makes use of 
+support vector machines to predict genre classes. 
+ 
+Details about the approaches and their implementation can be found in section 5.  
+ 
+The second task was to decide on a suitable experimental framework to test, assess and compare 
+the algorithms on. It had to be constructed so that the evaluation could provide answers to the 
+questions raised in section 3.2. To this end, a sensible selection of genre classes was required, as 
+was an appropriate split up of training and test sets. 
+ 
+The data available for the project was taken from the New York Times corpus and the Penn 
+Treebank annotated Wall Street Journal corpus, both of which are described in more detail in 
+ 
+ 
+ 
+ 12  
+section 4. The latter had been analyzed with respect to genres before by Webber [23] and four 
+genres were identified, some of which comprised several lower level genres. They contained news 
+articles, letters and essays
+1
+.  
+ 
+This set of classes was regarded a sensible starting point for two reasons. Firstly, similar classes 
+had been used in other experiments on genre classification before (e.g. [27][9][29]). Secondly, 
+these genres occur in the New York Times corpus as well and Webber proposed a way to 
+discriminate between them using meta-data. While this was to be further refined in the data 
+analysis process, it provided a practical basis to start from.  
+ 
+However, it had to be determined how appropriate news articles, letters and reviews were as a basis 
+of assessing approaches to genre classification. It was seen as important that the classes complied 
+with the definition of genres given in section 1: A shared communicative purpose and common 
+formal properties. The external criteria were surely fulfilled merely by the fact that news articles, 
+letters and reviews denote different sections of a newspaper. News articles are generally 
+informative, neutral and formal. Reviews are formal as well, but they carry personal opinions and 
+often include recommendations. Letters are often addressed specifically at one person or a certain 
+group and can be informal. Finding out whether they could be distinguished by formal properties 
+when extracted from the New York Times corpus was another focus of the data analysis. 
+ 
+To examine the impact of stylistic changes, texts with different writing styles were needed. 
+Newspaper corpora are perfectly qualified for this task, as journalists are typically required to abide 
+by rules laid down in newspaper specific style manuals. This is commonly referred to as house 
+style. For both the New York Times and the Wall Street Journal such manuals exist (see sections 
+4.1 and 4.2). House styles can and will of course change over time, which is reflected by different 
+editions of style manuals. This had to be considered in the experimental design. 
+ 
+It was decided to run 3 experiments: 
+ 
+• Firstly, the different classifiers were to be trained and tested on documents from the New 
+York Times corpus. No different house style was desired for the two sets. Therefore, the 
+texts had to be taken from time periods with the same style manual edition in place. This 
+was seen as a baseline test. 
+                                                     
+1
+ The Essay class will be referred to as Review for the purpose of this report, as this term is used in 
+the New York Times corpus metadata (see section 4.3.2). 
+ 
+ 
+ 
+ 13  
+• Secondly, the same training set as before was to be used, but the approaches were to be 
+tested on New York Times texts from a different period. It was to be ensured that a 
+different edition of the style manual was valid for documents in the test set. The difference 
+in style was expected to be rather small, yet noticeable in evaluation results. 
+ 
+• Thirdly, the algorithms were to be tested on documents taken from the Wall Street Journal 
+corpus, while the training set remained unchanged again. This was done so that the 
+classifiers were evaluated on texts with a formerly unseen house style. It was anticipated 
+that the stylistic difference between training and test set was more substantial than in the 
+second experiment. 
+ 
+These experiments were hoped to answer the question, how the different approaches cope with a 
+new style. Moreover, the setup provided further justification for the choice of genre classes. While 
+news articles and reviews are written by journalists, letters are not. Therefore, the authors do not 
+have to stick to stylistic guidelines. It was anticipated that this fact would have a strong effect and 
+could be observed in the analysis of the classification results. 
+ 
+Another question to be answered was how algorithms compare when faced with domain transfers. 
+To this end, topics had to be identified in the texts used for classification. Details can be found in 
+the section on data analysis (4.3). Again, it was considered preferable to carry out more than one 
+experiment. This is why two different approaches were chosen. 
+ 
+The first experiment was to be similar to the one described in the work of Finn & Kushmerick [29]. 
+Therefore, only two genre classes were to be predicted and two fairly distinct topics were required. 
+However, unlike in the Finn & Kushmerick experiments, the genres were not just simply to be 
+tested on a different topical domain. Instead, the experiment was to be split up into two parts: 
+Blended and paired sets of genres and topics.  
+ 
+The former were meant to be used as a baseline to compare results of the latter to. Both the training 
+set and the test set were designed to comprise a mix of both genres and both topics – in all 4 
+combinations. For the paired sets, the topicality of the texts belonging to the two genres was 
+designed to be opposite in the training set. In the test set, this selection was to be inverted, so that 
+documents in each genre class were about different topics than before. Both setups are illustrated in 
+Table 1. 
+ 
+ 
+ 
+ 
+ 
+ 14  
+Training Genre 1 Genre 2 
+Topic A X X 
+Topic B X X 
+ 
+Test Genre 1 Genre 2 
+Topic A X X 
+Topic B X X 
+ 
+  
+Training Genre 1 Genre 2 
+Topic A X  
+Topic B  X 
+ 
+Test Genre 1 Genre 2 
+Topic A  X 
+Topic B X  
+ 
+ 
+Table 1: Documents in training and test sets for the first experiment to examine the impact of topics. Upper left: 
+Blended training set. Upper right: Blended test set. Lower left: Paired training set. Lower right: Paired test set. 
+An X marks documents that are included in the set. 
+ 
+In contrast to the work of Finn & Kushmerick, topics were to be used to actively confuse the 
+classifier. A classification algorithm based on topic was expected to fail completely on the reverse 
+paired test set (with a near-zero accuracy), whereas the performance of a good genre classifier 
+would not drop substantially between the blended and the paired test sets. This framework was 
+found suitable to find out which approaches actually predict genres and which of them make use of 
+genre-topic correlations. 
+ 
+A similar technique was elaborated for the second experiment. However, it was designed as a three 
+class problem, using all the genres from the baseline experiment. Two things were to be different 
+from before. The topics were designed to be much broader than those in the first experiment. It was 
+expected that this would have an impact on classification accuracies. Also, for one of the genre 
+classes no topical selection was to be done, i.e. it was to be represented no differently in the 
+blended and paired data sets. Table 2 shows this graphically. 
+ 
+Training Genre 1 Genre 2 Genre 3 
+Topic A X X X 
+Topic B X X X 
+ 
+Training Genre 1 Genre 2 Genre 3 
+Topic A X X X 
+Topic B X X X 
+ 
+  
+Training Genre 1 Genre 2 Genre 3 
+Topic A X  X 
+Topic B  X X 
+ 
+Training Genre 1 Genre 2 Genre 3 
+Topic A  X X 
+Topic B X  X 
+ 
+ 
+Table 2: Documents in training and test sets for the second experiment to examine the impact of topics. Upper left: 
+Blended training set. Upper right: Blended test set. Lower left: Paired training set. Lower right: Paired test set. 
+An X marks documents that are included in the set. 
+ 
+It was considered interesting to find out whether the domain transfer in the first two genre classes 
+has a negative (or positive) impact on the unchanged genre in terms of correct predictions. That 
+was the reason for including a third class without changing the topics of its documents.  
+ 
+ 
+ 
+ 
+ 
+All evaluation for this projec
+precision and recall values 
+computed and compared as w
+questions, e.g. whether or not 
+ 
+ 
+The project started in mid-Ma
+timeframe are illustrated in 
+selection of algorithms to as
+section. The data analysis, i
+discussed in the following thre
+ 
+3.4. Software and tools
+ 
+The extraction of features for 
+source development environm
+They comprised: 
+ 
+• CRF Tagger [32] for 
+• Sentence Detector [33
+• StatistiXL [34] in com
+• SVMmulticlass [35] for s
+• Weka [36] for classif
+• MATLAB [37] for ge
+15 
+t was to be done in terms of classification acc
+for single classes can hold valuable informati
+ell. Also, confusion matrices were seen as a to
+letters are affected by a change in house style. 
+Figure 1: Timeframe of the project. 
+y 2009 and took three months to complete. The s
+Figure 1. The initial design phase included pr
+sess and the general outline of the project. It 
+mplementation and evaluation phases are self
+e sections. 
+ 
+all assessed approaches was implemented in Java
+ent Eclipse [31]. Several other tools were used f
+part-of-speech tagging,  
+] for breaking texts into sentences, 
+bination with Microsoft Excel for discriminant a
+upport vector machine classification, 
+ication as well as computation of information gai
+neral calculations and computations of confidenc
+ 
+uracy. However, as 
+on, they had to be 
+ol to clarify certain 
+ 
+eparate tasks and the 
+eparatory work, the 
+was covered in this 
+-explicatory and are 
+ [30] using the open 
+or a variety of tasks. 
+nalysis, 
+n, 
+e intervals. 
+ 
+ 
+ 
+ 16  
+4.  Material and Methods 
+ 
+This section deals with the data involved in the project. Two newspaper corpora were used as a 
+basis to assess genre classification algorithms: The New York Times (NYT) corpus and the Penn 
+Treebank Wall Street Journal (WSJ) corpus. They are described in detail in sections 4.1 and 4.2 
+respectively. Section 4.3 covers the data analysis and visualization, while pre-processing steps and 
+data set generation are discussed in section 4.4. 
+ 
+4.1. The New York Times corpus 
+ 
+The NYT corpus was recently published and contains over 1.8 million documents comprising 
+roughly 1.1 billion words [38] and covering a time period ranging from 01/01/1987 to 19/06/2007. 
+These documents are provided in xml format and conform to the News Industry Text Format 
+specification (see [39] for details). The directory structure is divided in years, months and days of 
+publication and every document has a unique number as file name, ranging from 0000000.xml to 
+1855670.xml. In addition to the textual content, they contain various tags and meta-data like dates, 
+locations, authors and topical descriptors [40]. There are up to 48 data fields assigned to each 
+document, many of which can take multiple values. The text contents of NYT corpus documents 
+are not annotated with linguistic meta-data (e.g. part-of-speech tags).  
+ 
+The articles written by NYT journalists conform to the stylistic guidelines laid down by the New 
+York Times Manual of Style and Usage by Siegal & Connolly [41]. However, this manual has been 
+revised several times and there are three different editions in existence for the relevant period 
+between 1987 and 2007. The current edition was introduced in 1999 and last updated in 2002. 
+Before 1999, [42] by Jordan was the NYT style manual. Therefore, only documents created 
+between 01/01/1987 and 31/12/1998 (referred to as NYT 87-98 from now on), as well as 
+documents published after 31/12/2002 (NYT 03-07) were considered for the purpose of this 
+project. This corresponds to the style dictated by [42] and [41] respectively. 
+ 
+The NYT corpus includes Java software interfaces. They were used in this project to access the 
+contents of the files. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 17  
+4.2. The Penn Treebank Wall Street Journal corpus 
+ 
+The annotated Penn Treebank [43][44] WSJ corpus was released in 1995 and comprises 2,499 text 
+documents with a million words in total. The documents are grouped into 25 directories, containing 
+99 or 100 files each. Their text contents are available in raw (text only), parsed and POS tagged 
+versions. Apart from these linguistic analyses, no meta-data is provided in the corpus. 
+ 
+The style guide for WSJ journalists is [45] by Martin. Articles have been written according to 
+stylistic rules laid out by the same author since 1981, even though the guide has been published for 
+public only recently. As all the documents in the WSJ corpus were created in 1989, it was assumed 
+that the same edition had been valid for all of them. Therefore, there was no need to split up the 
+data set in order to reflect stylistic differences. 
+ 
+4.3. Data analysis and visualization 
+ 
+In order to get an overview of the documents and the assigned meta-data, an extensive analysis of 
+the NYT corpus was carried out. This included both manual inspections and automatic readouts of 
+features. The aims were to find out about genres and topics within the corpus and to identify ways 
+to separate them. It was decided that NYT 87-98 documents were the only ones to be used for 
+classifier training (cf. section 3.3). Therefore, all analyses were performed on this collection. NYT 
+03-07 and WSJ documents were treated as unknown test data and not examined further. 
+ 
+4.3.1. Meta-data 
+ 
+While there is no explicit meta-data tag for the genre of an article, an array of fields was found to 
+be particularly useful for the purpose of this project. An example is the tag Taxonomic Classifier, 
+which places a document into a hierarchy of articles [40]. This is a structured mixture of genres and 
+topics. A document can be classified in several such hierarchies. Throughout the corpus, 99.5% of 
+documents contain this field, with an average of 4.5 taxonomic classifiers assigned to each article. 
+Examples include: 
+ 
+Top/Features/Travel/Guides/Destinations/Europe/Turkey 
+Top/News/Business/Markets 
+Top/News/Sports/Hockey/National Hockey League/Florida Panthers 
+Top/Opinion/Opinion/Letters 
+ 
+Another valuable field is the Types of Material tag. It specifies the editorial category of the article, 
+which in some cases corresponds to the definition of genre used for this project. In total, 41.5% of 
+ 
+ 
+ 
+ 18  
+the documents in the corpus have a Type of Material tag assigned to them [40]. The values are 
+typically exclusive, even though a negligible amount of documents with more than one tag exists. 
+There is no fixed set of values or hierarchy as there is for the taxonomic classifiers. Also, the Type 
+of Material fields often contain errors, misspellings or very specific information about an article. 
+Examples include: 
+ 
+Obituary 
+Letter 
+Letterletter 
+Editorial photo of homeless person 
+ 
+For the purpose of topic detection, the field General Online Descriptors was found to hold accurate 
+and unified information. The topicality of an article is described in different degrees of broadness 
+(e.g. Religion and Churches would be a higher level category than Christians and Christianity). In 
+the corpus, 79.7% of documents contain an average of 3.3 General Online Descriptors [40]. 
+Examples include: 
+ 
+Elections 
+Children and Youth 
+Politics and Government 
+Attacks on Police 
+ 
+Various other fields were examined but found to be less useful for the purpose of distinguishing 
+documents by their genre or topic. 
+ 
+4.3.2. Baseline genres 
+ 
+As explained in section 3.3, documents belonging to the categories News, Letter and Review were 
+to be separated for both the baseline experiments and the investigation into the impact of style. As 
+there is no News tag in the Types of Material field, the Taxonomic Classifier field was used to 
+identify these categories as follows: 
+ 
+News 
+Taxonomic classifier begins with Top/News excluding 
+ 
+Top/News/Obituaries 
+Top/News/Correction 
+Top/News/Editors’ Notes 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 19  
+Review 
+Taxonomic classifier is one of the following 
+ 
+Top/Opinion/Opinion/Editorials 
+Top/Opinion/Opinion/Op-Ed  Top/Opinion/Opinion/Op-Ed/*** 
+Top/Features/***/Columns  Top/Features/***/Columns/*** 
+Top/Features/***/Reviews  Top/Features/***/Reviews/*** 
+ 
+where *** can be anything, including several sub-hierarchies. 
+ 
+Letter 
+Taxonomic classifier is Top/Opinion/Opinion/Letters 
+ 
+This conforms to the categorization of documents made by Webber in [23] and therefore 
+corresponding classes have been identified in the WSJ corpus. They were separated and made 
+available for this project by the author. As most documents are assigned to several taxonomic 
+classifiers, it is possible that an article falls into two or all three groups. Such documents were 
+ignored, i.e. not used for classification.  
+ 
+In order to refine the identified classes further, the distribution of Types of Material tags was 
+computed for each of the three categories. Note that the percentages do not necessarily add up to 
+100 %, as there are documents which contain more than one Types of Material tag. 
+ 
+News        Review 
+No Types of Material tag 76.6 %   Review   66.7 % 
+Biography   5.5 %   Editorial   14.2 % 
+Summary   3.4 %   Op-Ed    13.7 % 
+Correction   2.9 %   No Types of Material tag 5.1 % 
+Obituary   2.9 %   Question   0.7 % 
+Letter   2.4 %   Biography   0.1 % 
+Others    6.7 %   Chronology   0.1 % 
+ 
+Letter 
+Letter   100.0 % 
+ 
+This indicates that, for the News class in particular, a selection by taxonomic classifiers alone is not 
+sufficient. It was decided to use the Types of Material field as an additional filter. Documents were 
+only classified as news articles if they fulfilled both the criteria mentioned above and contained no 
+Types of Material tag. For the Review class, only documents which were tagged Review, 
+Editorial or Op-Ed were taken into consideration. No additional constraints were required for 
+the Letter class. The appropriateness of the remaining documents with respect to the requirements 
+mentioned in section 3.3 was verified manually by taking samples.  
+ 
+ 
+ 
+ 
+ 
+ 20  
+News Letter Review 
+The Iranian Foreign 
+Minister publicly 
+divorced his 
+Government today from 
+the death threat 
+imposed on the British 
+author Salman Rushdie 
+in 1989 by Ayatollah 
+Ruhollah Khomeini, and 
+Britain responded by 
+restoring full 
+diplomatic relations. 
+ 
+1049130.xml 
+Outraged, I yelled at 
+the hunter that he had 
+nearly hit me, but he 
+denied that he was 
+close. 
+ 
+0724951.xml 
+Mr. Lautenberg was 
+mistaken in voting 
+against the deficit-
+reduction plan last 
+year, but his overall 
+record is sound. 
+ 
+0722765.xml 
+ 
+Table 3: Example sentences taken from the NYT 87-98 data set. 
+ 
+Table 3 illustrates the type of texts contained in each of the three categories. Further examples of 
+the textual content for each class can be found in Appendix A of this report.  
+ 
+To gain insight into the internal distinctiveness of the three genres, a collection of news articles, 
+reviews and letters was extracted using the identification criteria mentioned above. It contained 
+1,000 documents of each class. Some simple properties were computed from the texts and 
+averaged. They were chosen so that they include both structural and linguistic features. 
+ 
+ News Review Letter 
+Mean Word count 635 626 216 
+Mean Frequency of 
+Question marks 
+0.07 per 100 words 0.24 per 100 words 0.20 per 100 words 
+Mean Adverb 
+Frequency 
+3.4 per 100 words 4.5 per 100 words 
+ 
+3.9 per 100 words 
+ 
+ 
+Table 4: Averaged properties for texts belonging to the classes News, Review and Letter. 
+ 
+The results are illustrated in Table 4. The numbers indicate that texts from each of the genre classes 
+indeed share formal properties distinct from other genres. Therefore, the genre framework was 
+accepted as suitable for the task. 
+ 
+4.3.3. Genres and topics: Experiment one 
+ 
+To examine the impact of topic, two independent experiments were carried out. For the first one, 
+only two classes were required. It was decided to use news articles and letters, as intuition 
+suggested they were more distinct from each other than both News/Review and Review/Letter. To 
+find appropriate topics, the distribution of the General Online Descriptor field was computed. All 
+documents in the NYT 87-98 set that had been classified as either news article or letter were used 
+ 
+ 
+ 
+ 21  
+for this task. The aim was to find topics which were fairly specific and distinct. However, they had 
+to be broad enough to contain enough documents for classification.  
+ 
+In news articles, the 10 most common General Online Descriptor values were: 
+ 
+1.  Finances 
+2.  Politics and Government 
+3.  United States International Relations 
+4.  United States Politics and Government 
+5.  Baseball 
+6.  Medicine and Health 
+7.  Armament, Defense and Military Forces 
+8.  International Relations 
+9.  Stocks and Bonds 
+10. Mergers, Acquisitions and Divestitures 
+ 
+In letters, the 10 most common General Online Descriptor values were: 
+ 
+1.  Politics and Government 
+2.  Medicine and Health 
+3.  United States International Relations 
+4.  United States Politics and Government 
+5.  Finances 
+6.  Travel and Vacations 
+7.  Education and Schools 
+8.  International Relations 
+9.  Law and Legislation 
+10. Armament, Defense and Military Forces 
+ 
+A choice was made to use the tags Medicine and Health (referred to as Health from now on) as 
+well as Armament, Defense and Military Forces (referred to as Defense from now on), as they 
+fulfill both requirements stated above. Of all the news articles in the NYT 87-98 data set, which are 
+about health or defense, only 0.6 % are about both health and defense. In the letters class, this is 
+true for 0.4 % of documents. While no documents with overlapping topics were used for 
+classification, these numbers indicate that health and defense are very distinct topics. This is 
+important, as it makes classification results more meaningful and provides a strong contrast to the 
+experimental set up described in section 4.3.4. 
+ 
+The identification of news articles and letters was the same as explained in section 4.3.2. However, 
+in addition to this selection by Taxonomic classifier and Type of Material values, topics were 
+identified using the General Online Descriptor field. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 22  
+Health News Defense News Health Letter Defense Letter 
+Ethicists and 
+experts on the 
+issue said that 
+Diane's case 
+starkly 
+contrasted with 
+those of two 
+other well-
+publicized and 
+controversial 
+doctor-assisted 
+suicides. 
+ 
+0428321.xml 
+General Powell 
+said the attack 
+had used 23 
+Tomahawk guided 
+cruise missiles 
+fired from two 
+ships, one in 
+the Persian Gulf 
+and the other in 
+the Red Sea. 
+ 
+0617951.xml 
+She checked with 
+a lung 
+specialist who 
+told me that I 
+would be subject 
+to pulmonary 
+edema, and that 
+the best 
+treatment is to 
+go to a lower 
+altitude. 
+ 
+0076130.xml 
+Why this 
+disparity 
+between 
+responsible 
+fiscal concern 
+by State and 
+Treasury and an 
+opportunistic 
+hawking of wares 
+by the Defense 
+Department and 
+its industry 
+pals? 
+ 
+0942205.xml 
+ 
+Table 5: Example sentences taken from the NYT 87-98 data set. 
+ 
+Again, examples were manually surveyed to confirm that the texts met expectations with respect to 
+their topics and genres. Table 5 shows sentences taken from each of the four topic-genre 
+combinations. Complete document texts are presented in appendix A of this report. 
+ 
+4.3.4. Genres and topics: Experiment two 
+ 
+For the second experiment to investigate the impact of topic, three genre classes were needed. Two 
+of them were to be divided into two topical groups. The idea was to use very broad genres and 
+topics to simulate a very hard classification problem. The third genre class was not to be divided 
+into topical groups. It was included to examine how precision and recall values would differ for a 
+class with constant topic distribution. 
+ 
+Based on the findings of the meta-data survey described in section 4.3.1, it was decided to use the 
+Taxonomic classifier field for both genre and topic separation. The genres to be used were the same 
+as the ones explained in section 4.3.2. However, reviews were now required to be classified as 
+travel guides (see below). This was done because topical categories can be separated neatly using 
+the Taxonomic classifier field. The other genre that was divided into topics was the News class. For 
+both news articles and reviews, documents which were either about the U.S. or about the rest of the 
+world (excluding the U.S.) could be identified using the scheme below. Letters were not divided 
+into topics. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 23  
+ 
+U.S. News 
+Taxonomic classifier begins with one of the following 
+ 
+Top/News/World/Countries and Territories/United States/ 
+Top/News/U.S. 
+ 
+No Type of Material tag is assigned. 
+ 
+Non-U.S. News 
+Taxonomic classifier begins with one of the following 
+ 
+Top/News/World/Africa 
+Top/News/World/Asia Pacific 
+Top/News/World/Europe 
+Top/News/World/Middle East 
+Top/News/World/Countries and Territories/ 
+ 
+excluding 
+ 
+Top/News/World/Countries and Territories/United States/ 
+ 
+No Type of Material tag is assigned. 
+ 
+U.S. Review 
+Taxonomic classifier begins with 
+ 
+Top/Features/Travel/Guides/Destinations/North America/United States 
+ 
+Type of Material is Review, Editorial or Op-Ed. 
+ 
+Non-U.S. Review 
+Taxonomic classifier begins with 
+ 
+Top/Features/Travel/Guides/Destinations/ 
+ 
+excluding 
+ 
+Top/Features/Travel/Guides/Destinations/North America/United States 
+ 
+Type of Material is Review, Editorial or Op-Ed. 
+ 
+Letter 
+Taxonomic classifier is Top/Opinion/Opinion/Letters 
+ 
+Like in all other experiments, documents which could be assigned to more than one genre class 
+were ignored. The same was true for news articles and reviews, which were both about U.S. and 
+Non-U.S. topics (e.g. a report on the relations between the USA and France). 
+ 
+ 
+ 
+ 
+ 
+ 
+ 24  
+ News Review Letter 
+U.S. The draft of a proposal 
+to prevent patients 
+from being infected 
+with the virus is less 
+restrictive than 
+earlier recommendations 
+from the American 
+Medical Association, 
+the American Dental 
+Association, and the 
+American Academy of 
+Orthopedic Surgery. 
+ 
+0434996.xml 
+With its bustle and 
+clatter, its shared 
+tables and its 
+chefs behind 
+steaming cauldrons 
+of soup, New York 
+Noodletown is as 
+close as you can 
+get to Hong Kong in 
+Manhattan. 
+ 
+1065268.xml 
+Because of a 
+gravitational 
+pull toward 
+badness, 
+mistakenly known 
+as mediocrity, 
+that begins with 
+peer pressure and 
+culminates in the 
+kind of 
+bureaucratic 
+obstacles that 
+can stop 
+brilliant 
+students in their 
+tracks for good. 
+ 
+0356340.xml 
+Non-
+U.S 
+The perils of Jimmy 
+Connors and Ivan Lendl 
+have dominated 
+Wimbledon thus far, 
+relegating the most 
+recent champions, Boris 
+Becker and Pat Cash, to 
+unaccustomed supporting 
+roles. 
+ 
+0157534.xml 
+Had the Islamic 
+movement been 
+allowed to assume 
+parliamentary 
+power, would it 
+have been any less 
+repressive, or more 
+competent, than the 
+army? 
+ 
+0630627.xml 
+ 
+Table 6: Example sentences taken from the NYT 87-98 data set. 
+ 
+The distinction between U.S. and non-U.S. documents fulfilled the requirement of very broad 
+topical categories. Table 6 contains examples taken from each of the five different categories. 
+Further examples of the textual content for each class can be found in Appendix A of this report. 
+ 
+4.4. Pre-processing of data 
+ 
+In order to properly assess classification algorithms, the data had to be adapted to set the scene for 
+further processing. Utilizing the insights gained through the data analysis described in section 4.3, 
+documents from the NYT and WSJ corpora were pre-processed. This included extracting and 
+manipulating textual contents as well as splitting up the data into training and test sets. Both of 
+these processes are described in this section. 
+ 
+4.4.1. Transforming contents 
+ 
+As already mentioned, NYT documents are provided in xml format. To extract the actual texts 
+from the files, the Java interface included in the NYT corpus was used. It provides a simple way to 
+read individual fields from a document. Looking at the results, it was found that in many cases the 
+ 
+ 
+ 
+ 25  
+lead paragraph had been automatically added to the text content. This led to redundant sentences, 
+as illustrated below (sample taken from document 0000702.xml). 
+ 
+LEAD: New York City won its three-year fare freeze in Albany last week, 
+though from downstate the ice looked a little mushy. 
+New York City won its three-year fare freeze in Albany last week, though 
+from downstate the ice looked a little mushy. 
+The Legislature voted […] 
+ 
+Therefore, any initial paragraph starting with LEAD: was removed before further processing. 
+Another observation was that 99.7% of the extracted letters started with the paragraph To the 
+Editor:, which would have made automatic recognition of this class a trivial task. Furthermore, 
+this particular preceding sentence is not necessarily included in letter texts of other corpora. 
+Consequently, it was stripped off as well. 
+ 
+Texts in the NYT corpus have delimiters between paragraphs (<p> and </p> tags). However, 
+sentences within a paragraph are not delimited. As some of the algorithms use sentence-based 
+features, it was necessary to break the texts into sentences. The Sentence Detector tool developed 
+by the National Centre for Text Mining was found to be very accurate. The Java API is available 
+from [33].  
+ 
+As already mentioned in section 4.1, there are no part-of-speech (POS) tags assigned to words in 
+the NYT corpus. However, some of the algorithms that were to be assessed make use of such 
+information. Therefore, each of the extracted texts had to be POS tagged. For this task, a Java-
+based open source software called CRF Tagger [32] was used. It makes use of a conditional 
+random field tool kit (hence the name). The model used for POS tagging had been trained and 
+tested on the WSJ data set by the authors and achieved an accuracy of 97.0 % [32]. 
+ 
+In order for CRF Tagger to work properly, the texts had to be cleaned beforehand. It was found that 
+the software had problems assigning the correct tags to special characters, which were not common 
+punctuation. Therefore, such characters were removed. 
+ 
+For each document in the NYT corpus, 4 versions were kept: 
+ 
+• The original xml file containing the raw text and all meta-data 
+• The extracted text with each sentence in a separate line 
+• The version of the text without special characters 
+• The text annotated with POS tags 
+ 
+ 
+ 
+ 26  
+Less effort was required for pre-processing the WSJ documents. They already were provided in 
+raw text, with one sentence in every line. Furthermore, versions with assigned POS tags existed. 
+However, as found by Webber in [23], some of the letter documents actually contained several 
+concatenated letters. As this might have had an effect on classification results, these documents 
+were shortened manually. Only the first letter was kept. It was also found that some documents 
+start with a line containing only .START. Like the LEAD paragraph for NYT texts, it was removed. 
+ 
+4.4.2. Creating data sets 
+ 
+After the texts had been cleaned and prepared for feature extraction, they were separated into 
+balanced training and test sets. This means that each class was represented by the same amount of 
+documents. For the blended training and test sets of experiment C and D, the distribution of topics 
+was balanced as well. Other than that, all assignments were done pseudo-randomly. The final sets 
+consisted of the following documents: 
+ 
+Experimental setup A (Baseline) 
+Training NYT 87-98:  6.000 files (2.000 news, 2.000 letters, 2.000 reviews) 
+Test NYT 87-98:  3,000 files (1.000 news, 1.000 letters, 1.000 reviews) 
+ 
+Experimental setup B (Style) 
+Training NYT 87-98:  Same files as above 
+Test NYT 03-07:  3,000 files (1.000 news, 1.000 letters, 1.000 reviews) 
+Test WSJ:   162 files (54 news, 54 letters, 54 reviews) 
+ 
+As all the articles from the WSJ corpus were published in 1989, they fall into the time range used 
+in the training set. Only 54 letters could be identified in the WSJ corpus. Therefore, 54 news and 54 
+reviews were chosen pseudo-randomly. 
+ 
+Experimental setup C (Topic) 
+Training Blended: 2.000 files (500 health news, 500 defense news, 500 health letters, 
+500 defense letters) 
+Test Blended: 2.000 files (500 health news, 500 defense news, 500 health letters, 
+500 defense letters) 
+Training Paired: 2.000 files (1.000 defense news, 1.000 health letters) 
+Test Paired: 2.000 files (1.000 health news, 1.000 defense letters) 
+ 
+Experimental setup D (Topic) 
+Training Blended: 3.000 files (500 U.S. news, 500 non-U.S. news, 500 U.S. reviews, 
+500 non-U.S. reviews, 1.000 letters) 
+Test Blended: 3.000 files (500 U.S. news, 500 non-U.S. news, 500 U.S. reviews, 
+500 non-U.S. reviews, 1.000 letters) 
+Training Paired: 3.000 files (1.000 U.S. news, 1.000 non-U.S. reviews, 1.000 
+letters) 
+Test Paired: 3.000 files (1.000 non-U.S. news, 1.000 U.S. reviews, 1.000 
+letters) 
+ 
+ 
+ 
+ 27  
+In terms of project aims, setup A was compiled to find out about how the approaches compare in 
+general. Setup B was meant to detect how well classifiers cope with formerly unseen styles. Setup 
+C and D were created to examine and compare their domain transfer abilities. 
+ 
+No separate validation sets were required for this project. This is because the aim was not to 
+optimize feature compositions, choice of algorithms or parameter settings but rather to re-
+implement and assess specified methods. They were trained and tested as suggested in the 
+respective publications. 
+ 
+  
+ 
+ 
+ 
+ 28  
+5. Implementation and Classification 
+ 
+This section covers the creation of the document representations on the basis of the data sets 
+described in section 4.4. It also discusses the various classification methods used. This was done 
+according to the ideas proposed in four different publications on genre classification, with 
+publication dates ranging from 1994 to 2006. The aim was to stick to the authors’ specifications as 
+closely as possible and deviations are explained where they were necessary. 
+  
+5.1. Karlgren & Cutting (1994) 
+ 
+The algorithm proposed in [9] is one of the earliest approaches to automatic genre classification 
+and has been widely referenced in scientific literature on this topic (e.g. [7][25][24][29][28]). 
+Methods and results have often been compared to the ones presented by Karlgren & Cutting. 
+Therefore, including the algorithm in the test framework of this project seemed reasonable. 
+  
+The authors identify 20 features, which include counts of POS tags (e.g. adverbs) and certain 
+function words (e.g. therefore) as well as ratios of word- and character-level features (e.g. 
+type/token ratio). They employ discriminant analysis to predict genre classes on the basis of this 
+feature set. The standard software SPSS is used for classification. However, no distinction is made 
+between training and testing data. Thus, results obtained from tests on the training set are reported. 
+ 
+For the purpose of this project, all 20 features were extracted from the documents. Karlgren and 
+Cutting base their experiments on data taken from the Brown Corpus of Present-Day American 
+English [46]. All texts in the Brown corpus are approximately 2,000 words long. As the texts used 
+in this project vary in length, all counts were normalized by the number of words in a document 
+and multiplied with a factor of 2,000. 
+ 
+As SPSS is not available freely, the classification experiments were conducted with statistiXL, a 
+statistics tool kit add-in for Microsoft Excel. It can be obtained from [34] and includes discriminant 
+analysis functionalities. Any data format supported by Excel would have been suitable, so it was 
+decided to convert the extracted features into CSV (comma separated value) files. Unlike in the 
+experiments of Karlgren and Cutting, independent training and test sets were used (see section 4.4). 
+ 
+As far as the test data is concerned, the output of statistiXL consists merely of class predictions and 
+does not include accuracies. Therefore, a script was developed to compare actual classes in the test 
+ 
+ 
+ 
+ 29  
+set with those predicted by the algorithm. It computed all values required for assessing the 
+approach, including recall and precision values as well as confusion matrices. 
+ 
+To examine the influence of POS-based features, a second feature set was extracted from the data. 
+It contained all of the original features used in [9], except the ones that rely on POS tags. Other 
+than that, the procedure was not altered. Discriminant analysis was applied in the same way as 
+before. The feature sets and results of the approach with and without POS-based attributes were 
+handled independently. 
+ 
+5.2. Kessler, Nunberg & Schütze (1997) 
+ 
+Another benchmark in the field of genre classification is the work by Kessler, Nunberg & Schütze 
+[7]. They suggest the use of simply computable features (referred to as cues), which do not require 
+POS tagged texts. These are divided into three categories: Lexical, character-level and derivative 
+cues. The fourth group comprises structural cues, which do make use of POS tags and are 
+consequently ignored. 
+ 
+As the actual features used for classification are not reported in the publication, the authors were 
+contacted and asked to provide additional information. Unfortunately, the exact list of cues could 
+not be obtained. This was due to both the fact that this work was published over a decade earlier 
+and copyright reasons. However, notes from the time could be recovered and were made available 
+to the project by Nunberg [47]. While these were only rough ideas and unlikely to be identical to 
+the features used in [7], it was as accurate as possible. The lexical, character-level and derivative 
+cues mentioned were therefore extracted from the texts and used as feature set.  
+ 
+As stated in [7], ratios are not explicitly used as features by Kessler, Nunberg & Schütze. Instead, 
+counts are transformed into natural logarithms, so to represent ratios implicitly. The same was done 
+for this project. While the authors, like Karlgren & Cutting, work with the Brown corpus, they do 
+not use fixed length samples but rather individual texts with varying word numbers. Therefore, the 
+counts did not have to be normalized. An example is provided below. 
+ 
+Count of question marks:   
+Attribute value:      	 
+ 
+Occurrences of it:   
+Attribute value:      	  
+ 
+ 
+ 
+ 
+ 30  
+In spite of this implicit representation, some ratios are mentioned explicitly in [47]. This includes 
+type / token ratio and the average length of sentences. They were computed and added to the 
+feature set. Table 7 lists the features used for classification. 
+ 
+Feature Set 
+Word count 
+Sentence count 
+Character count 
+Types count 
+Sentences starting with And 
+Sentences starting with But 
+Sentences starting with So 
+Contraction Count 
+Relative day words (Yesterday, Today, Tomorrow) 
+Occurrences of (Last / This / Next) week 
+Occurrences of *, where 
+Occurrences of , but, 
+of course count 
+it count 
+shall count 
+will count 
+a bit count 
+hardly count 
+not count 
+Wh-Question count 
+Question mark count 
+Colons per word 
+Colons per sentence 
+Semicolons per sentence 
+Parentheses per sentence 
+Dashes per sentence 
+Commas per word 
+Commas per sentence 
+Quotation mark count 
+Average sentence length 
+Standard deviation of sentence length 
+Average word length 
+Standard deviation of word length 
+Type / Token ratio 
+Count of numerals 
+Count of dates 
+Count of numbers in brackets 
+Count of terms of address 
+ 
+Table 7: Feature set for Kessler, Nunberg & Schütze approach 
+ 
+For classification, three different algorithms are discussed by Kessler, Nunberg & Schütze. They 
+use logistic regression as well as two variations of artificial neural networks. One makes use of a 
+hidden layer (2-layer-perceptron), while the other has all input nodes connected to all output nodes 
+directly (3-layer-perceptron). All three of these classifiers were used for this project as well. The 
+open source data mining application Weka [36] was used for this purpose. Among other 
+techniques, it features logistic regression and multilayer perceptrons.  
+ 
+ 
+ 
+ 31  
+Input data is required to be in the Attribute-Relation File Format (ARFF). An example is shown 
+below. The last value in each data line denotes the class. The full specification can be found in the 
+book by Witten & Frank [36]. 
+ 
+@RELATION Training_KNS 
+ 
+@ATTRIBUTE ABitCount NUMERIC  
+[…] 
+@ATTRIBUTE XCommaWhere NUMERIC 
+@ATTRIBUTE class {1,2,3} 
+ 
+@DATA 
+0,1.39,0,[…],7.41,0.69,3 
+0.69,2.08,0,[…],9.11,0,1 
+ 
+The amount of neurons in the hidden layer was set to 6 for the first topic experiment and 9 for all 
+other runs. This corresponds to the 3 neurons per genre class suggested by Kessler, Nunberg & 
+Schütze. Weka outputs prediction accuracies as well as confusion, precision, recall and F-Measures 
+for all classes. Therefore, no further processing was required. 
+ 
+Kessler, Nunberg & Schütze also discuss the usefulness of structural cues. However, for their 
+experiments, they do not add any POS based features to their own set. Instead they compare their 
+results to the one achieved when utilizing the features suggested by Karlgren & Cutting [9]. 
+Nevertheless, the list of notes [47] does include various structural cues, partly distinct from what 
+was used in [9]. This includes both POS tag frequencies and more elaborate features. An example 
+of the latter would be fragments, which means sentences containing no verbs. 
+ 
+Additional structural cues 
+Present participle count 
+Past participle count 
+Adverb count 
+Noun count 
+Proper noun count 
+Adjective count 
+Existential there count 
+Attributive adjective count 
+Personal pronoun count 
+Prepositions + wh-word 
+Imperatives 
+Sentences starting with present participles 
+Sentences starting with past participles 
+Sentences starting with an adverb + comma 
+Fragment count (sentences with no verb) 
+Sentences ending with prepositions 
+ 
+Table 8: Additional structural cues for Kessler, Nunberg & Schütze approach 
+ 
+ 
+ 
+ 
+ 32  
+It was decided to run all the experiments based on this approach twice: Once as suggested in the 
+publication (i.e. not POS tagged texts required) and once with structural cues included. The aim 
+was to find out whether or not the algorithm could benefit from these features. Table 8 shows the 
+features, which were added to document representation. 
+ 
+5.3. Freund, Clarke & Toms (2006) 
+ 
+The 2006 study presented in [10] discusses the merits of genre analysis in a software engineering 
+workplace domain. The focus is on identifying genres from a number of workplace related sources 
+and analyzing characteristics like purpose, form, style, subject matter and related genres. However, 
+Freund, Clarke and Toms also carry out automatic classification on the set of identified genres.  
+ 
+As they are faced with heterogeneous sources and file formats, a simple bag-of-words approach is 
+chosen over more sophisticated feature extractions. Bag-of-words means that the feature set 
+consists of all the words found in a document collection, although it is often reduced by techniques 
+like word stemming, stop lists or feature selection. The values are either binary or represent the 
+frequencies of words in a specific document. The order of word appearances is not maintained. The 
+bag-of-words representation is commonly used for text classification tasks and several experiments 
+have suggested that it performs equally or better than more complicated methods in terms of 
+classification accuracy (e.g. [15][16]). For the experiments of Freund, Clarke & Toms, no word 
+stemming, stop lists or feature selection techniques are used. 
+ 
+The authors use SVM
+light
+ to classify the data. The software package is implemented in C and free 
+for non-commercial use. It can be obtained from [35]. SVM
+light
+ makes use of support vector 
+machines, which are a popular choice in the field of text classification (e.g. [16][20][21][48]). 
+ 
+The re-implementation of the feature extraction was relatively straightforward. For each pair of 
+training and test sets, all words occurring in the training set were used. The same features were 
+extracted from the test set, i.e. formerly unseen words were ignored. Capitalization was 
+disregarded, i.e. all words were transformed to lower case. As suggested in [10], no attempts were 
+made to reduce the amount of attributes. This way, over 142,000 independent features (i.e. different 
+words) were extracted from the baseline training set of 6,000 documents. In contrast to the other 
+assessed approaches, the classifying algorithm had to deal with an extremely large and sparse 
+feature set. 
+ 
+ 
+ 
+ 
+ 33  
+SVM
+light
+ was developed as a binary classifier and cannot handle more than two classes. This was 
+not a problem for the experiments of Freund, Clarke & Toms, as they were interested mainly in the 
+recall and precision values for each of the genres. However, such results cannot be compared to 
+results from multiple genre classification. Therefore, SVM
+light
+ could not be used to assess the 
+approach in this project. However, the same author provides an extension called SVM
+multiclass
+, 
+which does exactly what is required. As input, text files in a certain format are required. They were 
+created from the feature sets according to the specification. The following are two example 
+documents converted to lines in an input file. The first number indicates the class affiliation. All 
+other entries stand for the feature number and the frequency of the respective word in the document 
+text. By convention, features with value zero (i.e. words which do not occur) are omitted.  
+ 
+1 4:1 11:2 12:1 23:1 26:1 27:1 […] 35488:2 # Document 0000291.xml 
+2 4:2 8:1 11:1 12:1 […] 40478:1 70307:1 132636:1 # Document 0874961.xml 
+ 
+While SVM
+multiclass 
+does output the error rate on the test set, no confusion matrix or class specific 
+recall and precision values are provided. However, an output file including target predictions is 
+created after processing. This was used to calculate result statistics, using a variation of the script 
+mentioned in section 5.1. 
+ 
+5.4. Ferizis & Bailey (2006) 
+ 
+The work on genre classification by Ferizis & Bailey [24] examines the approximation of POS-
+based features. Their experiments are based on the method proposed by Karlgren & Cutting [9], as 
+discussed in section 5.1. The authors argue that comparable accuracies can be achieved by 
+estimating the frequency of certain POS tags. The advantage of this method is that no tagged texts 
+are required for classification, which speeds up processing significantly. In fact, 97.2 % of the time 
+it takes to classify a document the way Karlgren & Cutting suggested, is spent assigning POS tags 
+to its words [24]. This is a strong argument against parsing, especially in areas like information 
+retrieval, where speed is crucial. On the other hand, it has been suggested that POS tags can help to 
+achieve better classification accuracies [9][25][29]. 
+ 
+It seemed reasonable to assess an approach to POS frequency approximation in comparison to the 
+already mentioned methods of Karlgren & Cutting with and without POS frequencies. Using the 
+exact same non-POS features as before, approximations of the present participle and adverb 
+frequencies were added. In accordance with the approach of Ferizis & Bailey, noun frequencies 
+were ignored. 
+ 
+ 
+ 
+ 
+ 34  
+All words with a length greater than 5 characters and ending with the suffix -ing were counted as 
+present participles. Words longer than 4 characters and ending with -ly were counted as adverbs. In 
+addition, an independent training set containing 5,000 randomly sampled NYT documents was 
+created and POS tagged to find the 50 most common adverbs. The obtained words are shown in 
+Table 9. They, too, were used to determine adverbs. Note that the POS tagging in this case was not 
+part of the classification algorithm, but rather preliminary work which only had to be done once. 
+ 
+Rank 1-10 Rank 11-20 Rank 21-30 Rank 31-40 Rank 41-50 
+not 
+n't 
+also 
+now 
+so 
+more 
+only 
+even 
+just 
+as 
+then 
+most 
+still 
+well 
+too 
+here 
+never 
+very 
+back 
+much 
+ago 
+far 
+there 
+however 
+often 
+already 
+yet 
+again 
+once 
+almost 
+later 
+always 
+long 
+really 
+rather 
+ever 
+away 
+down 
+perhaps 
+about 
+recently 
+instead 
+up 
+probably 
+nearly 
+less 
+enough 
+first 
+together 
+especially 
+ 
+Table 9: Sorted list of the 50 most commonly occurring adverbs gathered from a training corpus containing 5,000 
+NYT documents. 
+ 
+As with the Karlgren & Cutting approach before, statistiXL was used to classify the data. To obtain 
+confusion matrices and accuracy values, the script mentioned in section 5.1 was used. 
+  
+ 
+ 
+ 
+ 35  
+6. Evaluation 
+ 
+The results of the experiments carried out for this project are presented in this section. It is 
+segmented into three lines of experiments, which correspond to the questions raised in section 3. 
+First, the baseline results for each approach are presented and discussed. Then, the impact of 
+stylistic changes is assessed. Finally, domain transfer vulnerability is evaluated. 
+ 
+For the purpose of this evaluation, the term significant denotes a statistically significant difference 
+within a 95% confidence interval. In addition to class specific recall and precision values, F-
+Measures were computed for each class, classifier and experiment. F-Measures are the harmonic 
+mean of precision and recall and are commonly used in the field of information retrieval. The 
+values for genre class c are computed as follows: 
+ 
+ 	
+
+  
+ 
+ 
+ 	
+
+  
+ 
+ 
+ 	
+
+    
+  
+ 
+ 
+where  stands for precision,  stands for recall,  stands for F-Measure,  stands for true 
+positives (correct prediction of c),  stands for false positives (c was predicted, but not true) and 
+ stands for false negatives (c was true, but not predicted). 
+ 
+As already noted in section 5.3, the extracted features for the experiments by Kessler, Nunberg & 
+Schütze are not necessarily identical to those used in this project. They are, however, assumed to be 
+very similar at least. This should be considered when interpreting the results presented in this 
+section. 
+ 
+6.1. Baseline experiment 
+ 
+Most results in previous work on genre classification were reported without taking the impact of 
+changing styles or topics into account. Therefore, as a baseline, experimental setup A (for details, 
+see section 4.4.2) was used to compare the different approaches to genre classification. Both 
+training and test sets consisted of documents from the NYT 87-98 collection, but no document was 
+used in both sets. No topical selection was performed. The distribution of the three genre classes 
+was balanced in both sets. 
+ 
+ 
+ 
+ 
+Figure 2: Basel
+ 
+The results are illustrated in 
+Toms (FCT) reaches a signifi
+very big difference, the POS f
+significantly worse than the or
+also performed significantly 
+features. All three methods a
+Kessler, Nunberg & Schütze (
+ 
+Both the Karlgren & Cutting 
+with POS based features (i.e
+artificial neural network expe
+between the results with and w
+ 
+6.2. The impact of style
+ 
+The second question to be an
+texts with a style differing fr
+assessed using experimental s
+98 documents. However, the a
+excluded in this experiment ei
+ 
+ 
+60%
+70%
+80%
+90%
+100%
+91.0%
+69.9%
+36 
+ine classification accuracies of 10 approaches and variat
+Figure 2. The bag-of-words based approach b
+cantly higher accuracy than any other algorithm
+requency approximation method by Ferizis & Ba
+iginal Karlgren & Cutting (KC) approach it is ba
+better than the Karlgren & Cutting algorithm 
+chieved a fairly low accuracy when compared t
+KNS) approach. 
+and the Kessler, Nunberg & Schütze results wer
+. structural cues) than without them. The only
+riment with no hidden layer (2LP). Here, no s
+ithout POS based features could be observed. 
+ 
+swered was how well the classifiers perform wh
+om the one they were trained on. To find out
+etup B (cf. section 4.4.2). The training set still c
+lgorithms were tested on NYT 03-07 and WSJ t
+ther. 
+67.0% 68.6%
+83.2% 82.6% 82.8%
+85.3%
+82.3%
+ 
+ 
+ions. 
+y Freund, Clarke & 
+. While it was not a 
+iley (FB) performed 
+sed on.  However, it 
+without POS based 
+o the variants of the 
+e significantly better 
+ exception was the 
+ignificant difference 
+en they are tested on 
+, all classifiers were 
+onsisted of NYT 87-
+exts. No topics were 
+85.3%
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Figure 3: Classification accu
+ 
+The expectation was that the 
+test sets as they did in the ba
+coped better with changing s
+were expected to be affected
+because letters are typically 
+bound to obey rules laid down
+ 
+Figure 3 shows the results for
+on the NYT 87-98 test set are 
+be observed for the Freund, C
+Both Karlgren & Cutting (KC
+affected, although all decrease
+the KNS classifier variations, 
+ 
+Surprisingly, this did not hold
+other classifiers, although the 
+method is less vulnerable to su
+40%
+50%
+60%
+70%
+80%
+90%
+100%
+83% 83%
+77%
+63%
+40%
+50%
+60%
+70%
+80%
+90%
+100% 91%
+37 
+racies of 10 approaches and variations tested on texts wi
+approaches would not perform as well on the N
+seline experiment. It was anticipated however, 
+tyles than others. Furthermore, precision and re
+ less by these changes than those of the other
+written by readers rather than journalists, thus
+ in style manuals. 
+ all of the assessed approaches. For comparison,
+shown as well (cf. Figure 2). A significant drop i
+larke & Toms (FCT) approach when tested on
+) variants and the Ferizis & Bailey (FB) method s
+s in accuracy were significant. The decrease was
+but not quite as severe as observed for the FCT a
+ for the WSJ test set. The drop was much more
+FCT performance did deteriorate significantly ag
+bstantial stylistic changes in document texts. 
+83% 85% 82% 85%
+76% 77%
+78%
+76%
+58% 58% 62% 61%
+FCT KC w/ POS KC w/o POS FB
+70% 67% 69%
+81%
+68%
+66%
+67%
+79%
+49% 46% 50
+ 
+ 
+th different styles. 
+YT 03-07 and WSJ 
+that some classifiers 
+call values of letters 
+ two genres. This is 
+ the authors are not 
+ the results achieved 
+n performance could 
+ the NYT 03-07 set. 
+eem to be much less 
+ more substantial for 
+pproach. 
+ severe for all of the 
+ain. It seems that the 
+79%
+64%
+Tested on 
+NYT 87-98
+Tested on 
+NYT 03-07
+Tested on 
+WSJ
+%
+Tested on 
+NYT 87-98
+Tested on 
+NYT 03-07
+Tested on 
+WSJ
+ 
+ 
+ 
+ 
+Research on automated auth
+characteristic which is widely
+token ratios. They are comm
+Apart from the Freund, Clark
+token ratios as a feature. In 
+within the training set, as can
+and KNS approaches sorted by
+ 
+Karlgren &
+Type / token
+Which freque
+Present verb
+Adverb frequ
+I frequency 
+Table 10: Five features w
+ 
+It is therefore possible that v
+different sources. As the FCT
+to stylistic changes. This of 
+approaches as well and type / 
+ 
+Another explanation might be
+word occurrences rather than 
+on features which are normali
+is probably true for the Kessle
+implicitly. Proportional featu
+Therefore, it is possible that n
+have a negative impact on pr
+formerly unseen sources. 
+ 
+Figure 4: Classification
+and proportional w
+70%
+80%
+90%
+100%
+F
+38 
+or identification might provide an explanation
+ accepted as a style marker is vocabulary richnes
+only used features in authorship classification
+e & Toms method, all approaches assessed in th
+fact, it is one of the most important discrimina
+ be seen in Table 10. It shows the top 5 features
+ their information gain. 
+ Cutting Kessler, Nunberg & Schüt
+ ratio 
+ncy 
+ frequency 
+ency 
+Word count 
+Sentence count 
+Type count 
+Count of dates 
+Type / token ratio 
+ 
+ith the highest information gain values for the NYT 87-9
+ocabulary richness is detrimental to genre pred
+ method does not make use of this feature, it mig
+course might be true for other features in the
+token ratio is just to be seen as an example. 
+ that the Freund, Clarke & Toms approach use
+proportional values. Two of the other assessed 
+zed by the number of words, characters or sente
+r, Nunberg & Schütze algorithm as well, for it r
+res are also very popular in literature on a
+ormalized counts classify writing style as well a
+ediction accuracies when the classifier is tested
+ accuracies for the Freund, Clarke & Toms approach w
+ord occurrences as features, tested on texts with differen
+CT absolute FCT proportional
+91% 90%
+81% 81%
+79%
+73%
+Tested o
+NYT 87
+Tested o
+NYT 03
+Tested o
+WSJ
+ 
+ for this. One text 
+s, indicated by type / 
+ tasks [11][12][14]. 
+is project use type / 
+tors between genres 
+ for the original KC 
+ze 
+8 training set. 
+iction in texts from 
+ht be less vulnerable 
+ KC, FB and KNS 
+s absolute counts of 
+methods rely mostly 
+nces in the text. This 
+epresents such ratios 
+uthor identification. 
+s genre. They might 
+ on documents from 
+ 
+ith absolute  
+t styles. 
+n 
+-98
+n 
+-07
+n 
+ 
+ 
+ 
+ 39  
+To test this hypothesis, all word counts of the FCT feature set were divided by the number of words 
+in the respective document. The SVM
+multiclass
+ classifier was trained again and tested on the NYT 87-
+98, NYT 03-07 and WSJ test sets. The results are shown in Figure 4. While the accuracies 
+remained approximately stable for both NYT test sets, the algorithm performed worse than before 
+on the WSJ test set. The drop from the NYT 87-98 to the WSJ test set is comparable to that of other 
+classifiers (cf. Figure 3). 
+ 
+The overall classification accuracies do not reveal what exactly the impact of the change in writing 
+style had been. They do not, for example, answer the question how well the approaches were able 
+to predict single genre classes. To this end, confusion matrices were compiled and compared for 
+each of the three test sets. Table 11 shows the values for the Freund, Clarke & Toms approach with 
+absolute attribute values. 
+ 
+ 3000 News Letter Review 
+News 1747 11 126 
+Letter 53 1951 115 
+Review 200 38 1759 
+Precision 92.7 % 92.1 % 88.1 % 
+Recall 87.4 % 97.6 % 88.0 % 
+F-Measure 90.0 % 94.7 % 88.0 % 
+ 
+ 
+ 
+3000 News Letter Review 
+News 1517 16 416 
+Letter 71 1944 169 
+Review 412 40 1415 
+Precision 77.8 % 89.0 % 75.8 % 
+Recall 75.9 % 97.2 % 70.8 % 
+F-Measure 76.8 % 92.9 % 73.2 % 
+ 
+ 3000 News Letter Review 
+News 52 1 23 
+Letter 1 50 5 
+Review 1 3 26 
+Precision 68.4 % 89.3 % 86.7 % 
+Recall 96.3 % 92.6 % 48.1 % 
+F-Measure 80.0 % 90.9 % 61.9 % 
+ 
+ 
+Table 11: Confusion matrices for Freund, Clarke & Toms classification results. The columns denote the actual 
+genre class. The first three rows denote genre class predictions. Upper: Tested on NYT 87-98 documents 
+(baseline). Lower left: Tested on NYT 03-07 documents. Lower right: Tested on WSJ documents. 
+ 
+When tested on documents from the NYT 87-98 collection, the classifier achieved high recall and 
+precision values for all three classes. It performed best on letters and not quite so well on reviews. 
+This is probably because the latter were defined less strictly (it could be a review, editorial or op-ed 
+article) and therefore easier to confuse. 
+ 
+As can be seen, the confusion matrix changed dramatically when the style in the test set was 
+different. While the F-Measure value for letters was hardly affected, the classifier performed much 
+ 
+ 
+ 
+ 40  
+worse on news articles and reviews than before. This was true for both the NYT 03-07 and the WSJ 
+test set. This pattern could be observed in the confusion matrices for all of the examined classifiers 
+(see Appendix B). The intuitive assumption that the prediction performance on the letter class 
+would suffer less from changing styles seems to be confirmed by these numbers. 
+ 
+An interesting observation is that many reviews in the WSJ test set were predicted as news articles, 
+while this only happened once the other way around. The high recall of the news class helped the 
+classifier to maintain the good accuracy value shown in Figure 3. 
+ 
+ 3000 News Letter Review 
+News 1248 157 501 
+Letter 324 1501 231 
+Review 428 342 1268 
+Precision 65.5  % 73.0 % 62.2 % 
+Recall 62.4 % 75.1 % 63.4 % 
+F-Measure 63.9 % 74.0 % 62.8 % 
+ 
+ 
+ 
+3000 News Letter Review 
+News 1223 46 744 
+Letter 305 1787 336 
+Review 472 167 920 
+Precision 60.8 % 73.6 % 59.0 % 
+Recall 61.2 % 89.4 % 46.0 % 
+F-Measure 61.0 % 80.7 % 51.7 % 
+ 
+ 3000 News Letter Review 
+News 28 3 26 
+Letter 18 33 14 
+Review 8 18 14 
+Precision 49.1 % 50.8 % 35.0 % 
+Recall 51.9 % 61.1 % 25.9 % 
+F-Measure 50.5 % 55.5 % 29.8 % 
+ 
+ 
+Table 12: Confusion matrices for Karlgren & Cutting (no POS) classification results. The columns denote the 
+actual genre class. The first three rows denote genre class predictions. Upper: Tested on NYT 87-98 documents 
+(baseline). Lower left: Tested on NYT 03-07 documents. Lower right: Tested on WSJ documents. 
+ 
+Table 12 shows the same values for the Karlgren & Cutting approach without POS based features. 
+It was picked to be analysed as it had the poorest performance of all examined classifiers for all 
+three test sets. Looking at the confusion matrix for the NYT 87-98 test set, one can see that higher 
+precision and accuracy was achieved for letters than for the other genres, which was true for the 
+Freund, Clarke & Toms approach as well. However, the values were on a much lower level. 
+ 
+The algorithms behaved very differently when tested on the NYT 03-07 test set. The Karlgren & 
+Cutting classifier performed even better on letters than before, at the cost of poor results for the 
+review class. The reason was that, in total, more documents were predicted to be letters and less 
+were classified as reviews if compared to the NYT 87-98 test set. The news class was affected only 
+marginally. The strong increase in news articles that were classified as reviews by the Freund, 
+ 
+ 
+ 
+ 41  
+Clarke & Toms approach cannot be observed in Table 12. This is one of the reasons why the 
+overall accuracy hardly dropped at all for this classifier. 
+ 
+The WSJ test set matrix looks very different. Predictions for all three genres were much more 
+inaccurate, with performance being particularly bad for the review class. Even letters could not be 
+classified too reliably. This is why the accuracy shown in Figure 3 was so low. 
+ 
+6.3. The impact of topic 
+ 
+The third line of experiments was carried out to test how vulnerable the genre classifiers are to 
+topical changes. It is divided into two parts, each with a different experimental setup. This was 
+done to gain more insights and make conclusions more meaningful.  
+ 
+6.3.1. First experiment 
+ 
+The first experiment was a two-class problem, where texts belonging to both genres were about 
+opposite topics in training and test sets. As far as data sets are concerned, experimental setup C was 
+used, which is described further in section 4.4.2. All training and testing was performed on disjoint 
+sets of documents from the NYT 87-98 collection. 
+ 
+It was expected that significant differences between classifiers would become obvious. While 
+accuracy levels could almost certainly not be maintained by any classifier after a domain transfer, it 
+was anticipated that some would not perform much worse while others would be heavily affected. 
+ 
+The results are shown in Figure 5. While the bag-of-words approach by Freund, Clarke & Toms 
+(FCT) performed very well in the baseline and style experiments, a vast accuracy drop could be 
+observed when tested on a different topic. None of the classifiers could maintain its level of 
+accuracy when tested on different topics. However, the extent of the decrease was significantly 
+greater for the FCT approach. When tested on the same topical distribution as in the training set, 
+the classifier achieved an almost flawless accuracy. When topics were inverted, the performance 
+was not significantly better than 50 %, which is the expected performance of a random guess 
+classifier in this two class problem.  
+ 
+ 
+ 
+ 
+ 
+ 
+Figure 5: Classification accu
+ 
+Another notable observation 
+without POS based features. F
+methods, the classifier was le
+used. 
+ 
+6.3.1. Second experiment 
+ 
+The second experiment was 
+genres in the test set. This wa
+in section 4.4.2. Like before, 
+and testing. 
+ 
+As the topics were only chang
+have more problems predict
+predicted equally well in both
+considered classification algor
+ 
+50%
+60%
+70%
+80%
+90%
+100%
+FCT
+97%
+52
+50%
+60%
+70%
+80%
+90%
+100%
+95% 95%94%
+42 
+racies of 10 approaches and variations tested on texts wi
+is the clear and significant difference between 
+or both the Karlgren & Cutting and the Kessler,
+ss vulnerable to topical changes where no PO
+a three-class problem where the topicality cha
+s referred to as experimental setup D before and
+disjoint subsets of the NYT 87-98 collection w
+ed for news articles and reviews, it was expecte
+ing these genre classes correctly. Letters wer
+ test sets. However, it was unclear if this would 
+ithms. 
+KC w/ POS KC w/o POS FB
+87% 85% 86%
+%
+82% 83%
+84%
+T
+te
+b
+d
+T
+te
+p
+95% 96% 96% 95%94% 94% 92% 92% 91%
+ 
+ 
+ 
+th different topics. 
+approaches with and 
+ Nunberg & Schütze 
+S based features are 
+nged for two of the 
+ details can be found 
+ere used for training 
+d that the classifiers 
+e anticipated to be 
+be true for all of the 
+rained and 
+sted on 
+lended 
+atasets
+rained and 
+sted on 
+aired datasets
+Trained and 
+tested on 
+blended 
+datasets
+Trained and 
+tested on 
+paired 
+datasets
+ 
+ 
+ 
+ 
+Figure 6: Classification accu
+ 
+Figure 6 illustrates the classif
+concerned, the drop in accura
+However, due to the uncha
+approaches proved more robu
+substantial than in experiment
+ 
+Again, it can be seen that the 
+changing topics when POS b
+algorithm used. For the Karlgr
+drop was slightly bigger with 
+ 
+Confusion matrices were com
+& Toms classifier), the recall
+this is why the accuracy loss 
+class was lower, which was du
+reviews. The reason for the p
+articles and – even more so –
+makes use of the correlation b
+results (cf. Figure 2). 
+ 
+60%
+70%
+80%
+90%
+100%
+FCT
+93%
+63%
+60%
+70%
+80%
+90%
+100% 89% 88%
+84%
+43 
+racies of 10 approaches and variations tested on texts wi
+ication results. As far as the Freund, Clarke & 
+cy that had been observed in the first experimen
+nged letter class, it was not quite as severe.
+st to the changes. It is interesting that the accura
+ one though. 
+Kessler, Nunberg & Schütze method seems to b
+ased features are included – regardless of the 
+en & Cutting approach, this is not quite as obvio
+POS features (5.7 %) than without (5.0 %). 
+piled for these results too. As can be seen in Tabl
+ value for letters remained at a very high level. 
+was less severe than it had been in experiment o
+e to a greater amount of letter predictions for tex
+oor performance was clearly the drop in correct 
+ for reviews. This suggests that the Freund, Clark
+etween topicality and genres of texts in a collec
+KC w/ POS KC w/o POS FB
+73% 71% 71%
+68% 66% 67%
+87% 90% 89% 89%
+85% 82% 81% 82% 78%
+ 
+ 
+ 
+th different topics. 
+Toms approach was 
+t, was evident again. 
+ Like before, other 
+cy losses were more 
+e more vulnerable to 
+actual classification 
+us. But here, too, the 
+e 13 (Freund, Clarke 
+As already assumed, 
+ne. Precision on this 
+ts that were actually 
+predictions for news 
+e & Toms approach 
+tion to achieve good 
+Trained and 
+tested on 
+blended 
+datasets
+Trained and 
+tested on 
+paired 
+datasets
+Trained and 
+tested on 
+blended 
+datasets
+Trained and 
+tested on 
+paired 
+datasets
+ 
+ 
+ 
+ 44  
+3000 News Letter Review 
+News 911 4 45 
+Letter 19 969 59 
+Review 70 27 896 
+Precision 94.9 % 92.6 % 90.2 % 
+Recall 91.1 % 96.9 % 89.6 % 
+F-Measure 93.0 % 94.7 % 89.9 % 
+ 
+ 3000 News Letter Review 
+News 658 3 480 
+Letter 26 976 270 
+Review 316 21 250 
+Precision 57.7 % 76.7 % 42.6 % 
+Recall 65.8 % 97.6 % 25.0 % 
+F-Measure 61.5 % 85.9 % 31.5 % 
+ 
+ 
+Table 13: Confusion matrices for Freund, Clarke & Toms classification results. The columns denote the actual 
+genre class. The first three rows denote genre class predictions. Left: Blended training and test sets. Right: Paired 
+training and test sets. 
+ 
+Table 14 shows the same confusion matrices for the original Kessler, Nunberg & Schütze method 
+using artificial neural networks with no hidden layer. It was picked because it had the lowest drop 
+in accuracy of all assessed methods (cf. Figure 6). If the results for the blended and the paired test 
+sets are compared, the same effects as for the Freund, Clarke & Toms approach become evident. 
+The letter class was hardly affected, while news and reviews were. However, unlike in Table 13, 
+the decreases in F-Measure percentage were significantly less severe. The classifier managed to 
+maintain a comparatively high level of precision and recall even for the review class. 
+ 
+3000 News Letter Review 
+News 839 21 54 
+Letter 33 893 37 
+Review 128 86 909 
+Precision 91.8 % 92.7 % 80.9 % 
+Recall 83.9 % 89.3 % 90.9 % 
+F-Measure 87.7 % 91.0 % 85.6 % 
+ 
+ 3000 News Letter Review 
+News 896 44 193 
+Letter 35 904 65 
+Review 69 52 742 
+Precision 79.1 % 90.0 % 86.0 % 
+Recall 89.6 % 90.4 % 74.2 % 
+F-Measure 84.0 % 90.2 % 79.7 % 
+ 
+ 
+Table 14: Confusion matrices for Kessler, Nunberg & Schütze (no POS features, 2LP) classification results. The 
+columns denote the actual genre class. The first three rows denote genre class predictions. Left: Blended training 
+and test sets. Right: Paired training and test sets. 
+ 
+In spite of that, reviews seem to be the reason why the drop in accuracy was more substantial than 
+it had been in experiment one, where only letters and news articles were used. Similar results can 
+be seen in the confusion matrices of the other assessed classifiers, which can be found in appendix 
+B of this report. 
+ 
+  
+ 
+ 
+ 
+ 45  
+7. Discussion 
+ 
+The previous sections of this report discuss an empirical study to assess and compare approaches to 
+genre classification. To evaluate their performance under various conditions, appropriate 
+experimental frameworks were compiled. The focus was on the impact of different writing styles 
+and topics. Subsequently, formerly suggested methods from scientific publications were re-
+implemented and compared on the basis of two newspaper corpora. In this section, findings are 
+summarized and an outlook on further research related to this project is provided. 
+ 
+7.1. Conclusion of findings 
+ 
+As far as accuracy is concerned, the bag-of-words based approach by Freund, Clarke & Toms is 
+clearly superior to any of the other considered classifiers when writing style and topics remain 
+fixed. However, it also produces enormous feature sets, which make classification computationally 
+expensive and require a lot of disk space. While evaluation in such terms was not within the scope 
+of this project, this surely is an issue. 
+ 
+The outcomes of the style experiments vary for this classifier. Results on the NYT 03-07 test set 
+indicate that the Freund, Clarke & Toms method is vulnerable to stylistic changes. However, on the 
+WSJ, it performs comparatively well. It seems that variations due to a different time period have a 
+greater effect than variations due to a different house style. An explanation might be the 
+distinctiveness from document representations typically used for author classification. 
+ 
+The domain transfer experiments reveal the weakness of the Freund, Clarke & Toms approach. The 
+bag-of-words feature set represents topics more than genres and therefore the classifier performs 
+poorly. This is not to say that the method should not be used for genre classification. The high 
+accuracy achieved in other experiments is partly due to the fact that existing topic-genre 
+correlations can be used as a latent feature. This can of course be very helpful. Therefore, the 
+classifier should be considered for tasks where the distributions of topics are known to be stable. 
+However, it is not suitable if domain transfers are expected or known to come up. In this respect, 
+the study results support the conclusions on bag-of-words based methods drawn by Finn & 
+Kushmerick [29]. 
+ 
+The approach by Kessler, Nunberg & Schütze also achieves very high accuracies in the baseline 
+experiment, using an array of both simple and more elaborate features. It does benefit from 
+additional POS based features (i.e. structural cues). However, the improvements, though 
+ 
+ 
+ 
+ 46  
+statistically significant, are very small and might not justify the computational overhead that comes 
+with POS tagging. The authors have come to the same conclusion in [7]. As far as classification 
+algorithms are concerned, logistic regression seems to be more suited for this task than artificial 
+neural networks. Again, it should be mentioned that the differences in performance are not big. 
+ 
+When faced with an unknown style in the test set, the results of the Kessler, Nunberg & Schütze 
+classifier are less impressive. For both the NYT 03-07 and the WSJ test sets, the accuracies are 
+considerably worse than they are for the NYT 87-98 test set. This is not true for any other assessed 
+approach. It is not clear whether structural cues are helpful for this task. 
+ 
+Domain transfers are handled very well and performance drops are comparatively low, even on a 
+high level of accuracy. Both experiments to investigate the impact of topics show that adding 
+structural cues to the feature set does not improve the results. In fact, the extent of accuracy loss 
+due to the domain transfer is higher with POS based features. This might be surprising, considering 
+that Finn & Kushmerick [29] found that POS frequencies are suited better than other types of 
+features for this task. However, there are three things to consider. 
+ 
+Firstly, the superiority of POS based features is not all that clear even in their experiments. For 
+some domain transfers (Politics → Football and Finance → Football) other document 
+representations outperform them. Secondly, they use very simple features, especially in the text 
+statistics category. The features used by Kessler, Nunberg & Schütze are more elaborate. Thirdly, 
+their conclusion is based on exclusive document representations, i.e. feature sets which only 
+comprise one type of feature. While they do experiment with combined feature sets as well, no 
+information is given on the contribution of each type. 
+ 
+In comparison to the two algorithms mentioned above, the accuracies achieved by the Karlgren & 
+Cutting method are significantly lower. This might be due to the smaller and simpler set of 
+features. When styles and topics are fixed, this approach, benefits from its use of POS based 
+features as well. The results deteriorate without them, although not by very much. The small 
+difference is why the approximation techniques proposed by Ferizis & Bailey have little effect. 
+Although the classifier does perform better than the approach without any POS based features, 
+there is very little leeway for improvements.  
+ 
+When tested on documents from a different time period, both the Karlgren & Cutting and the 
+Ferizis & Bailey methods perform well. The drop in accuracies is marginal. However, the 
+experiments with the WSJ test set reveal that these approaches are heavily affected by changing 
+ 
+ 
+ 
+ 47  
+styles. This is equally true for the Karlgren & Cutting feature set with and without POS 
+frequencies. 
+ 
+The two approaches seem to be suitable for tasks which include domain transfers. The two 
+respective experiments show that performances suffer comparatively little when faced with an 
+unknown topic-genre distribution in the test set. However, POS based features seem to have a 
+detrimental effect for this task. The Karlgren & Cutting approach copes better, if these features are 
+removed from the document representation. This is in accordance with the observations made for 
+the Kessler, Nunberg & Schütze method. 
+ 
+The comparable performances of the four assessed classifiers are the main outcome of this project. 
+However, additional insights have been revealed. It appears that some genres (in this case letters) 
+are less affected by changes in writing style. This would probably not be true if authorship (i.e. 
+personal style) rather than house style had been used. But even with authorship, it is imaginable 
+that some genres are more robust than others: Scientific articles by different scientists are probably 
+easier to predict than documents from their personal websites, as they are written in accordance 
+with stricter stylistic rules.  
+ 
+7.2. Further work 
+ 
+The project described in this report had clearly explorative character and was set in a field which is 
+just starting to be targeted intensely by scientists. Therefore, it provides plenty of pointers to further 
+research topics and also raises questions to be answered. 
+ 
+First of all, the extent of the experimental framework was limited by the time available for the 
+project. There are many different ways to compare approaches to genre classification and only a 
+subset has been applied. As shown in section 2.2, there are suggested classifiers which have not 
+been incorporated in the assessment. It would be interesting to see how other methods compare. 
+Also, evaluation itself could be done by additional criteria, like speed and space requirements. 
+ 
+Furthermore, the stylistic variety could be increased for further tests. Rather than using two U.S. 
+based newspapers, one could use documents from the UK, Australia or other English speaking 
+countries. Personal style instead of house style is also worth considering. The setup of genres and 
+data sets is another area that could be extended. How do classifiers compare in an environment 
+with a lot (much more than three) of different genres? Would some approaches perform well even 
+if differences between the classes are marginal? Which methods are suitable if the genre 
+ 
+ 
+ 
+ 48  
+distribution is heavily skewed in training and test sets? These questions are certainly important 
+enough to be answered.  
+ 
+But there are issues which go beyond simple extensions to the experimental framework. Most of 
+the research on author identification and some of the research on genre classification has pointed 
+out the importance of topic independent features. However, coming up with style independent 
+features for genre classification has not been tackled yet. The work presented in this report is could 
+be a good starting point. 
+ 
+A different but extremely interesting area of further research would be cross language genre 
+classification. Can a letter in German be recognised when the classifier was trained on English 
+documents? Can it be done without translating it first? While this is hard to imagine for topical 
+classification, translated function words and linguistic features like POS tags might well be able to 
+detect genres in foreign languages. 
+ 
+ 
+  
+ 
+ 
+ 
+ 49  
+Appendix A: Text samples 
+ 
+This appendix contains one text example for each class (and topic were applicable) which was used 
+in the experimental framework. The texts are raw, i.e. no pre-processing steps have been carried 
+out. The documents are chosen randomly, though very long texts were avoided for presentational 
+reasons. 
+ 
+Experimental Setup A/B: News article from NYT 87-98 (0840882.xml) 
+The earliest start in baseball history ended with another late-inning 
+victory by the Seattle Mariners. 
+Alex Rodriguez singled home the winning run with one out in the 12th 
+inning tonight, lifting the Mariners over the Chicago White Sox, 3-2, in 
+the first major league game played in March. 
+Edgar Martinez of Seattle had tied the game with a double in the bottom 
+of the ninth with the Mariners trailing by 2-1. 
+Randy Johnson struck out 14 in seven innings -- part of a team-record-
+tying 21 strikeouts by Seattle pitchers -- and Frank Thomas hit a two-run 
+homer for the White Sox. 
+Umpires unveiled new uniforms in the game, with the plate umpire, Jim 
+McKeon, and crew sticking out in bright red polo shirts. 
+With baseball wanting to update its look, American League umpires will 
+wear red and navy shirts this season. National League umpires will use 
+only the traditional navy. 
+BASEBALL 
+ 
+Experimental Setup A/B: Review from NYT 87-98 (0804525.xml) 
+Strange Days Ralph Fiennes, Angela Bassett, Juliette Lewis Directed by 
+Kathryn Bigelow R 145 minutes 
+In the final days of 1999 anarchy reigns in the streets of Los Angeles. 
+On the "drug" front, human experience is bought and sold as the latest 
+form of illicit thrill. Using a sort of virtual reality VCR to tap the 
+cerebral cortex,  one's feelings and sensations are recorded on disks, 
+called clips, and peddled like narcotics. Trouble escalates when the 
+hustler Lenny Nero (Mr. Fiennes) receives two clips, one showing the rape 
+and strangling of a call girl and the other the murder of a black rap 
+star. Lenny teams up with his friend Mace (Ms. Bassett) to mete out 
+justice. 
+VIOLENCE Murder, rape and mayhem; even the teen-age apostles of 
+ultraviolence from "A Clockwork Orange" would wince at some of what they 
+see in this movie. SEX Nudity and sexually explicit situations, both real 
+and virtual. PROFANITY A lot. FOR WHICH CHILDREN? AGES 15 and up While 
+the movie is not doing well at the box office, it could still be a topic 
+of conversation around the lunch table in the high school cafeteria. But, 
+to state the obvious, this is not an appropriate film for teen-agers, 
+even older ones, though some will want to see it. 
+FLETCHER ROBERTS 
+TAKING THE CHILDREN 
+ 
+Experimental Setup A/B/D: Letter from NYT 87-98 (0769415.xml) 
+To the Editor: 
+Re "So Long at the Fair" (editorial, June 11), on New York City's plans 
+to tear down part of the 1939 World's Fair: 
+ 
+ 
+ 
+ 50  
+New York City and the United States need a new World's Fair to define a 
+fresh vision of a better world and to reassert global leadership. 
+World's Fair 2000 would focus the leading talent of science, art, 
+communications and medicine on a new optimistic framework for life in the 
+next century. 
+A dazzling showplace would restate the belief that America and 
+particularly New York City are special places that have the imagination 
+and the directed energy to show the way. 
+It has been longer since the 1964 World's Fair than it was from the 1939 
+World's Fair to 1964. Aging baby boomers, who began with such claims of 
+idealism, have not a moment to waste.  CLIFTON A. LEONHARDT  Avon, Conn., 
+June 11, 1995 
+       
+Experimental Setup B: News Article from NYT 03-07 (1586840.xml) 
+A man who robbed an Apple Bank on 18th Avenue in Bensonhurst with a 
+handgun yesterday was being sought by the police last night. He handed a 
+note to a teller around 10 A.M. and fled with an undetermined amount of 
+money, the police said. There were no injuries. The robber (photo at 
+left), is described as a white man in his 40's, about 5 feet 5 inches 
+tall, 240 pounds, and with thinning gray hair. He was wearing a blue 
+Windbreaker, a blue Adidas shirt, torn and dirty jeans and white 
+sneakers. Anyone with information is asked to call Crime Stoppers at 1-
+800-577-TIPS (1-800-577-8477). 
+Michael Wilson (NYT) 
+ 
+Experimental Setup B: Review from NYT 03-07 (1459486.xml) 
+For weeks, during the 91st campaign of The New York Times Neediest Cases 
+Fund, Times readers have been able to glimpse the lives of people they 
+help through the fund. 
+Carolyn Braddy, who has raised her four children despite multiple 
+sclerosis, received help with her rent. Vinod Gupta, who has a heart 
+condition and a brain tumor, now has beds where his family can sleep. Roy 
+Lantigua, 11, blessed with intellect and ambition but born with 
+underdeveloped legs and no arms, has a new computer to help him discover 
+a world that has been beyond his reach. And there is Caryll Adderley, 
+whose cancer has given her about a year to teach her 16-year-old son, an 
+aspiring chef, how to survive without her. His chances look better now 
+that he has received the equipment he needs to learn his craft. 
+These New Yorkers remind us how unexpected circumstances can ruin the 
+most modest expectations. So many readers have helped with donations, 
+with apartments, even jobs. Others sent checks to the fund's seven 
+participating agencies. While total contributions are short of last 
+year's level, this campaign has been remarkable for the number of people 
+responding: 2 percent more than last year, many of them first-time 
+donors. Despite the economic hard times -- or perhaps because of them -- 
+these generous people animated Thomas Jefferson's belief that ''every 
+human mind feels pleasure in doing good to another.'' Their donations 
+mean that thousands of other stories may have happier endings and 
+brighter new beginnings. 
+To add your contribution, you may donate online at 
+www.nytimes.com/neediest or at CharityWave .com; write a check, made 
+payable to The New York Times Neediest Cases Fund, and send it to 4 Chase 
+Metrotech Center, 7th Floor East, Lockbox 5193, Brooklyn, N.Y. 11245; or 
+give by telephone at (212) 556-5851 (Extension 7). To delay may mean to 
+forget. The current campaign ends on Friday. 
+       
+ 
+ 
+ 
+ 51  
+Experimental Setup B: Letter from NYT 03-07 (1643436.xml) 
+To the Editor: 
+Bob Lape, the restaurant critic for Crain's New York Business and WCBS-AM 
+radio and a noted food writer, should not have been included in ''At 
+Celebrity Nuptials to Die For, Vendors Give Themselves Away'' (front 
+page, Jan. 13), about how celebrities lure donations for their weddings. 
+Mr. Lape's wedding last fall raised money for charities that feed the 
+hungry and finance breast cancer research. Guests were asked to make 
+donations to these worthy causes instead of bringing gifts. I attended 
+the event. That's what guests did. 
+Mr. Lape has been covering the restaurant scene in New York for decades 
+now. The readers of Crain's and the listeners of WCBS-AM evaluate his 
+work every week and tell me they have found his judgments to mirror their 
+own. A critic can receive no higher praise. 
+Greg David  Editor  Crain's New York Business  New York, Jan. 15, 2005 
+ 
+Experimental Setup B: News article from WSJ (wsj_0713) 
+West German and French authorities have cleared Dresdner Bank AG's 
+takeover of a majority stake in Banque Internationale de Placement (BIP), 
+Dresdner Bank said.  
+ 
+The approval, which had been expected, permits West Germany's second-
+largest bank to acquire shares of the French investment bank.  
+ 
+In a first step, Dresdner Bank will buy 32.99% of BIP for 1,015 French 
+francs ($162) a share, or 528 million francs ($84.7 million). 
+Dresdner Bank said it will also buy all shares tendered by shareholders 
+on the Paris Stock Exchange at the same price from today through Nov. 17. 
+In addition, the bank has an option to buy a 30.84% stake in BIP from 
+Societe Generale after Jan. 1, 1990 at 1,015 francs a share. 
+ 
+Experimental Setup B: Review from WSJ (wsj_1818) 
+The Associated Press's earthquake coverage drew attention to a phenomenon 
+that deserves some thought by public officials and other policy makers. 
+Private relief agencies, such as the Salvation Army and Red Cross, 
+mobilized almost instantly to help people, while the Washington 
+bureaucracy "took hours getting into gear." One news show we saw 
+yesterday even displayed 25 federal officials meeting around a table. 
+We recall that the mayor of Charleston complained bitterly about the 
+federal bureaucracy's response to Hurricane Hugo. 
+The sense grows that modern public bureaucracies simply don't perform 
+their assigned functions well. 
+ 
+Experimental Setup B: Letter from WSJ (wsj_2206) 
+Ambassador Paul Nitze's statement (Notable & Quotable, September 20), "If 
+you have a million people working for you, every bad thing that has one 
+chance in a million of going wrong will go wrong at least once a year," 
+is a pretty negative way of looking at things. 
+Isn't it just as fair to say that if you have a million people working 
+for you, every good thing that has one chance in a million of going right 
+will go right at least once a year? 
+Don't be such a pessimist, Mr. Ambassador. 
+Frank Tremdine 
+South Bristol, Maine 
+ 
+ 
+ 
+ 
+ 52  
+Experimental Setup C: News article about health (0159067.xml) 
+LEAD: More than 100 vials containing blood washed ashore from Newark Bay 
+and were turned over to the New Jersey Department of Health, the police 
+said today. 
+More than 100 vials containing blood washed ashore from Newark Bay and 
+were turned over to the New Jersey Department of Health, the police said 
+today. 
+Two boys found about 40 vials filled with blood Sunday afternoon and put 
+them in garbage cans, Police Chief James F. Sisk said. They later decided 
+to notify the police, he said. 
+The police retrieved the vials from the garbage, and more vials were 
+later found on the bay's shore and in the water, bringing the total to 
+105, Chief Sisk said. Officers also found a syringe, he said. 
+The police gave the materials to the health department for examination, 
+Chief Sisk said. 
+ 
+Experimental Setup C: Letter about health (0977245.xml) 
+To the Editor: 
+Re ''Unregulated Herbal Supplements'' (editorial, Nov. 28): 
+In 1994 Congress diminished the Food and Drug Administration's authority 
+to label or ban herbal products. Under the law, in what has amounted to a 
+deregulation of this $2 billion industry, herbal companies are free to 
+market organically grown drugs that if man-made would be subject to 
+Government approval. 
+While the report by the Federal Commission on Dietary Supplement Labels 
+advises consumers to do their homework, most of the marketing materials 
+are written by manufacturers who have little incentive to educate the 60 
+million Americans who use these supplements daily. 
+Last year the Nassau County Legislature, prompted by the death of a 20-
+year-old college student, banned the sale of certain ephedra-based 
+products. Gov. George E. Pataki followed with a stronger statewide ban on 
+the herbal stimulant. 
+As Secretary of Health and Human Services Donna E. Shalala weighs which 
+if any of the commission's recommendations to propose as formal rules, it 
+would be wise for the agency to insure that local jurisdictions have the 
+authority to police the marketplace as a stand-in for the enfeebled 
+F.D.A. 
+RICHARD SCHRADER  Director  Citizen Action of New York City  New York, 
+Dec. 1, 1997 
+ 
+Experimental Setup C: News article about defense (0447600.xml) 
+The Douglas Aircraft Company is redesigning major sections of the tail on 
+its new C-17 military cargo jet to bolster weak spots detected recently, 
+a spokesman for the McDonnell Douglas Corporation unit said. The 
+corrections are being made just five weeks before the scheduled first 
+flight of the C-17, but Douglas expects no major delays, said the 
+spokesman, Jim Ramsey. 
+One set of weak spots that were detected during tests mimicking flight 
+stress will be repaired by the addition of material weighing about 2 
+pounds, Mr. Ramsey said. Earlier tests had prompted Douglas engineers to 
+add about 65 pounds of material to the vertical structure to increase its 
+strength, he said. 
+COMPANY NEWS 
+ 
+ 
+ 
+ 
+ 
+ 53  
+Experimental Setup C: Letter about defense (0476217.xml) 
+To the Editor: 
+Now that President Mikhail S. Gorbachev has announced the Soviet Union's 
+intention to withdraw Soviet troops from Cuba, isn't this the moment for 
+President Bush to announce withdrawal of our naval and marine forces from 
+Guantanamo Bay in Cuba and begin the dismantling of our base on Cuban 
+soil? 
+And to lift the embargo and develop decent, businesslike relations with 
+our neighbor? SIMON W. GERSON Brooklyn, Sept. 12, 1991 
+ 
+Experimental Setup D: U.S. based news article (0215114.xml) 
+LEAD: Executives seeking lucrative contracts to repair city vehicles paid 
+kickbacks to officials of the Environmental Protection Department and the 
+Triborough Bridge and Tunnel Authority, officials said yesterday. Guilty 
+pleas were announced for four city officials and vendors from Samson 
+Manufacturing and Durante Maintenance and Equipment at a news conference 
+yesterday by Mayor Edward I. 
+Executives seeking lucrative contracts to repair city vehicles paid 
+kickbacks to officials of the Environmental Protection Department and the 
+Triborough Bridge and Tunnel Authority, officials said yesterday. Guilty 
+pleas were announced for four city officials and vendors from Samson 
+Manufacturing and Durante Maintenance and Equipment at a news conference 
+yesterday by Mayor Edward I. Koch and United States Attorney Rudolph W. 
+Giuliani. 
+       
+Experimental Setup D: U.S. based review (0897854.xml) 
+Here are choices by the pop and jazz critics of The New York Times of New 
+Year's Eve celebrations that were not sold out at press time. (An 
+introduction appears on page C1.) 
+Blues Traveler, Madison Square Garden, Seventh Avenue at 32d Street, 
+Manhattan, (212) 307-7171 or (212) 465-6741. Last New Year's Eve at 
+Roseland, Blues Traveler celebrated its first hit, ''Run Around,'' a 
+reward for nine years of nonstop touring. Success doesn't seem to have 
+stopped for the band, which moves its annual New Year's Eve bash up a 
+notch to the Garden. But even when playing arenas, Blues Traveler remains 
+a bar band at heart, indulging in lengthy 1960's-style jams that bobble 
+back and forth between the rapid harmonica solos of John Popper and the 
+hard guitar riffing of Chan Kinchla. The performance, with They Might Be 
+Giants opening, is at 8 P.M. Tickets are $35. 
+NEIL STRAUSS 
+Sounds Around Town: On New Year's Eve -- Rock and Pop 
+ 
+Experimental Setup D: Non-U.S. based news article (0862699.xml) 
+A subsidiary of the Norwegian industrial giant Norsk Hydro A.S. is 
+holding talks with the Government of Trinidad and Tobago on the 
+construction of a $750 million aluminum smelter, Trinidad's Energy 
+Minister, Finbar Gangar, said. Hydro Aluminum, a subsidiary of Norsk 
+Hydro's metal producing companies, is conducting feasibility studies for 
+a smelter with a capacity of 200,000 metric tons a year. 
+(Bloomberg Business News) 
+INTERNATIONAL BRIEFS 
+ 
+ 
+ 
+ 
+ 
+ 54  
+Experimental Setup D: Non-U.S. based review (0444878.xml) 
+Myanmar's oddly named junta, the Slorc, for State Law and Order 
+Restoration Council, seized power nearly three years ago (when the 
+country was known as Burma) by mowing down thousands of unarmed students. 
+Its repressive methods are no more subtle now. 
+When elections last year produced an overwhelming majority for the 
+democratic opposition, the Slorc refused to let the new assembly convene 
+and arrested all leaders of the victorious party, starting with Aung San 
+Suu Kyi, Myanmar's most popular political figure. When Buddhist monks 
+protested this arrogance, the Slorc sent soldiers into the monasteries. 
+Now, the Slorc has grown curious about the opinions of the country's 
+civil servants. According to Bertil Lintner of the Far Eastern Economic 
+Review, who has done much to bring the Slorc's crimes to light, all civil 
+servants recently received a questionnaire. Among the questions asked 
+were: "Are you in favor of a C.I.A. intervention?" and "Do you want 
+Myanmar to lose its sovereignty?" Not many yes answers are anticipated. 
+One question was more personal: "Should a person who is married to a 
+foreigner become the leader of Myanmar?" The reference is to Aung San Suu 
+Kyi, whose husband is British. Has the Slorc forgotten that something 
+very close to this question was asked of the entire electorate in 1990? 
+And that the answer was yes? 
+ 
+       
+  
+ 
+ 
+ 
+ 55  
+Appendix B: Confusion matrices  
+ 
+For each of the ten variants of classifiers and each of the seven classification tasks, a confusion 
+matrix was compiled. The values are listed below, sorted by classification task. 
+ 
+Experimental setup A (Test set NYT 87-98) 
+ 
+FCT 
+3000 News Letter Review 
+News 1747 11 126 
+Letter 53 1951 115 
+Review 200 38 1759 
+Precision 92.7 % 92.1 % 88.1 % 
+Recall 87.4 % 97.6 % 88.0 % 
+F-Measure 90.0 % 94.7 % 88.0 % 
+ 
+ 
+ 
+ 
+ 
+ 
+FB 
+3000 News Letter Review 
+News 1327 191 461 
+Letter 284 1467 219 
+Review 389 342 1320 
+Precision 67.1 % 74.5 % 64.4 % 
+Recall 66.4 % 73.4 % 66.0 % 
+F-Measure 66.7 % 73.9 % 65.2 % 
+ 
+ 
+KC w/o POS 
+3000 News Letter Review 
+News 1248 157 501 
+Letter 324 1501 231 
+Review 428 342 1268 
+Precision 65.5 % 73.0 % 62.2 % 
+Recall 62.4 % 75.1 % 63.4 % 
+F-Measure 63.9 % 74.0 % 62.8 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KC w/ POS 
+3000 News Letter Review 
+News 1348 180 435 
+Letter 251 1485 203 
+Review 401 335 1362 
+Precision 68.7 % 76.6 % 64.9 % 
+Recall 67.4 % 74.3 % 68.1 % 
+F-Measure 68.0 % 75.4 % 66.5 % 
+ 
+ 
+KNS w/o POS. LR 
+3000 News Letter Review 
+News 1572 62 258 
+Letter 94 1804 128 
+Review 334 134 1614 
+Precision 83.1 % 89.0 % 77.5 % 
+Recall 78.6 % 90.2 % 80.7 % 
+F-Measure 80.8 % 89.6 % 79.1 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. LR 
+3000 News Letter Review 
+News 1639 46 239 
+Letter 71 1825 110 
+Review 290 129 1651 
+Precision 85.2 % 91.0 % 79.8 % 
+Recall 82.0 % 91.3 % 82.6 % 
+F-Measure 83.5 % 91.1 % 81.1 % 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 56  
+KNS w/o POS. 2LP 
+3000 News Letter Review 
+News 1585 42 284 
+Letter 166 1869 217 
+Review 249 89 1499 
+Precision 82.9 % 83.0 % 81.6 % 
+Recall 79.3 % 93.5 % 75.0 % 
+F-Measure 81.1 % 87.9 % 78.1 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 2LP 
+3000 News Letter Review 
+News 1731 61 448 
+Letter 110 1879 222 
+Review 159 60 1330 
+Precision 77.3 % 85.0 % 85.9 % 
+Recall 86.6 % 94.0 % 66.5 % 
+F-Measure 81.7 % 89.2 % 75.0 % 
+ 
+ 
+KNS w/o POS. 3LP 
+3000 News Letter Review 
+News 1659 102 310 
+Letter 111 1828 208 
+Review 230 70 1482 
+Precision 80.1 % 85.1 % 83.2 % 
+Recall 83.0 % 91.4 % 74.1 % 
+F-Measure 81.5 % 88.2 % 78.4 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 3LP 
+3000 News Letter Review 
+News 1662 42 260 
+Letter 118 1873 156 
+Review 220 85 1584 
+Precision 84.6 % 87.2 % 83.9 % 
+Recall 83.1 % 93.7 % 79.2 % 
+F-Measure 83.9 % 90.3 % 81.5 % 
+ 
+ 
+Experimental setup B (Test set NYT 03-07) 
+ 
+FCT 
+3000 News Letter Review 
+News 1517 16 416 
+Letter 71 1944 169 
+Review 412 40 1415 
+Precision 77.8 % 89.0 % 75.8 % 
+Recall 75.9 % 97.2 % 70.8 % 
+F-Measure 76.8 % 92.9 % 73.2 % 
+ 
+ 
+ 
+ 
+ 
+ 
+FB 
+3000 News Letter Review 
+News 1282 88 675 
+Letter 270 1747 317 
+Review 448 165 1008 
+Precision 62.7 % 74.9 % 62.2 % 
+Recall 64.1 % 87.4 % 50.4 % 
+F-Measure 63.4 % 80.6 % 55.7 % 
+ 
+ 
+KC w/o POS 
+3000 News Letter Review 
+News 1223 46 744 
+Letter 305 1787 336 
+Review 472 167 920 
+Precision 60.8 % 73.6 % 59.0 % 
+Recall 61.2 % 89.4 % 46.0 % 
+F-Measure 61.0 % 80.7 % 51.7 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KC w/ POS 
+3000 News Letter Review 
+News 1270 60 611 
+Letter 277 1728 305 
+Review 453 212 1084 
+Precision 65.4 % 74.8 % 62.0 % 
+Recall 63.5 % 86.4 % 54.2 % 
+F-Measure 64.5 % 80.2 % 57.8 % 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 57  
+KNS w/o POS. LR 
+3000 News Letter Review 
+News 1329 66 456 
+Letter 143 1863 138 
+Review 528 71 1406 
+Precision 71.8 % 86.9 % 70.1 % 
+Recall 66.5 % 93.2 % 70.3 % 
+F-Measure 69.0 % 89.9 % 70.2 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. LR 
+3000 News Letter Review 
+News 1367 49 459 
+Letter 128 1885 128 
+Review 505 66 1413 
+Precision 72.9 % 88.0 % 71.2 % 
+Recall 68.4 % 94.3 % 70.7 % 
+F-Measure 70.6 % 91.0 % 70.9 % 
+ 
+ 
+KNS w/o POS. 2LP 
+3000 News Letter Review 
+News 1309 36 460 
+Letter 265 1934 252 
+Review 426 30 1288 
+Precision 72.5 % 78.9 % 73.9 % 
+Recall 65.5 % 96.7 % 64.4 % 
+F-Measure 68.8 % 86.9 % 68.8 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 2LP 
+3000 News Letter Review 
+News 1509 35 669 
+Letter 210 1948 219 
+Review 281 17 1112 
+Precision 68.2 % 82.0 % 78.9 % 
+Recall 75.5 % 97.4 % 55.6 % 
+F-Measure 71.6 % 89.0 % 65.2 % 
+ 
+ 
+KNS w/o POS. 3LP 
+3000 News Letter Review 
+News 1470 67 523 
+Letter 213 1888 202 
+Review 317 45 1275 
+Precision 71.4 % 82.0 % 77.9 % 
+Recall 73.5 % 94.4 % 63.8 % 
+F-Measure 72.4 % 87.8 % 70.1 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 3LP 
+3000 News Letter Review 
+News 1444 30 487 
+Letter 220 1928 162 
+Review 336 42 1351 
+Precision 73.6 % 83.5 % 78.1 % 
+Recall 72.2 % 96.4 % 67.6 % 
+F-Measure 72.9 % 89.5 % 72.5 % 
+ 
+ 
+Experimental setup B (Test set WSJ) 
+ 
+FCT 
+3000 News Letter Review 
+News 52 1 23 
+Letter 1 50 5 
+Review 1 3 26 
+Precision 68.4 % 89.3 % 86.7 % 
+Recall 96.3 % 92.6 % 48.1 % 
+F-Measure 0.8 % 90.9 % 61.9 % 
+ 
+ 
+ 
+ 
+ 
+ 
+FB 
+3000 News Letter Review 
+News 29 2 21 
+Letter 15 32 13 
+Review 10 20 20 
+Precision 55.8 % 53.3 % 40.0 % 
+Recall 53.7 % 59.3 % 37.0 % 
+F-Measure 54.7 % 56.1 % 38.5 % 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 58  
+KC w/o POS 
+3000 News Letter Review 
+News 28 3 26 
+Letter 18 33 14 
+Review 8 18 14 
+Precision 49.1 % 50.8 % 35.0 % 
+Recall 51.9 % 61.1 % 25.9 % 
+F-Measure 50.5 % 55.5 % 29.8 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KC w/ POS 
+3000 News Letter Review 
+News 29 3 23 
+Letter 14 32 13 
+Review 11 19 18 
+Precision 52.7 % 54.2 % 37.5 % 
+Recall 53.7 % 59.3 % 33.3 % 
+F-Measure 53.2 % 56.6 % 35.3 % 
+ 
+ 
+KNS w/o POS. LR 
+3000 News Letter Review 
+News 31 5 20 
+Letter 9 38 2 
+Review 14 11 32 
+Precision 55.4 % 77.6 % 56.1 % 
+Recall 57.4 % 70.4 % 59.3 % 
+F-Measure 56.4 % 73.8 % 57.7 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. LR 
+3000 News Letter Review 
+News 35 2 23 
+Letter 9 39 4 
+Review 10 13 27 
+Precision 58.3 % 75.0 % 54.0 % 
+Recall 64.8 % 72.2 % 50.0 % 
+F-Measure 61.4 % 73.6 % 51.9 % 
+ 
+ 
+KNS w/o POS. 2LP 
+3000 News Letter Review 
+News 30 5 21 
+Letter 11 38 7 
+Review 13 11 26 
+Precision 53.6 % 67.9 % 52.0 % 
+Recall 55.6 % 70.4 % 48.1 % 
+F-Measure 54.5 % 69.1 % 50.0 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 2LP 
+3000 News Letter Review 
+News 40 5 28 
+Letter 9 40 7 
+Review 5 9 19 
+Precision 54.8 % 71.4 % 57.6 % 
+Recall 74.1 % 74.1 % 35.2 % 
+F-Measure 63.0 % 72.7 % 43.7 % 
+ 
+ 
+KNS w/o POS. 3LP 
+3000 News Letter Review 
+News 34 6 27 
+Letter 9 37 4 
+Review 11 11 23 
+Precision 50.7 % 74.0 % 51.1 % 
+Recall 63.0 % 68.5 % 42.6 % 
+F-Measure 56.2 % 71.2 % 46.5 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 3LP 
+3000 News Letter Review 
+News 39 2 24 
+Letter 6 41 7 
+Review 9 11 23 
+Precision 60.0 % 75.9 % 53.5 % 
+Recall 72.2 % 75.9 % 42.6 % 
+F-Measure 65.5 % 75.9 % 47.7 % 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 59  
+Experimental setup C (Blended test set) 
+ 
+FCT 
+3000 News Letter 
+News 952 12 
+Letter 48 988 
+Precision 98.8 % 95.4 % 
+Recall 95.2 % 98.8 % 
+F-Measure 96.9 % 97.1 % 
+ 
+ 
+ 
+ 
+ 
+ 
+FB 
+3000 News Letter 
+News 845 117 
+Letter 155 883 
+Precision 87.8 % 85.1 % 
+Recall 84.5 % 88.3 % 
+F-Measure 86.1 % 86.7 % 
+ 
+ 
+KC w/o POS 
+3000 News Letter 
+News 827 128 
+Letter 173 872 
+Precision 86.6 % 83.4 % 
+Recall 82.7 % 87.2 % 
+F-Measure 84.6 % 85.3 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KC w/ POS 
+3000 News Letter 
+News 849 105 
+Letter 151 895 
+Precision 89.0 % 85.6 % 
+Recall 84.9 % 89.5 % 
+F-Measure 86.9 % 87.5 % 
+ 
+ 
+KNS w/o POS. LR 
+3000 News Letter 
+News 937 32 
+Letter 63 968 
+Precision 96.7 % 93.9 % 
+Recall 93.7 % 96.8 % 
+F-Measure 95.2 % 95.3 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. LR 
+3000 News Letter 
+News 951 23 
+Letter 49 977 
+Precision 97.6 % 95.2 % 
+Recall 95.1 % 97.7 % 
+F-Measure 96.4 % 96.4 % 
+ 
+ 
+KNS w/o POS. 2LP 
+3000 News Letter 
+News 926 24 
+Letter 74 976 
+Precision 97.5 % 93.0 % 
+Recall 92.6 % 97.6 % 
+F-Measure 95.0 % 95.2 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 2LP 
+3000 News Letter 
+News 949 25 
+Letter 51 975 
+Precision 97.4 % 95.0 % 
+Recall 94.9 % 97.5 % 
+F-Measure 96.1 % 96.2 % 
+ 
+ 
+KNS w/o POS. 3LP 
+3000 News Letter 
+News 927 34 
+Letter 73 966 
+Precision 96.5 % 93.0 % 
+Recall 92.7 % 96.6 % 
+F-Measure 94.5 % 94.8 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 3LP 
+3000 News Letter 
+News 939 31 
+Letter 61 969 
+Precision 96.8 % 94.1 % 
+Recall 93.9 % 96.9 % 
+F-Measure 95.3 % 95.5 % 
+ 
+ 
+ 
+ 
+ 60  
+Experimental setup C (Paired test set) 
+ 
+FCT 
+3000 News Letter 
+News 412 372 
+Letter 588 628 
+Precision 52.6 % 51.6 % 
+Recall 41.2 % 62.8 % 
+F-Measure 46.2 % 56.7 % 
+ 
+ 
+ 
+ 
+ 
+ 
+FB 
+3000 News Letter 
+News 865 181 
+Letter 135 819 
+Precision 82.7 % 85.8 % 
+Recall 86.5 % 81.9 % 
+F-Measure 84.6 % 83.8 % 
+ 
+ 
+KC w/o POS 
+3000 News Letter 
+News 836 170 
+Letter 164 830 
+Precision 83.1 % 83.5 % 
+Recall 83.6 % 83.0 % 
+F-Measure 83.3 % 83.2 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KC w/ POS 
+3000 News Letter 
+News 821 181 
+Letter 179 819 
+Precision 81.9 % 82.1 % 
+Recall 82.1 % 81.9 % 
+F-Measure 82.0 % 82.0 % 
+ 
+ 
+KNS w/o POS. LR 
+3000 News Letter 
+News 924 38 
+Letter 76 962 
+Precision 96.0 % 92.7 % 
+Recall 92.4 % 96.2 % 
+F-Measure 94.2 % 94.4 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. LR 
+3000 News Letter 
+News 903 61 
+Letter 97 939 
+Precision 93.7 % 90.6 % 
+Recall 90.3 % 93.9 % 
+F-Measure 92.0 % 92.2 % 
+ 
+ 
+KNS w/o POS. 2LP 
+3000 News Letter 
+News 919 32 
+Letter 81 968 
+Precision 96.6 % 92.3 % 
+Recall 91.9 % 96.8 % 
+F-Measure 94.2 % 94.5 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 2LP 
+3000 News Letter 
+News 895 60 
+Letter 105 940 
+Precision 93.7 % 90.0 % 
+Recall 89.5 % 94.0 % 
+F-Measure 91.6 % 91.9 % 
+ 
+ 
+KNS w/o POS. 3LP 
+3000 News Letter 
+News 942 67 
+Letter 58 933 
+Precision 93.4 % 94.1 % 
+Recall 94.2 % 93.3 % 
+F-Measure 93.8 % 93.7 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 3LP 
+3000 News Letter 
+News 899 80 
+Letter 101 920 
+Precision 91.8 % 90.1 % 
+Recall 89.9 % 92.0 % 
+F-Measure 90.9 % 91.0 % 
+ 
+ 
+ 
+ 
+ 61  
+Experimental setup D (Blended test set) 
+ 
+FCT 
+3000 News Letter Review 
+News 911 4 45 
+Letter 19 969 59 
+Review 70 27 896 
+Precision 94.9 % 92.6 % 90.2 % 
+Recall 91.1 % 96.9 % 89.6 % 
+F-Measure 93.0 % 94.7 % 89.9 % 
+ 
+ 
+ 
+ 
+ 
+ 
+FB 
+3000 News Letter Review 
+News 684 50 247 
+Letter 81 695 302 
+Review 235 255 451 
+Precision 69.7 % 64.5 % 47.9 % 
+Recall 68.4 % 69.5 % 45.1 % 
+F-Measure 69.1 % 66.9 % 46.5 % 
+ 
+ 
+KC w/o POS 
+3000 News Letter Review 
+News 681 62 248 
+Letter 104 668 299 
+Review 215 270 453 
+Precision 68.7 % 62.4 % 48.3 % 
+Recall 68.1 % 66.8 % 45.3 % 
+F-Measure 68.4 % 64.5 % 46.7 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KC w/ POS 
+3000 News Letter Review 
+News 729 61 253 
+Letter 75 721 292 
+Review 196 218 455 
+Precision 69.9 % 66.3 % 52.4 % 
+Recall 72.9 % 72.1 % 45.5 % 
+F-Measure 71.4 % 69.1 % 48.7 % 
+ 
+ 
+KNS w/o POS. LR 
+3000 News Letter Review 
+News 879 30 84 
+Letter 32 915 47 
+Review 89 55 869 
+Precision 88.5 % 92.1 % 85.8 % 
+Recall 87.9 % 91.5 % 86.9 % 
+F-Measure 88.2 % 91.8 % 86.3 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. LR 
+3000 News Letter Review 
+News 895 28 76 
+Letter 29 925 40 
+Review 76 47 884 
+Precision 89.6 % 93.1 % 87.8 % 
+Recall 89.5 % 92.5 % 88.4 % 
+F-Measure 89.5 % 92.8 % 88.1 % 
+ 
+ 
+KNS w/o POS. 2LP 
+3000 News Letter Review 
+News 839 21 54 
+Letter 33 893 37 
+Review 128 86 909 
+Precision 91.8 % 92.7 % 80.9 % 
+Recall 83.9 % 89.3 % 90.9 % 
+F-Measure 87.7 % 91.0 % 85.6 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 2LP 
+3000 News Letter Review 
+News 860 12 59 
+Letter 53 933 60 
+Review 87 55 881 
+Precision 92.4 % 89.2 % 86.1 % 
+Recall 86.0 % 93.3 % 88.1 % 
+F-Measure 89.1 % 91.2 % 87.1 % 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 62  
+KNS w/o POS. 3LP 
+3000 News Letter Review 
+News 867 36 93 
+Letter 30 869 24 
+Review 103 95 883 
+Precision 87.0 % 94.1 % 81.7 % 
+Recall 86.7 % 86.9 % 88.3 % 
+F-Measure 86.9 % 90.4 % 84.9 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 3LP 
+3000 News Letter Review 
+News 868 15 94 
+Letter 42 951 69 
+Review 90 34 837 
+Precision 88.8 % 89.5 % 87.1 % 
+Recall 86.8 % 95.1 % 83.7 % 
+F-Measure 87.8 % 92.2 % 85.4 % 
+ 
+ 
+Experimental setup D (Paired test set) 
+ 
+FCT 
+3000 News Letter Review 
+News 658 3 480 
+Letter 26 976 270 
+Review 316 21 250 
+Precision 57.7 % 76.7 % 42.6 % 
+Recall 65.8 % 97.6 % 25.0 % 
+F-Measure 61.5 % 85.9 % 31.5 % 
+ 
+ 
+ 
+ 
+ 
+ 
+FB 
+3000 News Letter Review 
+News 694 58 381 
+Letter 73 648 219 
+Review 233 294 400 
+Precision 61.3 % 68.9 % 43.1 % 
+Recall 69.4 % 64.8 % 40.0 % 
+F-Measure 65.1 % 66.8 % 41.5 % 
+ 
+ 
+KC w/o POS 
+3000 News Letter Review 
+News 686 56 369 
+Letter 82 625 226 
+Review 232 319 405 
+Precision 61.7 % 67.0 % 42.4 % 
+Recall 68.6 % 62.5 % 40.5 % 
+F-Measure 65.0 % 64.7 % 41.4 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KC w/ POS 
+3000 News Letter Review 
+News 696 51 384 
+Letter 69 704 270 
+Review 235 245 346 
+Precision 61.5 % 67.5 % 41.9 % 
+Recall 69.6 % 70.4 % 34.6 % 
+F-Measure 65.3 % 68.9 % 37.9 % 
+ 
+ 
+KNS w/o POS. LR 
+3000 News Letter Review 
+News 828 35 150 
+Letter 35 918 78 
+Review 137 47 772 
+Precision 81.7 % 89.0 % 80.8 % 
+Recall 82.8 % 91.8 % 77.2 % 
+F-Measure 82.3 % 90.4 % 78.9 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. LR 
+3000 News Letter Review 
+News 796 30 195 
+Letter 35 928 106 
+Review 169 42 699 
+Precision 78.0 % 86.8 % 76.8 % 
+Recall 79.6 % 92.8 % 69.9 % 
+F-Measure 78.8 % 89.7 % 73.2 % 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 63  
+KNS w/o POS. 2LP 
+3000 News Letter Review 
+News 896 44 193 
+Letter 35 904 65 
+Review 69 52 742 
+Precision 79.1 % 90.0 % 86.0 % 
+Recall 89.6 % 90.4 % 74.2 % 
+F-Measure 84.0 % 90.2 % 79.7 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 2LP 
+3000 News Letter Review 
+News 885 44 236 
+Letter 31 899 94 
+Review 84 57 670 
+Precision 76.0 % 87.8 % 82.6 % 
+Recall 88.5 % 89.9 % 67.0 % 
+F-Measure 81.8 % 88.8 % 74.0 % 
+ 
+ 
+KNS w/o POS. 3LP 
+3000 News Letter Review 
+News 831 47 179 
+Letter 30 892 72 
+Review 139 61 749 
+Precision 78.6 % 89.7 % 78.9 % 
+Recall 83.1 % 89.2 % 74.9 % 
+F-Measure 80.8 % 89.5 % 76.9 % 
+ 
+ 
+ 
+ 
+ 
+ 
+KNS w/ POS. 3LP 
+3000 News Letter Review 
+News 805 40 286 
+Letter 29 915 101 
+Review 166 45 613 
+Precision 71.2 % 87.6 % 74.4 % 
+Recall 80.5 % 91.5 % 61.3 % 
+F-Measure 75.6 % 89.5 % 67.2 % 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 64  
+References  
+ 
+ 
+1. Yang, Yiming & Pedersen, Jan O. (1997) A Comparative Study on Feature Selection in Text 
+Categorization. Proceedings of the Fourteenth International Conference on Machine Learning: 
+412-420.  
+2. Sebastiani, Fabrizio (2002) Machine learning in automated text categorization. ACM 
+Computing Surveys, 34 (1): 1-47. 
+3. Joachims, Thorsten (1998) Text Categorization with Suport Vector Machines: Learning with 
+Many Relevant Features. Proceedings of the 10th European Conference on Machine Learning: 
+137-142. 
+4. Biber, Douglas (1988) Variation across speech and writing. Cambridge University Press: 
+Cambridge, UK. 
+5. Biber, Douglas (1986) Spoken and Written Textual Dimensions in English: Resolving the 
+Contradictory Findings. Language, 62 (2): 384-414. 
+6. Swales, John M. (1990) Genre Analysis: English in academic and research settings. Cambridge 
+University Press: Cambridge, UK. 
+7. Kessler, Brett, Nunberg, Geoff & Schütze, Hinrich (1997) Automatic detection of genre. 
+Proceedings of the 35th Annual Meeting of the Association for Computational Linguistics and the 
+8th Meeting of the European Chapter of the Association for Computational Linguistics: 32-38. 
+8. Karlgren, Jussi (2000) Stylistic Experiments for Information Retrieval. Doctoral thesis, 
+Stockholm University. 
+9. Karlgren, Jussi & Cutting, Douglas (1994) Recognizing text genres with simple metrics using 
+discriminant analysis. Proceedings of the 15th conference on Computational linguistics: 1071-
+1075. 
+10. Freund, Luanne, Clarke, Charles L. A. & Toms, Elaine G. (2006) Towards genre 
+classification for IR in the workplace. Proceedings of the 1st international conference on 
+Information interaction in context: 30-36. 
+11. de Vel, Oliver, Andersen, Alison, Corney, Malcom & Mohay, George M. (2001) Mining e-
+mail content for author identification forensics. ACM SIGMOD Record, 30 (4): 55-64. 
+ 
+ 
+ 
+ 65  
+12. Madigan, David, Genkin, Alexander, Lewis, David D., Argamon, Shlomo, Fradkin, 
+Dimitry & Ye, Li (2005) Author Identification on the Large Scale. Joint Annual Meeting of the 
+Interface and the Classification Society of North America (CSNA). 
+13. Chaski, Carole E. (2001) Empirical evaluations of language-based author identification 
+techniques. Forensic Linguistics, 8 (1): 1-65. 
+14. Stamatatos, Efstathios, Fakotakis, Nikos & Kokkinakis, George (2000) Automatic Text 
+Categorization in Terms of Genre and Author. Computational Linguistics, 26 (4): 471-495. 
+15. Lewis, David D. (1992) Feature selection and feature extraction for text categorization. 
+Proceedings of the workshop on Speech and Natural Language: 212-217. 
+16. Dumais, Susan, Platt, John, Heckerman, David & Sahami, Mehran (1998) Inductive 
+learning algorithms and representations for text categorization. Proceedings of the seventh 
+international conference on Information and knowledge management: 148-155. 
+17. Li, Y. H. & Jain, A. K. (1998) Classification of Text Documents. The Computer Journal, 41 
+(8): 537-546. 
+18. Larkley, Leah S. & Croft, Bruce W. (1996) Combining classifiers in text categorization. 
+Proceedings of the 19th annual international ACM SIGIR conference on Research and 
+development in information retrieval: 289-297. 
+19. Lewis, David D. & Gale, William A. (1994) A sequential algorithm for training text 
+classifiers. Proceedings of the 17th annual international ACM SIGIR conference on Research and 
+development in information retrieval: 3-12. 
+20. Yang, Yiming & Liu, Xin (1999) A re-examination of text categorization methods. 
+Proceedings of the 22nd annual international ACM SIGIR conference on Research and 
+development in information retrieval: 42-49. 
+21. Klinkenberg, Ralf & Joachims, Thorsten (2000) Detecting concept drift with support vector 
+machines. Proceedings of the seventeenth International Conference on Machine Learning: 487-494. 
+22. Dumais, Susan & Chen, Hao (2000) Hierarchical classification of Web content. Proceedings 
+of the 23rd annual international ACM SIGIR conference on Research and development in 
+information retrieval: 256-263. 
+ 
+ 
+ 
+ 66  
+23. Webber, Bonnie (2009) Genre distinctions for Discourse in the Penn TreeBank. Proceedings 
+of the Joint Conference of the 47th Annual Meeting of the ACL and the 4th International Joint 
+Conference on Natural Language Processing of the AFNLP: 674-682. 
+24. Ferizis, George & Bailey, Peter (2006) Towards practical genre classification of web 
+documents. Proceedings of the 15th international conference on World Wide Web: 1013-1014. 
+25. Wolters, Maria & Kirsten, Mathias (1999) Exploring the use of linguistic features in domain 
+and genre classification. Proceedings of the ninth conference on European chapter of the 
+Association for Computational Linguistics: 142-149. 
+26. Yeung, Peter C. K., Freund, Luanne & Clarke, Charles L. A. (2007) X-Site: A workplace 
+search tool for software engineers. Proceedings of the 30th annual international ACM SIGIR 
+conference on Research and development in information retrieval: 900. 
+27. Stamatatos, Efstathios, Fakotakis, Nikolaos D. & Kokkinakis, George K. (2000) Text genre 
+detection using common word frequencies. Proceedings of the 18th conference on Computational 
+linguistics - Volume 2: 808-814. 
+28. Dewdney, Nigel, VanEss-Dykema, Carol & MacMillan, Richard (2001) The form is the 
+substance: classification of genres in text. Proceedings of the workshop on Human Language 
+Technology and Knowledge Management: 1-8. 
+29. Finn, Aidan & Kushmerick, Nicholas (2006) Learning to classify documents according to 
+genre. Journal of the American Society for Information Science and Technology, 57 (11): 1506-
+1518. 
+30. Sun Microsystems Inc. (2009) Developer Resources for Java Technology. [Online] available 
+at http://java.sun.com [Access on 20/05/2009]. 
+31. The Eclipse Foundation (2009) Eclipse. [Online] available at http://www.eclipse.org [Access 
+on 20/05/2009]. 
+32. Phan, Xuan-Hieu (2006) CRF English POS Tagger. [Online] available at 
+http://crftagger.sourceforge.net [Access on 05/06/2009]. 
+33. Piao, Scott (2008) Sentence Detector. [Online] available at 
+http://text0.mib.man.ac.uk:8080/scottpiao/sent_detector [Access on 10/06/2009]. 
+ 
+ 
+ 
+ 67  
+34. Roberts, Alan & Withers, Philip (2009) statistiXL. [Online] available at 
+http://www.statistixl.com [Access on 12/07/2009]. 
+35. Joachims, Thorsten (2008) SVMlight - Support Vector Machine. [Online] available at 
+http://svmlight.joachims.org [Access on 21/06/2009]. 
+36. Witten, Ian H. & Frank, Eibe (2005) Data Mining: Practical Machine Learning Tools and 
+Techniques. Morgan Kaufmann Publishers Inc.: San Francisco, CA, USA. 
+37. The MathWorks Inc. (2009) MATLAB - The Language Of Technical Computing. [Online] 
+available at http://www.mathworks.com/products/matlab [Access on 01/08/2009]. 
+38. Sandhaus, Evan (2008) The New York Times Annotated Corpus Community - Word Count 
+[Online] available at 
+http://groups.google.com/group/nytnlp/browse_thread/thread/60c1f66e8907010d [Access on 
+20/06/2009]. 
+39. IPTC (2009) NITF - News Industry Text Format. [Online] available at 
+http://www.iptc.org/cms/site/index.html?channel=CH0107 [Access on 20/06/2009]. 
+40. Sandhaus, Evan (2008) New York Times Corpus Overview. New York Times R&D: New 
+York, NY, USA. 
+41. Siegal, Allan M. & Connolly, William G (2002) The New York Times Manual of Style and 
+Usage: The Official Style Guide Used by the Writers and Editors of the World's Most Authoritative 
+Newspaper. Crown: New York, NY, USA. 
+42. Jordan, Lewis (1982) New York Times Manual of Style and Usage. Three Rivers Press: New 
+York, NY, USA. 
+43. Marcus, Mitchell P., Santorini, Beatrice & Marcinkiewicz, Mary Ann (1993) Building a 
+large annotated corpus of English: The Penn Treebank. Computational Linguistics, 19 (2): 313-
+330. 
+44. Marcus, Mitchell & Taylor, Ann (1999) The Penn Treebank Project. [Online] available at 
+http://www.cis.upenn.edu/~treebank [Access on 23/03/2009]. 
+45. Martin, Paul (2002) The Wall Street Journal Guide to Business Style and Usage. Free Press: 
+New York, NY, USA. 
+ 
+ 
+ 
+ 68  
+46. Francis, W. Nelson. & Kucera, Henry (1979) Brown Corpus Manual. [Online] available at 
+http://icame.uib.no/brown/bcm.html [Access on 03/08/2009].  
+47. Nunberg, Geoffrey (2009) Notes on Features. [E-Mail]. 
+48. Drucker, Harris, Wu, Donghui & Vapnik, Vladimir N. (1999) Support vector machines for 
+spam categorization. IEEE Transactions on Neural Networks, 10 (5): 1048-1054. 
+ 

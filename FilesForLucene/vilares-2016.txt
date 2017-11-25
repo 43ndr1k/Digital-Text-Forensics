@@ -1,0 +1,1701 @@
+Available  online  at  www.sciencedirect.com
+ScienceDirect
+Computer Speech and Language 36 (2016) 136–164
+On the feasibility of character n-grams pseudo-translation for
+Cross-Language Information Retrieval tasks
+Jesús Vilares a,∗, Manuel Vilares b, Miguel A. Alonso a, Michael P. Oakes c
+a Grupo LYS, Departamento de Computación, Facultade de Informática, Universidade da Coruña, Campus de A Coruña, 15071 A Coruña, Spain
+b Grupo COLE, Departamento de Informática, Escola Superior de Enxeñaría Informática, Universidade de Vigo, Campus de As Lagoas,
+32004 Ourense, Spain
+c Research Institute of Information and Language Processing, University of Wolverhampton, Stafford St., Wolverhampton WV1 1NA,
+United Kingdom
+Received 5 August 2014; received in revised form 11 May 2015; accepted 18 September 2015
+Available online 1 October 2015
+Abstract
+The field of Cross-Language Information Retrieval relates techniques close to both the Machine Translation and Information
+Retrieval fields, although in a context involving characteristics of its own. The present study looks to widen our knowledge about
+the effectiveness and applicability to that field of non-classical translation mechanisms that work at character n-gram level. For the
+purpose of this study, an n-gram based system of this type has been developed. This system requires only a bilingual machine-readable
+dictionary of n-grams, automatically generated from parallel corpora, which serves to translate queries previously n-grammed in
+the source language. n-Gramming is then used as an approximate string matching technique to perform monolingual text retrieval
+on the set of n-grammed documents in the target language.
+The tests for this work have been performed on CLEF collections for seven European languages, taking English as the target
+language. After an initial tuning phase in order to analyze the most effective way for its application, the results obtained, close to
+the upper baseline, not only confirm the consistency across languages of this kind of character n-gram based approaches, but also
+constitute a further proof of their validity and applicability, these not being tied to a given implementation.
+© 2015 Elsevier Ltd. All rights reserved.
+Keywords: Cross-Language Information Retrieval; Character n-grams; Alignment algorithms for Machine Translation
+1.  Introduction
+Nowadays, not only has the amount and diversity of information available online risen considerably, but users
+worldwide can also easily and instantly access and publish data. An immediate consequence is that data exists in many
+different languages, a fact that will remain over time and which justifies the increasing interest in finding ways of
+retrieving information across language boundaries. In response to this need, the aim of Cross-Language  Information
+ This paper has been recommended for acceptance by Roger K. Moore.
+∗ Corresponding author. Tel.: +34 981 167 000x1364; fax: +34 981 167 160.
+E-mail addresses: jesus.vilares@udc.es (J. Vilares), vilares@uvigo.es (M. Vilares), miguel.alonso@udc.es (M.A. Alonso),
+michael.oakes@wlv.ac.uk (M.P. Oakes).
+http://dx.doi.org/10.1016/j.csl.2015.09.004
+0885-2308/© 2015 Elsevier Ltd. All rights reserved.
+R
+l
+a
+2
+1
+2
+3
+D
+d
+t
+s
+s
+k
+s
+t
+i
+r
+e
+n
+r
+t
+m
+1
+r
+c
+h
+t
+o
+f
+a
+w
+n
+c
+a
+s
+a
+p
+a
+1
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 137
+etrieval  (CLIR) is to provide techniques to return relevant documents written in a language (named the target
+anguage) different from the language in which the query was written (named the source  language). Most current
+pproaches manage CLIR by reducing it to well-known monolingual Information  Retrieval  (IR) counterparts (Nie,
+010; Grefenstette, 1998). This implies that we must answer three enchained questions (Kwok et al., 2005):
+. How a term expressed in one language might be expressed in another?
+. Which of the possible translations should be retained for the IR task?
+. How to properly weight the importance of translation candidates (in the event that more than one is retained)?
+epending on whether it is the queries, the documents, or both that are translated, we talk about query translation,
+ocument translation or interlingual-based CLIR, respectively (Wu et al., 2008).
+In practice, study in this domain has focused mainly on query translation because it is computationally expensive to
+ranslate large-scale text collections (Nie, 2010; Gao et al., 2010b; McCarley, 1999; Hull and Grefenstette, 1996). In
+pite of this drawback, document translation has also deserved the attention of researchers. This is because a translation
+ystem can better exploit linguistic context to choose right translations in documents than in queries. In particular, this
+ind of technique has proved from the beginning to be capable of generating competitive search results to monolingual
+earches (Nie, 2010; McCarley, 1999; Oard, 1998) when it works in combination with Machine  Translation  (MT)
+echniques.
+The interlingual-based CLIR approach is the least popular of the three, although from a theoretical point of view
+t has many advantages (Dorr et al., 2004). It is commonly associated with the generation of a language-independent
+epresentation for both query and documents. The assumption in this case is that one is able to represent sentences in
+very language using a standard common descriptive formalism. This should provide us with a robust starting point
+ot only to bilingual CLIR, but also to multilingual CLIR. Unfortunately, the creation of such a language-independent
+epresentation turns out to be an unattainable goal for the moment, which limits in practice the interest of these
+echniques.
+Whatever the approach used, CLIR systems require the use of language resources to achieve their goal, namely
+achine-readable bilingual dictionaries, corpus-based resources and MT systems.
+.1.  Character  n-gram  translation
+An n-gram  is a sub-sequence of n  characters from a given word (Robertson and Willett, 1998). For example,
+emoval can be split into four overlapping character 4-grams: -remo-, -emov-, -mova-  and -oval-. In the
+ontext of textual information systems, n-gram level processing provides an intermediate level of representation that
+as advantages in terms of efficiency and effectiveness over the conventional character-based or word-based approaches
+o text processing (Robertson and Willett, 1998). Today n-grams are used as index terms for IR applications because
+f these advantages (Vilares et al., 2011; McNamee and Mayfield, 2004a; Robertson and Willett, 1998; Cavnar, 1994).
+In this context, McNamee and Mayfield (2004b) were pioneers in the use of character n-grams as translation units
+or CLIR purposes. Their objective was to avoid some of the limitations of classical dictionary-based translation, such
+s the need for word normalization, translating multiple word expressions and handling out-of-vocabulary  (OOV)
+ords (McNamee and Mayfield, 2005). At this point we should clarify that, from a linguistic point of view, they were
+ot translating  the query, properly speaking, since they were obtaining neither words nor phrases at the output, but
+haracter n-grams, i.e. mere pieces of words with no proper meaning. However, from a retrieval perspective, such an
+pproach does work as an actual translation since the query obtained at the output of the direct n-gram translation
+ystem, when submitted to the retrieval engine, allows us to obtain the documents we are searching for. This is why
+lthough we will abuse the term translation  throughout this paper, it would in fact be more accurate to talk about
+seudo-translation instead.
+In principle, the use of direct translation of character n-grams provides CLIR systems with a number of significant
+dvantages:. The overlapping of n-grams corresponding to a given word provides a way to normalize word forms, avoiding the
+need for explicit normalization during indexing or translation.
+138 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+2. It supports the handling of OOV words and the management of languages of very different natures without further
+processing.
+3. It does not rely on language-specific processing and, since only raw text is needed, it can be used even when linguistic
+information and annotated language resources are scarce or unavailable. This is by no means an uncommon situation:
+the Multilingual Europe Technology Alliance Network of Excellence (META-NET),1 a research network founded
+by the European Commission and dedicated to fostering the technological foundations of a multilingual European
+information society, has recently published a study about this issue (Rehm and Uszkoreit, 2011). This report shows
+that the state of language technology for European languages, even official ones, is still far from being accurate for
+most of them, especially in the case of Machine Translation, where fragmentary, weak or even no support at all is the
+common rule. This situation is even worse for most of the rest of world languages (Nakov and Ng, 2012). However,
+parallel raw text can be still obtained from either the Web (Resnik and Smith, 2003), legal or administrative texts
+(Koehn, 2005) or other varied sources (Chew et al., 2006).
+Taking the model of McNamee and Mayfield (2004b) as source of inspiration, we have implemented for this study a
+CLIR system based on a knowledge-light query translation module which uses character n-grams as processing units,
+not only for indexing purposes, but also during the query translation process. In this system, the n-grammed source
+language query is translated at n-gram level too before being submitted to the retrieval engine in order to search the
+target collection, which has also been indexed using character n-grams. This implementation maintains a fundamental
+difference with regard to the original system developed by McNamee and Mayfield (2004b), which concerns the type
+of the n-gram alignment applied, this being in fact the kernel of the system. Although both implementations take as
+input a parallel corpus for training the n-gram based translator, in the case of our implementation the corpus is aligned
+in two phases:
+1. Firstly, the parallel corpus is aligned at the word-level using statistical techniques (Och and Ney, 2003), allowing
+us to obtain the lexical translation probabilities between the different source and target language words.
+2. Secondly, we focus on the n-gram translation level, for which scores are computed using statistical association
+measures (Manning and Schütze, 1999) taking as input the word-level alignments previously calculated.
+All these processes and their corresponding configurations will be later explained in detail in Section 3.1.
+A first try to make a study like the one we present in this work, in that case for English-to-Spanish text retrieval,
+was presented by the authors in Vilares et al. (2007). These initial experiments were limited since only one association
+measure, the Dice coefficient, and only one word-level alignment configuration, bidirectional alignment, were tested.
+These experiments were later extended to new association measures in Vilares et al. (2007, 2009), but they were not as
+complete as desired since the use of unidirectional word alignment was only partially tested, and no tuning experiments
+were analyzed. Moreover, the experiments on the use of pointwise mutual information as association measure should
+be dismissed since, as we have recently discovered during the development of the present article, the range of values
+employed for those tests was too narrow, thus attaining a much lower performance than it should have been. Finally,
+the authors also showed in Vilares et al. (2008) some preliminary experiments for English-to-French CLIR using
+a different test set with a few configurations. A critical drawback of all these preliminary works is that there does
+not exist a common framework that allowed for an accurate comparison and analysis of the results obtained. Those
+experiments were not made according to the needs of a proper testing of the proposed approach, but according to
+the specific requirements of the conference or publication in question. Thus the generalization and validity of these
+previous conclusions of Vilares et al. are arguable. Therefore, there is a need for a common framework specifically
+designed for allowing us to make an extensive and homogeneous comparative study of the performance of this n-gram
+based CLIR approach for a wide range of languages and a wide range of running configurations. The present work
+gives a response to this need and allows us to perform a wide range of experiments also involving languages from
+different language-families.
+1 http://www.meta-net.eu.
+1
+i
+1
+2
+M
+r
+1
+n
+S
+s
+c
+r
+a
+d
+w
+2
+d
+e
+2
+d
+t
+(
+c
+•
+•
+•
+•
+e
+(
+s
+i
+n
+1
+a
+p
+I
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 139
+.2.  Research  objective
+The main goal of this work is to make an extensive study of the applicability of character n-gram based translation
+n the context of Cross-Language Information Retrieval. The questions we are looking to answer are:
+. Is the behavior of n-gram based translation consistent across different languages?
+. Which is the most effective way of applying it?
+oreover, in order to avoid any distortion in the results, no improvement techniques such as query expansion or
+elevance feedback have been introduced, thus allowing us to study the performance of this approach on its own.
+.3.  Outline
+The structure of the rest of this article is as follows. Firstly, Section 2 introduces the reader to the use of character
+-grams in text processing tasks. Next, Section 3 presents a framework for CLIR based on character n-gram translation.
+ection 4 introduces our testing methodology, while the following sections deal with our experiments and their discus-
+ion: Sections 5 and 6 present and discuss in detail, respectively, the results obtained for our first set of experiments,
+orresponding to the tuning of the system in a Spanish-to-English CLIR context. The experiments corresponding to the
+emaining languages of our study, which can be seen as our testing experiments – properly speaking – are presented
+nd analyzed in a more concise way in Section 7. After these language-specific studies, Section 8 presents a general
+iscussion on the results obtained as a whole. Finally, Section 9 introduces our conclusions and proposals for future
+ork.
+.  Background  and  related  work
+Character n-grams have been successfully used for a long time in a wide variety of text processing problems and
+omains, including the following: approximate word matching (Zobel and Dart, 1995), language identification (Lui
+t al., 2014) spelling-error detection (Salton, 1989), author attribution and profiling (Stamatatos, 2009; Escalante et al.,
+011; Sapkota et al., 2013), and bioinformatics (Tomović et al., 2006). More recently, character n-grams have been
+rawing increasing attention in the field of automatic processing of SMS and microblog (e.g. Twitter) texts – which
+end to be noisy by nature – including tasks such as text normalization (Pennell and Liu, 2014), sentiment analysis
+Aisopos et al., 2012) or language identification (Lui and Baldwin, 2014).
+In this way, n-gram based processing has become a standard state-of-the-art text processing approach, whose success
+omes from its positive features (Tomović et al., 2006):
+ Simplicity: no linguistic knowledge or resources are required.
+ Robustness: relatively insensitive to spelling variations and errors.
+ Domain independence: language and topic independent.
+ Efficiency: one pass processing.
+This fact has not been ignored by the IR community either (Büttcher et al., 2010, Chapter 3). In the following, we
+xplain in some detail these advantages for the particular case of IR.
+A first major advantage of character n-grams when applied to IR is their inherent simplicity and ease of application
+Foo and Li, 2004). IR systems typically utilize language-specific linguistic tools and resources to facilitate retrieval:
+topword lists, phrase lists, stemmers, decompounders, lexicons, thesauri, part-of-speech taggers, etc. Obtaining and
+ntegrating these resources into the system may be costly (McNamee and Mayfield, 2004a). In contrast, character
+-gram tokenization is a knowledge-light approach which does not rely on language-specific processing (Damashek,
+995; Cavnar, 1994), thus requiring no prior information about document contents or language. Basically, both queries
+nd documents are simply tokenized into overlapping n-grams instead of words, and the resulting terms are then
+rocessed as usual by the retrieval engine. So, this n-gram based approach can be easily incorporated into traditional
+R systems.
+140 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+A second major factor for the usefulness of n-grams in IR is their robustness, which comes from the redundancy
+derived from the tokenization process itself. Since every string is decomposed into overlapping small parts, any
+spelling errors that are present tend to affect only a limited number of those parts, leaving the remainder intact, thus
+still making matching possible. Therefore, these systems are able to cope not only with spelling errors, but also with
+OOV words and variants (Vilares et al., 2011; Lee and Ahn, 1996; Mustafa and Al-Radaideh, 2004), in contrast to
+classical conflation techniques based on stemming, lemmatization or morphological analysis, which are negatively
+affected by these phenomena.
+A third major positive factor to be taken into account with regard to n-grams is their inherent language-independent
+nature, since no linguistic knowledge is taken into account (Robertson and Willett, 1998; Damashek, 1995). No prior
+information about stopwords, grammars for stemming, lemmatization, morphological analysis or even tokenization is
+required for their application. This is because n-gram based matching itself provides a surrogate means of normalizing
+word forms, thus allowing languages of very different natures to be managed without further processing (McNamee
+and Mayfield, 2004a). This is a very important factor, particularly in the case of multilingual environments or when
+linguistic resources are scarce or unavailable which, as we have explained in Section 1.1, is not unusual.
+However, the use of n-gram based indexing is not free of drawbacks, the main one being the need for higher
+response times and storage space requirements due to the larger indexing representations they generate (Miller et al.,
+2000; McNamee and Mayfield, 2004a). The logical choice for minimizing this problem would be to reduce the index
+by using some kind of pruning (Carmel et al., 2001) or term selection (Zeman, 2009) technique.
+Monolingual n-gram based retrieval has been successfully applied to a wide range of languages of very differ-
+ent natures and widely differing morphological complexity, inluding: most European languages (McNamee, 2008;
+McNamee and Mayfield, 2004a; Savoy, 2003; Hollink et al., 2004) – being particularly accurate for compounding and
+highly inflectional languages – Turkish (Ekmekcioglu et al., 1996), Arabic (Khreisat, 2009; Mustafa and Al-Radaideh,
+2004) and Indian languages (Dolamic and Savoy, 2008), being particularly popular and effective in Asian IR (Foo and
+Li, 2004; Ogawa and Matsuda, 1999; Lee and Ahn, 1996) because of their unsegmented and agglutinative nature.
+A related approach which makes use of the ability of n-grams to manage variants is their application to CLIR over
+closely related languages using no translation, but only cognate matching.2 Such an approach has been applied not only
+to classical CLIR tasks (McNamee and Mayfield, 2004a), but also in cross-language plagiarism detection (Potthast
+et al., 2011), for example.
+Other IR-related but more complex application of n-grams is the use of skipgrams  (McNamee, 2008), also referred
+to as gap-n-grams  (Mustafa, 2005) or s-grams  (Järvelin et al., 2008) by other authors. This is a generalization of the
+concept of n-gram by allowing skips  during the matching process. However, McNamee (2008) showed that skipgrams
+are dramatically more costly than traditional n-grams without being demonstrably more effective. Moreover, their
+application is much more complex than for regular n-grams, since they require considerable modifications in the IR
+system. For these reasons their use here has been discarded.
+3.  A system  for  CLIR  based  on  character  n-gram  translation
+The so-called direct  n-gram  translation  algorithm proposed by McNamee and Mayfield (2004b) takes as input a
+parallel corpus, aligned at the sentence (or document) level, and extracts candidate translations as follows. Firstly,
+for each candidate n-gram term to be translated, source language sentences containing it are identified. Next, their
+corresponding sentences in the target language are also identified and, using a statistical measure similar to mutual
+information, a translation score is calculated for each of the terms occurring in one of these target language texts.
+Finally, the target n-gram with the highest translation score is selected as the potential translation of the source n-gram.
+However, this first proposal proved to be improvable. Firstly, it lacked of flexibility, at least from an experimenting
+perspective, since only a single statistical measure is available for calculations and, for a given source n-gram, only
+the top-scored translation candidate is returned (i.e. a one-to-one translation policy). So, what if we want to try
+other association measures or to expand the query with more translation candidates? Secondly, the way their n-gram
+alignment algorithm works is not very efficient, since every source language n-gram gs of the input parallel corpus is
+2 Cognates are words with a common etymological origin. For example: “traducción” (“translation”) in Spanish vs. “tradución” in Galician
+vs. “traduç  ao” in Portuguese.
+c
+l
+r
+c
+r
+t
+e
+t
+t
+m
+c
+3
+c
+l
+m
+t
+1
+2
+i
+a
+F
+a
+G
+t
+b
+v
+t
+i
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 141
+ross-checked with every n-gram gt of every target language sentence (or, even worse, document) aligned with a source
+anguage sentence of the corpus containing gs. As a result, the number of the resulting combinations to be checked
+ises significantly, thus reducing the efficiency and increasing the consumption of computational resources. All of this
+onstitute a problem when trying new solutions or modifications. Moreover, it also integrated numerous closed-source
+esources and non-standard solutions, thus hampering its applicability and the reproducibility of the experiments. For
+his reason we decided to use for this study an n-gram based CLIR system of our own, looking for a more flexible
+xperimentation platform for future developments, preserving the advantages of the original solution but at the same
+ime avoiding its main drawbacks. Our immediate goals were to speed up the training process, to retrieve multiple
+ranslation candidates when available and to make use of freely available resources when possible. This allows us to
+inimize effort, to make the system more transparent and to facilitate replication of the experiments by the research
+ommunity.
+.1.  Overview  of  the  system
+We have opted for a query translation based approach that uses as input linguistic resource a parallel corpus, and
+haracter n-grams as terms. Essentially, the source language n-grammed query is translated into the target language to
+ater perform the IR task on the collection of target documents, which is also indexed using character n-grams. This
+ethod maintains a fundamental difference from the original model proposed by McNamee and Mayfield (2004b) due
+o the type of the n-gram alignment to be applied, the kernel of the system, which now consists of two phases:
+. In the first phase, the input parallel corpus is aligned at the word level using a statistical aligner, the statistical tool
+Giza++ (Och and Ney, 2003), obtaining as output the lexical translation probabilities between the different source
+and target language words.3 This first step acts as a filter, since only those n-gram pairs corresponding to aligned
+words will be considered in the subsequent process, thus focusing only on those words whose translation is less
+ambiguous and, at the same time, avoiding the combinatorial explosion produced in the case of the original system
+developed by McNamee and Mayfield (2004b). In this way, we will be considerably reducing the number of input
+word pairs to be processed and, consequently, both the noise introduced in the system and the number of entries to
+be processed, thus improving efficiency too.
+. In a second phase we focus on the n-gram translation level. Taking as input the resulting word-level alignments
+obtained in the previous phase and their probabilities, we compute the n-gram alignment scores by employing
+statistical association measures (Manning and Schütze, 1999).4
+This two-step solution allows us to speed up the training process, since it concentrates most of the complexity in the
+nitial word-level alignment phase, thus making the testing of new association measures or new procedures for n-gram
+lignment easier.
+There are other important differences with regard to the implementation of McNamee and Mayfield (2004b).
+reely available resources are used this time, which allows us to minimize effort and increase transparency. This way,
+s explained before, the initial word-level alignment is performed through the widely used statistical translation tool
+iza++ (Och and Ney, 2003). Moreover, instead of the closed-source retrieval system employed by the original system,
+he Terrier  open-source retrieval platform (Ounis et al., 2007) is used here. Regarding the translation resources to
+e used, while McNamee and Mayfield employed a parallel corpus of their own, the well-known Europarl  (release
+56) parallel corpus (Koehn, 2005) has been used in this work. Finally, as will be described below, our system has
+hree different standard association measures (Manning and Schütze, 1999) available for its calculations, making our
+mplementation more transparent and flexible.
+3 From this point forward, when referring to this type of alignment, we will talk about word-level alignments or, simply, word alignments.
+4 In this case we will talk about n-gram level alignments or, simply, n-gram alignments.
+5 It should be noted that McNamee et al. (2009) did use Europarl v3 corpus for their experiments, but without using word-level alignment.
+142 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+3.2.  Processing  parallel  corpora  using  association  measures:  a generic  example
+In order to better illustrate the n-gram level alignment algorithm used in our implementation, we introduce a generic
+and simpler case first, where we take as input a parallel corpus of aligned sequences  of items, and we obtain as output
+a list of pairs of aligned items.
+In this initial context, given a pair of items (xs, xt) – xs standing for the source item, and xt for its candidate
+target translation – their co-occurrence frequency can be organized in a contingency  table  like this resulting from a
+cross-classification of their co-occurrences in the input aligned corpus:
+The first row accounts for those instances where the source sequence S  contains item xs, while the second row
+accounts for those instances where sequence S  does not contain xs; in the same way, the first column accounts for those
+instances where the target sequence T contains item xt, while the second column accounts for those instances where
+sequence T  does not contain xt. The cell counts are called the observed  frequencies: O11, for example, stands for the
+number of aligned sequences where the source sequence S  contains item xs and the target sequence T  contains item
+xt; O12 stands for the number of aligned sequences where the source sequence S  contains xs but the target sequence T
+does not contain xt; and so on. Sample  size  N, the total number of item pairs considered, is the sum of the observed
+frequencies. The row totals, R1 and R2, and the column totals, C1 and C2, are called marginal  frequencies  and O11 is
+called the joint  frequency.
+Once the contingency table has been built, different association measures (Manning and Schütze, 1999) can easily
+be calculated for each item pair (xs, xt). The most promising correspondences, those pairs with the highest association
+measures, would be selected for generating a bilingual dictionary of items. Thus, we would have obtained aligned
+items from aligned sequences.
+3.3.  Using  association  measures  for  n-gram  level  alignment
+In the previous subsection we described how to compute and use association measures for automatically generating
+bilingual dictionaries of items taking as input parallel corpora of aligned sequences of items. Now, we will explain how
+to adapt this technique to our particular case: how to generate aligned character n-grams taking as input previously
+aligned words. This is the way the second phase of the n-gram level alignment algorithm employed in the system
+works: the word pairs previously aligned by Giza++  in the first phase are processed in order to obtain the final output
+n-gram level alignments.
+An easy choice could be simply to directly adapt the contingency table and the corresponding calculations to our
+new context. We could consider that we are managing n-gram pairs (gs, gt)  co-occurring in aligned words instead
+of item pairs (xs, xt)  co-occurring in aligned sequences, as in the previous section. So, contingency tables should be
+adapted accordingly: O11, for example, should be re-formulated as the number of aligned word pairs (ws, wt)  obtained
+through Giza++  where the source language word ws contains n-gram gs and the target language word wt contains
+n-gram gt.
+However, this simple solution is wrong. It must be noted that in this second phase we are taking as input the
+pairs of words previously aligned with Giza++. Since this tool uses a statistical alignment model which computes a
+lexical translation probability for each co-occurring word pair (Och and Ney, 2003), we will find that the same word
+may be aligned with several translation candidates, each one with a given probability and with only part of them
+being right. So, in case we had merely applied the direct adaptation described above, the resulting noise introduced
+into the system would have been excessive since, for example, we would be giving the same credit, as an input
+evidence, to a word-level translation with only a 5% probability of being right as to another translation with a 95%
+probability.
+(
+a
+S
+l
+l
+l
+g
+a
+a
+a
+t
+c
+-
+t
+T
+a
+-
+m
+(
+c
+O
+a
+a
+t
+o
+c
+m
+(
+(
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 143
+In order to explain how to proceed in this context, let us take as a toy example the case of the Spanish words lluvia
+rain) and lluvioso  (rainy), and the English words rain, rainy  and snowy. A possible input word-level
+lignment, with its corresponding probabilities and compounding 4-grams, would be:
+ource term Candidate translation Prob.
+luvia = {-lluv-,-luvi-,-uvia-} rain = {-rain-} 0.87
+luvioso = {-lluv-,-luvi-,-uvio-,-vios-,-ioso-} rainy = {-rain-,-ainy-} 0.80
+luvioso = {-lluv-,-luvi-,-uvio-,-vios-,-ioso-} snowy = {-snow-,-nowy-} 0.22
+Notice that these n-grams, those that will be used to calculate the n-gram alignments to be employed in later n-
+ram level translation, have been obtained by tokenizing isolated words; as a result, no word-spanning n-gram level
+lignments may exist. This is the reason why that kind of character n-grams are ignored in our approach. In any case,
+s shown in (McNamee and Mayfield, 2004a), that will not harm the performance of the system.
+Going back to our toy example, the source 4-gram -lluv-  co-occurs with the target 4-gram -rain-, but the
+lignment between its containing words, lluvia  and rain  and lluvioso  and rainy, is not certain (i.e. their
+ranslation probabilities are not 100%) and, besides, in the case of the word lluvioso  there is also a second translation
+andidate: snowy. Nevertheless, it seems much more probable that the translation  of -lluv-  is -rain-  rather than
+snow-, since the probability of the alignment of their containing words – lluvioso  and snowy  – is much lower
+han that of the words containing -lluv-  and -rain-  – the pairs lluvia  and rain  and lluvioso  and rainy.
+aking this idea as a basis, the new algorithm we designed reflects this by weighting the likelihood of a co-occurrence
+ccording to the translation probability of its containing word alignments.
+So, the resulting contingency tables which would correspond to the n-gram pairs (-lluv-,  -rain-)  and (-lluv-,
+snow-) are as follows:
+Notice that, for example, the O11 frequency corresponding to the n-gram pair (-lluv-,  -rain-)  is not 2 as
+ight be expected, but 1.67. This is because this n-gram pair appears in two word alignments, (lluvia,  rain)  and
+lluvioso, rainy), but each n-gram co-occurrence in these word alignments has been weighted according to its
+orresponding word translation probability:
+O11(-lluv-, -rain-) = 0.87 for (lluvia,  rain)  + 0.80 for (lluvioso, rainy)  = 1.67. In the case of the
+12 frequency, it corresponds to n-gram pairs (-lluv-,  gt), with gt different from -rain-. In our example we find:
+ single pair (-lluv-,  -ainy-)  in the word alignment (lluvioso, rainy); and two pairs (-lluv-,  -snow-)
+nd (-lluv-,  -nowy-)  in the word alignment (lluvioso, snowy). By weighting each occurrence according to
+he translation probability of its containing word alignment, we obtain:
+O12(-lluv-, gt /=  -rain-) = 0.80 for (lluvioso,rainy)  + 2*0.22 for (lluvioso,snowy)  = 1.24. The rest
+f the values can be calculated in a similar way.
+Once the contingency tables have been generated, the association measures corresponding to each n-gram pair
+an be computed. In contrast with the implementation of McNamee and Mayfield (2004b), which used an ad-hoc
+easure, the current system uses three of the most extensively used standard association measures: the Dice  coefficient
+Dice), pointwise  mutual  information  (PMI), and log-likelihood  (LogL), which are defined by the following equations
+Manning and Schütze, 1999):
+Dice(gs, gt) = 2 O11
+R1 +  C1 ; (1)pmi(gs,  gt) =  log NO11
+R1C1
+; (2)
+144 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+logl(gs, gt) =  2
+∑
+i,j
+Oij log
+NOij
+RiCj
+. (3)
+Continuing with the previous example, notice that whatever the association measure to be used, we find that the output
+value obtained for the pair (-lluv-,  -rain-)  – the correct one – is much higher than that of the pair (-lluv-,
+-snow-) – the wrong one:
+Dice(−lluv−,  −rain−) = 2 ∗  1.67
+2.91 +  6.61 =  0.35  >  Dice(−lluv−,  −snow−) =
+2 ∗  0.22
+2.91 +  1.10 =  0.11;
+pmi(−lluv−, −rain−) =  log 12.81 ∗  1.67
+2.91 ∗ 6.61 =  0.11  >  pmi(−lluv−,  −snow−) =  log
+12.81 ∗  0.22
+2.91 ∗  1.10 =  −0.13;
+LogL(−lluv−, −rain−)
+= 2 ∗
+(
+1.67 ∗  log 12.81∗1.67
+2.91 ∗ 6.61 +1.24 ∗  log
+12.81 ∗  1.24
+2.91 ∗  6.20 +4.94 ∗  log
+12.81 ∗  4.94
+9.90 ∗  6.61 +4.96 ∗  log
+12.81 ∗ 4.96
+9.90 ∗  6.20
+)
+= 0.05  >  LogL(−lluv−,  −snow−)
+=  2 ∗
+(
+0.22 ∗  log 12.81∗0.22
+2.91∗1.10 +  2.69 ∗  log
+12.81 ∗ 2.69
+2.91 ∗  11.71+0.88 ∗  log
+12.81 ∗ 0.88
+9.90 ∗  1.10 +9.02 ∗  log
+12.81 ∗  9.02
+9.90 ∗  11.71
+)
+= 0.003.
+3.4.  Word-level  alignment  filters
+In addition to the two main phases of the alignment, word-level alignment and n-gram level alignment, an optional
+intermediate phase of filtering can be applied. The purpose of this extra phase is to reduce the noise introduced in the
+system by word-level translation ambiguities (e.g. if the same source language word has several candidate translations).
+This way, two word-level filtering techniques will be tested. Firstly, we will try a simple threshold-based filtering
+by removing from the input the least probable word alignments, i.e. those with a word translation probability less than
+a given threshold we will note as W; in other words, a word-level pruning.
+Secondly, we will try a more advanced bidirectional word-level alignment solution (Koehn et al., 2003), which
+considers a (ws, wt) sourceLanguage-to-targetLanguage  word alignment only if there also exists a corresponding (wt ,
+ws) target-Language-to-sourceLanguage  word alignment.6
+By applying these filters, subsequent processing will focus only on those words whose translation is less ambiguous,
+reducing both the noise introduced in the system and the number of input word pairs to be processed, thereby also
+increasing efficiency by reducing both computing and storage resources.
+4.  Experimental  set-upWe now describe the set-up used for the experiments made for this study and the decisions we have taken during
+their design.7
+6 It should be noted that according to the aligning algorithm employed by Giza++ (Och and Ney, 2003), the obtaining of a word-level alignment
+(at some probability) from ws to wt when aligning the parallel corpora in the sourceLanguage-to-targetLanguage direction does not necessarily
+imply the existence of the corresponding wt to ws word-level alignment when processing the corpora in the reverse direction.
+7 If more details were needed about the resources or configuration used by the system, we invite the reader to contact with the corresponding
+author.
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 145
+Table 1
+Similarity measures of English with the rest of languages considered: percentages of cognates in the Swadesh lists (left); difficulty of learning a
+language for American English speakers where three means most similar/easiest to learn and one means least similar/most difficult to learn (right).
+Language #Cognates %Cognates Difficulty
+Spanish 38/207 18.4% 2.25
+German 121/207 58.5% 2.25
+French 38/207 18.4% 2.50
+Italian 38/207 18.4% 2.50
+Dutch 130/207 62.8% 2.75
+Finnish 3/207 1.5% 2.00
+S
+4
+2
+r
+(
+L
+v
+(
+a
+l
+q
+t
+m
+t
+c
+s
+c
+a
+d
+E
+w
+e
+1
+R
+F
+s
+t
+w
+i
+b
+wedish 109/207 52.7% 3.00
+.1.  The  evaluation  framework
+Following previous work in a multilingual context (Hollink et al., 2004; Savoy, 2003; McNamee and Mayfield,
+004a) and the restrictions due to our own availability of resources, we opted for testing our approach with a wide
+ange of European languages for which parallel corpora are available in the Europarl  (release v6) parallel corpus
+Koehn, 2005) and for which we also have available test collections from our past participation in several Cross-
+anguage Evaluation Forum events (CLEF, 2014). The languages we have finally considered are the following, whose
+aried nature creates a representative test pool for our study: English (EN), German (DE), Dutch (NL) and Swedish
+SW), all of them Germanic languages; Spanish (ES), French (FR) and Italian (IT), all of them Romance languages;
+nd Finnish (FI), an Uralic Finnic language.
+The inclusion of English as our common target  language  was convenient for two reasons: firstly, it is the dominant
+anguage on the Web8; secondly, it allows us to obtain directly comparable results since the same target collection is
+ueried for the different query languages, which use the same (translated) query set. Moreover, many users, even if
+hey understand English, prefer to use their mother tongue as source  language.
+At this point, it may be useful for the interpretation and discussion of the results to calculate some kind of similarity
+easure between English, our common target language, and the different query languages to be used. Firstly, following
+he procedure described by Lehmann (1992), we estimated the percentages of cognates in the Swadesh  lists9 in order to
+alculate the degree of similarity between the different languages used. The resulting figures are shown in the left-hand
+ide of Table 1. However, the Swadesh lists contain basic concepts, which are the words for which English most
+losely resembles the Germanic languages, so it is not an altogether fair test. So, as an alternative point of view, we
+lso include in the right-hand side of Table 1 data published by Miller and Chiswick (2004), which are based on the
+ifficulty Americans have in learning foreign languages.
+With regard to the document collection employed in the evaluation process, as explained above, we have used an
+nglish collection, the English corpus of the so-called robust  task  celebrated within the CLEF 2006 ad-hoc  track,
+hich re-used test corpora (both collections and topics) from previous 2001, 2002 and 2003 CLEF editions (Nunzio
+t al., 2006). The English collection in question is formed by two subcollections: LA  Times  94  (56,472 documents,
+54 MB) and Glasgow  Herald  95  (113,005 documents, 425 MB), totaling 169,477 documents with a size of 579 MB.
+egarding the topics, we have used the 60 topics numbered C141 to C200 established for the robust task.10 As shown in
+ig. 1, topics are formed by three fields: a brief title  statement, a one-sentence description, and a more complex narrative
+pecifying the relevance assessment criteria. All topic sets, whatever the language, contain the same topics, which were
+ranslated manually by CLEF organization experts. Following CLEF standard policy, only title  and description  fields
+ere used in the submitted queries.
+For its implementation, the testing IR system employed the open-source Terrier  platform (Ounis et al., 2007) as
+ts core retrieval engine.
+8 http://www.internetworldstats.com/stats7.htm.
+9 Available at http://en.wiktionary.org/wiki/Appendix:Swadesh lists.
+10 Although the complete topic set for the robust task included topics C041 to C200, topics C041 to C140 could not be used in our experiments
+ecause no relevant assessments are available for them in the case of the Glasgow Herald subcollection.
+146 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+Fig. 1. Sample Spanish test topic and its English translation.
+Table 2
+Statistics for the parallel corpora used in this work: Europarl, release v6.
+Languages (LX–EN) #Sentences #LX words #EN words
+Spanish–English 1,786,594 51,551,485 49,411,045
+German–English 1,739,154 45,607,269 47,978,832
+French–English 1,825,077 54,568,499 50,551,047
+Italian–English 1,737,081 49,065,283 49,981,015
+Dutch–English 1,822,036 50,315,412 49,938,127
+Finnish–English 1,742,553 34,123,013 47,601,416
+Swedish–English 1,678,333 41,031,740 45,628,613
+With respect to the subword level translation process introduced above, the n-gram based alignment system takes
+as input the release v6 of the Europarl  parallel corpus. Table 2 shows the statistics for this parallel corpus.
+For the first phase of the alignment process, as explained before, a word-level alignment, the Giza++  (Och and
+Ney, 2003) statistical aligner was used. During the iterative training of the alignment models, we used a pipeline
+configuration commonly used in diverse MT experiments (Huet and Lefévre, 2011; Ma and Way, 2010; Gao et al.,
+2010a): five iterations of IBM Model 1, five iterations of HMM, five iterations of IBM Model 3 and three iterations of
+IBM Model 4. Regarding the optional filtering phase, and threshold-based filtering in particular (previously described
+in Section 3.4), after studying the distribution of the input aligned word pairs, a minimal word translation probability
+threshold value of W  = 0.15 was chosen.
+4.2.  Indexing–retrieval  processes
+The indexing process is simple: documents are lowercased and punctuation marks, but not diacritics, are removed.
+The resulting text is then split into character n-grams and indexed using an InL2 ranking model11 (Amati and van
+Rijsbergen, 2002) with the term frequency normalization parameter value c set to its default value: c  = 1. According
+to the results of previous related work (McNamee and Mayfield, 2004a,b; Hollink et al., 2004; Vilares et al., 2011),
+4-grams (n-grams of four characters) showed promising, so we decided to use n  = 4 as n-gram size. No stopword
+removal was applied at this point. The same running parameters have been used for all the experiments performed.
+11 Inverse Document Frequency model with Laplace after-effect and normalization two.
+m
+c
+a
+1
+2
+e
+o
+4
+•
+•
+t
+s
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 147
+In the case of retrieval, the source language topic is firstly conflated by lowercasing and removing punctuation
+arks, and then split into 4-grams in the same way as documents. Next, the resulting 4-grams are replaced by their
+orresponding candidate translations (i.e. their target language n-gram level alignments) according to a selection
+lgorithm. Two selection algorithms are currently available:
+. Top-rank-based: which takes the H  highest ranked n-gram alignments per source n-gram, according to their
+association measures. The range of values we have tested is:
+H ∈  {1,  2,  3,  5,  10,  20,  30,  40,  50,  75,  100}.
+. Threshold-based:  which takes those n-gram level alignments whose association measure is greater than or equal
+to a given minimal threshold T. The way such a threshold is calculated depends on the association measure to be
+used. In the case of the Dice coefficient, since it takes values within the range [0..1], the thresholds can be fixed in
+a simple way, the following values being used in this case:
+T ∈  {0; 0.1; 0.2; . . .; 0.7; 0.8; 0.85; 0.9; 0.95; 0.975; 1}.
+However, pointwise mutual information and log-likelihood measures can take any value within the range (−  ∞  . . ∞).
+Thus, in order to homogenize the tests as much as possible, in the case of such association measures the thresholds
+are calculated according to the mean  and standard  deviation  of their distributions:
+Ti =  μ  +  i i σ (4)
+where Ti represents the i-th threshold, with i  ∈  Z; i represents the step to be used, whose granularity may vary
+according to i and the association measure used (the values of log-likelihood are much more dispersed than for
+pointwise mutual information); μ  represents the mean  of the association measure values of the n-gram pairs obtained
+for the present configuration; and σ  represents their standard  deviation.
+Finally, the resulting n-gram level translated query is submitted to the retrieval system. Note that neither query
+xpansion nor relevance feedback have been used in order to study the performance of n-gram level processing on its
+wn, without introducing distortions in the results by integrating other techniques.
+.3.  Lower  and  upper  baselines
+Two n-gram based baselines are used for comparing and analyzing the results from different points of view:
+ EN  4-grams: a target language (English) monolingual run using 4-grams as terms. For this purpose the original
+English topics were used. This is the upper  baseline, the best result we could ever obtain by using n-gram based
+translation.
+ LX  4-grams  (where LX stands for the source language): the target (English) document collection is queried using
+the original n-grammed source language query (i.e. no translation is made). This kind of cognate matching allows
+us to measure the impact of casual matches and constitutes the lower  baseline.
+These two baselines will be used for all languages. However, in the case of our Spanish-to-English (ES-to-EN)
+uning experiments, which we will introduce in the next section, we have considered the convenience of using a larger
+et of baselines for comparative purposes, thus including the following extra runs:
+148 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+•  EN  stm: another target language (English) monolingual run using the original English topics provided by CLEF,
+this time employing a classical stemming-based approach. It uses the Porter-based Snowball stemmer12 and the
+stopword list provided by the University of Neuchâtel.13
+•  Google  stm: a more classical cross-language run that uses Google Translate service14 for translating the source
+language query into the target language (English). The resulting translated query is then conflated using stemming
+and stopword removal, as in the previous case.
+• Google  4-grams: this baseline uses, as before, Google Translate for translating the source language query into
+English but, this time, we use 4-grams as index terms. In other words, Google  4-grams  is to Google  stm  as EN
+4-grams is to EN  stm.
+5.  System  tuning  using  Spanish-to-English  (ES-to-EN)  CLIR
+In order to get our system to work in a proper way, we need to tune a large number of different parameters. Moreover,
+we intend to demonstrate the generality of our n-gram based approach. Thus, we will use a Spanish-to-English (ES-to-
+EN) set-up to find the most promising configurations in terms of performance and efficiency. These same parameters
+will be used later for the remaining languages. This way, this initial set of ES-to-EN runs should be seen as the tuning
+phase of our system, while the runs for the remaining languages (see Section 7) should be seen as its testing  phase.
+At this point we note that because of problems of space and readability, it will not always be possible to show the
+results obtained for all the configurations tested, particularly in the case of threshold-base selection. So, we will restrict
+ourselves, when necessary, to those values which are most relevant to the analysis.
+5.1.  ES-to-EN  alignment  statistics
+As explained above, our first test set corresponds to Spanish-to-English (ES-to-EN) cross-language runs. We will
+start our study by showing some statistics which do not depend on the particular association measure to be used.
+Firstly, we will focus on the input word-level alignment, obtained by aligning the Spanish–English Europarl
+parallel corpus (see Section 4.1) using Giza++. Table 3 shows the distribution of the input aligned ES-to-EN word
+pairs across their word-to-word translation probabilities, which exhibits a clear bimodal behavior with peaks at both
+ends, with the highest peak corresponding to low-probability translations. As previously described in Section 3.4, we
+have considered the use of both regular unidirectional word alignment and bidirectional word alignment, together with
+the application or not of a threshold-based filtering. In this case, a W = 0.00 threshold value means that no filtering has
+been done, and a W  = 0.15 value means that those word-level alignments whose translation probability is less than 0.15
+have been removed. Table 4 shows, for those same aligned word pairs, the distribution of the source (Spanish) words
+across their number of possible (English) translations.
+Finally, we will pay attention to the corresponding output n-gram level alignment obtained by the algorithm used
+in our implementation. Table 5 shows the distribution of source n-grams across their number of possible n-gram level
+alignments, i.e. their number of n-gram level translations.
+Next, we will present the performance results obtained for the different configurations tested.
+5.2.  ES-to-EN  results  using  the  Dice  coefficient
+The first round of our ES-to-EN experiments was performed using the Dice coefficient (Eq. (1)). Table 6
+presents the performance results, measured in terms of mean  average  precision  (MAP), obtained when apply-
+ing the subword-level translation approach with Dice. The top (sub)table corresponds to the results obtained
+using the top-rank-based selection algorithm (for the H  values previously described in Section 4.2), while
+the lower (sub)table employed the threshold-based selection algorithm (for the threshold values T  introduced
+in Section 4.2). For each (sub)table, the right-hand two-column group shows those results obtained when
+12 http://snowball.tartarus.org.
+13 http://www.unine.ch/info/clef/.
+14 http://translate.google.es.
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 149
+Table 3
+Distribution of input aligned ES-to-EN word pairs across their word-to-word translation probabilities.
+Prob. Unidirectional word alignment Bidirectional word alignment
+W = 0.00 W = 0.15 W = 0.00 W = 0.15
+#Pairs %Pairs #Pairs %Pairs #Pairs %Pairs #Pairs %Pairs
+[0.. 0.001) 1,127,088 38.11 0 0.00 331,916 30.74 0 0.00
+[0.001.. 0.01) 635,947 21.51 0 0.00 293,586 27.19 0 0.00
+[0.01.. 0.05) 575,542 19.46 0 0.00 219,016 20.28 0 0.00
+[0.05.. 0.10) 225,619 7.63 0 0.00 76,792 7.11 0 0.00
+[0.10.. 0.20) 246,764 8.34 82,540 36.08 70,311 6.51 26,921 23.37
+[0.20.. 0.30) 59,101 2.00 59,101 25.83 25,817 2.39 25,817 22.41
+[0.30.. 0.40) 32,744 1.11 32,744 14.31 17,642 1.63 17,642 15.31
+[0.40.. 0.50) 19,137 0.65 19,137 8.37 12,522 1.16 12,522 10.87
+[0.50.. 0.60) 6861 0.23 6861 3.00 6465 0.60 6465 5.61
+[0.60.. 0.70) 5257 0.18 5257 2.30 5082 0.47 5082 4.41
+[0.70.. 0.80) 4277 0.14 4277 1.87 4195 0.39 4195 3.64
+[0.80.. 0.90) 3657 0.12 3657 1.60 3530 0.33 3530 3.06
+[0.90.. 0.95) 1567 0.05 1567 0.68 1460 0.14 1460 1.27
+[0.95.. 0.975) 919 0.03 919 0.40 802 0.07 802 0.70
+[0.975.. 0.99) 12,708 0.43 12,708 5.55 10,764 1.00 10,764 9.34
+[0.99.. 1] 0 0.00 0 0.00 0 0.00 0 0.00
+Total 2,957,188 100.00 228,768 100.00 1,079,900 100.00 115,200 100.00
+A
+u
+t
+w
+s
+s
+S
+a
+T
+D
+#
+[
+[
+[
+[
+[
+[
+[
+[
+[
+[
+[
+T
+A
+vg. prob. 0.04 0.34 0.06 0.42
+sing a regular unidirectional ES-to-EN word-level alignment, while the left-hand two-column group shows
+he results obtained when applying one of the proposed refinements, the use of a bidirectional ES-to-EN
+ord-level alignment (introduced in Section 3.4). Finally, for each of these two-column groups, the first column
+tands for the results obtained when no minimal word alignment probability W is required (i.e. W = 0.00), while for the
+econd column a word translation probability threshold W  = 0.15, the other of the proposed refinements (described in
+ection 3.4), has been applied. This way all possible configurations are covered. The best results for each < selection
+lgorithm/word-level alignment/word-level probability threshold > configuration are shown in boldface.
+able 4
+istribution of source words in the input aligned ES-to-EN word pairs across their number of possible translations.
+Transl. Unidirectional word alignment Bidirectional word alignment
+W = 0.00 W = 0.15 W = 0.00 W = 0.15
+#Words %Words #Words %Words #Words %Words #Words %Words
+1.. 1] 9504 6.92 57,115 50.74 56,188 44.32 79,013 82.36
+2.. 2] 9277 6.75 25,855 22.97 17,365 13.70 14,850 15.48
+3.. 4] 17,747 12.92 19,755 17.55 16,162 12.75 2046 2.13
+5.. 9] 40,637 29.59 9837 8.74 15,087 11.90 30 0.03
+10.. 19] 24,590 17.90 0 0.00 10,040 7.92 0 0.00
+20.. 29] 10,642 7.75 0 0.00 4095 3.23 0 0.00
+30.. 39] 6068 4.42 0 0.00 2215 1.75 0 0.00
+40.. 49] 4173 3.04 0 0.00 1362 1.07 0 0.00
+50.. 74] 6180 4.50 0 0.00 1753 1.38 0 0.00
+75.. 99] 3095 2.25 0 0.00 935 0.74 0 0.00
+100.. ∞) 5443 3.96 0 0.00 1584 1.25 0 0.00
+otal 137,356 100.00 112,562 100.00 126,786 100.00 95,939 100.00
+vg. #transl. 21.53 2.03 8.52 1.20
+150 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+Table 5
+Distribution of source 4-grams in the output aligned ES-to-EN 4-gram pairs across their number of possible translations.
+#Transl. Unidirectional word alignment Bidirectional word alignment
+W = 0.00 W = 0.15 W = 0.00 W = 0.15
+#4-gr %4-gr #4-gr %4-gr #4-gr %4-gr #4-gr %4-gr
+[1.. 1] 811 1.47 3006 5.73 2856 5.46 3530 7.19
+[2.. 2] 778 1.41 2152 4.10 2511 4.80 2786 5.68
+[3.. 4] 2110 3.84 4889 9.32 6,494 12.42 7,176 14.62
+[5.. 9] 5956 10.83 10,832 20.65 12,519 23.94 13,464 27.44
+[10.. 19] 8741 15.89 10,881 20.74 7,944 15.19 8716 17.76
+[20.. 29] 5484 9.97 5088 9.70 3213 6.14 3443 7.02
+[30.. 39] 3494 6.35 2794 5.33 1822 3.48 1894 3.86
+[40.. 49] 2451 4.45 1842 3.51 1242 2.37 1383 2.82
+[50.. 74] 3773 6.86 2828 5.39 1977 3.78 2142 4.36
+[75.. 99] 2438 4.43 1658 3.16 1201 2.30 1177 2.40
+[100.. ∞) 18,983 34.50 6491 12.37 10,524 20.12 3363 6.85
+Total 55,019 100.00 52,461 100.00 52,303 100.00 49,074 100.00
+Avg. #transl. 360.12 56.29 172.37 32.83
+Table 6
+MAP results obtained for the ES-to-EN CLIR runs using the Dice coefficient with the top-rank-based (top table) and the threshold-based (lower
+table) selection algorithms.
+H Top-rank-based
+Unidirectional Bidirectional
+W = 0.00 W = 0.15 W = 0.00 W = 0.15
+1 0.2561 0.2515 0.2475 0.2432
+2 0.2337 0.2377 0.2450 0.2455
+5 0.2084 0.2002 0.2001 0.2065
+10 0.1524 0.1554 0.1536 0.1593
+20 0.1280 0.1238 0.1304 0.1285
+30 0.0874 0.1037 0.0959 0.1110
+40 0.0582 0.0782 0.0637 0.0686
+T Threshold based
+Unidirectional Bidirectional
+W = 0.00 W = 0.15 W = 0.00 W = 0.15
+0.00 0.0023 0.0015 0.0013 0.0026
+0.10 0.1660 0.1635 0.1769 0.1582
+0.20 0.1525 0.1789 0.1737 0.1628
+0.30 0.1620 0.1618 0.1667 0.1930
+0.40 0.1453 0.1633 0.1639 0.1616
+0.50 0.1422 0.1377 0.1463 0.1542
+0.60 0.1362 0.1332 0.1274 0.1327
+During their analysis, statistical significance tests have been used for comparing, in terms of MAP, the performance
+of each of these possible running configurations; in particular, two-tailed T-tests over MAP values with α = 0.05 have
+been applied throughout this work. At this point, those tests showed that:(a) Results obtained using the top-rank-based selection algorithm are significantly better than those for threshold-based
+selection.
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 151
+Table 7
+MAP results obtained for the ES-to-EN CLIR runs using the pointwise mutual information with the top-rank-based (top table) and the threshold-based
+(lower table) selection algorithms.
+H Top-rank-based
+Unidirectional Bidirectional
+W = 0.00 W = 0.15 W = 0.00 W = 0.15
+1 0.0842 0.1106 0.0824 0.1136
+2 0.0961 0.1319 0.1066 0.1491
+5 0.1386 0.1645 0.1523 0.1689
+10 0.1265 0.1583 0.1571 0.2021
+20 0.1735 0.1758 0.1804 0.1876
+30 0.1640 0.1646 0.1646 0.1682
+40 0.1389 0.1389 0.1449 0.1446
+T Threshold based
+Unidirectional Bidirectional
+W = 0.00 W = 0.15 W  = 0.00 W = 0.15
+μ 0.0011 0.0440 0.0012 0.1423
+μ + 0.5σ  0.0019 0.1743 0.0046 0.1979
+μ + σ 0.0470 0.1966 0.0783 0.1923
+μ + 1.5σ  0.2048 0.1797 0.2043 0.1997
+μ + 2σ 0.1479 0.1763 0.1685 0.1428
+μ + 2.5σ  0.1443 0.1553 0.1447 0.1321
+μ + 3σ 0.1414 0.1307 0.1330 0.1330
+μ
+(
+(
+5
+(
+a
+t
+(
+(
+(
+5
+a
+ + 3.5σ  0.1330 0.1330 0.1330 –
+b) The results obtained using unidirectional or bidirectional word-level alignments showed no significant difference.
+c) There is no significant difference between the optimal result (obtained using unidirectional word-level alignment,
+no word-level probability threshold and the top-rank-based selection algorithm) and the results for the remaining
+top-rank-based sub-optimal runs shown in boldface in the table (i.e. the best results obtained with the other
+configurations using top-rank-based selection).
+.3.  ES-to-EN  results  using  pointwise  mutual  information
+Our second round of ES-to-EN runs tested the behavior of the system when using pointwise mutual information
+Eq. (2)) as the association measure. The detailed results can be seen all together in Table 7, with the same distribution
+s before. Again, the best results obtained are shown in boldface. The corresponding statistical significance tests (again
+wo-tailed T-tests over MAP values with α  = 0.05) have shown that:
+a) This time we have not found significant differences between the results obtained with the top-rank-based and
+threshold-based selection algorithms.
+b) As before, the results obtained using unidirectional or bidirectional word-level alignments do not significantly
+differ between them.
+c) In general, there is no significant difference between the optimal runs obtained either for the top-rank-based and
+the threshold-based selection algorithms, and the remaining sub-optimal runs..4.  ES-to-EN  results  using  log-likelihood
+The last round for this first ES-to-EN test series uses log-likelihood (Eq. (3)). The results obtained
+re presented in Table 8 with the usual distribution and the best results for each configuration shown in
+152 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+Table 8
+MAP results obtained for the ES-to-EN CLIR runs using the log-likelihood with the top-rank-based (top table) and the threshold-based (lower table)
+selection algorithms.
+H Top-rank-based
+Unidirectional Bidirectional
+W = 0.00 W = 0.15 W = 0.00 W = 0.15
+1 0.2785 0.2771 0.2703 0.2732
+2 0.2557 0.2590 0.2509 0.2590
+5 0.1997 0.2068 0.1961 0.2023
+10 0.1589 0.1636 0.1464 0.1640
+20 0.1177 0.1202 0.1144 0.1227
+30 0.0842 0.0948 0.0910 0.0957
+40 0.0612 0.0813 0.0639 0.0685
+T Threshold based
+Unidirectional Bidirectional
+W = 0.00 W = 0.15 W = 0.00 W = 0.15
+μ 0.0045 0.0305 0.0061 0.0444
+μ + 10σ  0.0444 0.1156 0.0633 0.1288
+μ + 20σ  0.0798 0.1392 0.1189 0.1495
+μ + 30σ  0.1229 0.1487 0.1396 0.1472
+μ + 40σ  0.1354 0.1463 0.1443 0.1415
+μ + 50σ  0.1362 0.1446 0.1491 0.1398
+μ + 60σ  0.1410 0.1424 0.1494 0.1393
+μ + 70σ  0.1478 0.1396 0.1451 0.1371
+μ + 120σ 0.1446 0.1360 0.1394 0.1330
+μ + 150σ 0.1401 0.1330 0.1391 –
+(
+boldface.15 For these log-likelihood experiments, significance tests showed similar behavior to those with the Dice
+coefficient:
+(a) Results obtained using the top-rank-based selection algorithm are significantly better than those for threshold-based
+selection.
+b) The results obtained using unidirectional or bidirectional word-level alignments do not significantly differ between
+them.
+(c) There is no significant difference between the optimal result (obtained using unidirectional word-level alignment,
+no word-level probability threshold and the top-rank-based selection algorithm) and those for the remaining top-
+rank-based sub-optimal runs.
+5.5.  ES-to-EN  summary  results
+Finally, the top graph of Fig. 2 presents the results for the best configurations found compared with the baselines
+proposed in Section 4.3.16 In this case, precision vs. recall graphs are also shown in addition to MAP values in order
+to make their analysis easier. Regarding these figures, they show that:
+15 Notice that in the case of the threshold-based selection algorithm, since the standard deviation of the log-likelihood distribution values has been
+found to be much greater than for pointwise mutual information, the steps we have used are longer – see i parameter in Eq. (4).
+16 At this point we make notice that the bottom graph of the figure shows sub-optimal configurations with no statistically significant difference
+with respect to the previous ones but with a more efficient performance. They will be discussed later in Section 7.
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 153
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0  0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1
+P
+re
+ci
+si
+on
+ (
+P
+)
+Recall (Re)
+EN stm (MAP=0.4515)
+Google stm (MAP=0.4500)
+EN 4-grams (MAP=0.3655)
+Google 4-grams (MAP=0.3712)
+ES 4-grams (MAP=0.1330)
+Dice dir W=0.00 H=1 (MAP=0.2561)
+PMI dir W=0.00 T=μ+1.5σ (MAP=0.2048)
+LogL dir W=0.00 H=1 (MAP=0.2785)
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0  0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1
+P
+re
+ci
+si
+on
+ (
+P
+)
+EN stm (MAP=0.4515)
+Google stm (MAP=0.4500)
+EN 4-grams (MAP=0.3655)
+Google 4-grams (MAP=0.3712)
+ES 4-grams (MAP=0.1330)
+Dice int W=0.15 H=1 (MAP=0.2432)
+PMI int W=0.15 H=10 (MAP=0.2021)
+LogL int W=0.15 H=1 (MAP=0.2732)
+(
+(
+(
+(
+(
+(
+6
+6
+m
+G
+Recall (Re)
+Fig. 2. ES-to-EN summary MAP results and precision vs. recall graphs: optimal runs (top) and most efficient sub-optimal runs (bottom).
+a) The performance of n-gram based approaches is satisfactory although it is still below that one of more complex
+classical word-based techniques which make use of their language knowledge.
+b) The performance of phrase-based MT runs (Google  stm  and Google  4-grams) is similar to that one of target
+language monolingual runs (EN  stm  and EN  4-grams, respectively).
+c) Our upper n-gram based monolingual baseline, EN  4-grams, performs significantly better than n-gram based CLIR
+runs.
+d) The log-likelihood run performs similarly to the Dice coefficient run – slightly outperforming it – but improves on
+pointwise mutual information results significantly.
+e) Both log-likelihood and Dice coefficient runs outperform significantly the lower baseline, ES  4-grams, which
+accounts for casual matching.
+f) Pointwise mutual information shows no significant difference to the lower baseline.
+.  Discussion  of  results  for  ES-to-EN  CLIR
+Now the results obtained for our ES-to-EN experiments have been presented, it is time to analyze them carefully.
+.1.  Upper  baselinesBefore analyzing the performance of our approach, we will study the results obtained for our upper n-gram based
+onolingual baseline (EN  4-grams) and the other upper baselines we introduced for this first tuning phase (EN  stm,
+oogle stm  and Google  4-grams).
+154 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+As stated before, there is still margin for improvement when comparing monolingual n-gram based IR (EN  4-grams)
+with classical monolingual word-based IR (EN  stm). The results obtained are positive, but they can be improved.
+However, this is a question beyond the scope of this paper since we are focusing on the n-gram based translation
+process. Moreover, the small difference attained when using phrase-based MT for query translation (Google  stm  and
+Google 4-grams) with respect to monolingual results (EN  stm  and EN  4-grams, respectively), shows us that this should
+be our role model for the future.
+6.2.  Using  Dice  coefficient
+With regard to our n-gram based CLIR approach, our analysis will focus first on the results obtained using the Dice
+coefficient in our Spanish-to-English experiments of Section 5.2. Throughout this analysis we will consider the case
+of applying no refinements during word-level alignment – that is, when using a unidirectional word-level alignment
+with no word-level alignment filtering (i.e. W  = 0.00) – as our basic  configuration.
+In this first round of experiments, the best results for the top-rank-based selection algorithm are obtained for H = 1,
+that is when minimizing the number of candidate translations. On the other hand, when employing threshold-based
+selection, the performance values obtained for the different thresholds show much less variation than for the top-rank-
+based algorithm, although they are significantly outperformed by it. This is because of the noise introduced by the
+extra n-grams added by the thresholds-based method.
+Next, trying to reduce the noise introduced in the system by word-level translation ambiguities, we removed those
+least-probable word alignments from the input by applying the first of the proposed refinements: threshold-based word-
+level alignment filtering. After studying the distribution of the output word-level alignments obtained with Giza++
+– see Table 3 – we decided to dismiss those pairs with a word translation probability less than a threshold W  = 0.15.
+In this way we significantly reduced by more than 90% both the number of input word pairs processed – see Table 3
+– and the mean number of possible translations per source word – see Table 4. Such a reduction had an immediate
+effect on the output n-gram level alignments, reducing the mean number of possible translations per source n-gram
+by nearly 85% – see Table 5. These reductions, both at word and n-gram level, resulted in a considerable reduction of
+both processing and storage resources.
+As previously stated in Section 5.2, the results obtained by introducing this refinement are, in general, not sig-
+nificantly different in terms of performance from those obtained for the basic configuration, whatever the selection
+algorithm used. So, it can be concluded that although word-level pruning does not really improve the results, it does
+greatly reduce those computing and storage resources required by the system, justifying its application. On the other
+hand, these results prove that this n-gram based solution has a robust behavior against the noise introduced by the very
+high percentage of low-probability word-level alignments of the input in the case of the basic configuration.
+Next, we tested the second of the proposed refinements, the use of bidirectional word-level alignment. As explained
+in Section 3.4, its aim was to improve the accuracy of the n-gram alignment process by focusing the processing on those
+words whose translation is less ambiguous. At word level, when examining Tables 3 and 4 we can see that bidirectional
+word alignment attains a reduction of approximately 60% in both the number of input word pairs and the mean number
+of possible translations per input word, taking again our basic  configuration  as a reference. Consequently, at the n-gram
+level, according to Table 5, the mean number of possible translations per source n-gram was reduced by more than
+50% after applying this new refinement. As before, this reduction at both input and output level allows us to reduce
+the computing and storage resources.
+With respect to the results themselves, as stated in Section 5.2, they are not significantly different from those
+obtained with the original unidirectional word-level alignment. So, we can conclude that the use of bilingual alignment
+neither improves nor degrades the performance of the system, but does allow us to reduce both computing and storage
+resources. Moreover, the system has once again demonstrated its robustness to inaccurate or ambiguous input word-level
+alignments.
+Finally, because of their good behavior separately, we also studied the possibility of combining both refinements,
+word-level bilingual alignment and word-level pruning, looking for an additional reduction of both the level of ambiguity
+and the computing and storage resources consumed. We take, as usual, our initial basic  configuration  as the baseline.
+At word level, Tables 3 and 4 show that, when combining both refinements, we obtain a increased reduction of
+approximately 95% in both the number of input word alignments and in the mean number of possible translations per
+i
+o
+r
+f
+n
+t
+6
+w
+a
+u
+i
+a
+t
+b
+s
+–
+f
+t
+a
+g
+m
+c
+n
+i
+c
+d
+r
+w
+w
+t
+w
+n
+a
+6
+a
+a
+w
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 155
+nput source word. As a result, at the n-gram level, Table 5 shows a reduction of more then 90% in the mean number
+f possible output n-gram translations per source n-gram.
+The results obtained, as stated in Section 5.2, are still not significantly different from the initial ones, with the top-
+ank-based selection algorithm performing significantly better – although this time the best performance was obtained
+or H  = 2, the difference with the second best run, the one for H  = 1, is negligible. On the other hand, such results show
+o apparent deterioration in performance, allowing us to conclude that the combined use of both refinements minimizes
+he resources required by the system without harming its performance.
+.3.  Using  pointwise  mutual  information
+Our second round of experiments, presented in Section 5.3, makes use of pointwise mutual information.
+As before, our first test runs used the so-called basic  configuration: single unidirectional word-level alignment
+ith no word-level pruning (i.e. W  = 0.00). When examining the results obtained using the top-rank-based selection
+lgorithm we found that, unlike before, results improved when progressively increasing the number of n-grams accepted
+p to a maximum at H  = 20. Nevertheless, these results are significantly worse than those obtained using Dice. This
+s because PMI tends to overestimate low-frequency data, meaning that inaccurate but frequent n-gram alignments
+re assigned very high PMI values, even higher than more accurate alignments, thus introducing too much noise in
+he translated query and, therefore, visibly decreasing performance. Regarding threshold-based selection results, they
+ehave in a more homogeneous way between thresholds, but with no significant differences with respect to top-rank
+election, thus also performing significantly worse than when using Dice.
+When introducing the first refinement, word-level pruning according to a translation probability threshold W  = 0.15
+ previously described in Section 3.4 – the gains were exactly the same as in the case of the Dice coefficient, except
+or the mean n-gram association measure. This is because the gains at word-level, both with respect to the reduc-
+ion of input word pairs and the increase of the mean translation probability, depend only on the value of W, and
+re not affected by the association measure chosen. At the n-gram level, the reduction in the number of output n-
+ram pairs only depends on the input word pairs – and, consequently, also on the value of W. Nevertheless, the
+ean association measures vary, since we are now working with pointwise mutual information instead of the Dice
+oefficient.
+As shown in Section 5.3, the behavior of the system and the results obtained for both selection algorithms do
+ot significantly differ from those obtained for the basic configuration. As in the case of the Dice coefficient, the
+ntroduction of the word-level threshold W  does not degrade the performance of the system, although does reduce the
+omputing and storage resources required. On the other hand, the system continues to show its robustness against the
+istortion introduced by low-probability inputs.
+Next, we tried the second proposed refinement: word-level bidirectional alignment. As shown in Section 5.3, the
+esults obtained showed no significant differences from those for the regular unidirectional alignment, whether we apply
+ord-level pruning or not – i.e. whether W  = 0.00 or W  = 0.15. As before, the gains obtained when using bidirectional
+ord alignment, either in combination or not with the use of word-level pruning, were exactly the same as those with
+he Dice coefficient.
+From this behavior we conclude that, as in the case of using the Dice coefficient, the introduction of a bidirectional
+ord alignment not only has no effect on the performance of the system, but has the benefit of reducing the resources
+eeded. On the other hand, the system again showed its robustness against inaccurate or ambiguous input word
+lignments.
+.4.  Using  log-likelihood
+The last round of our tuning ES-to-EN experiments tested the behavior of the system when employing log-likelihood,
+s described in Section 5.4.
+As usual, our first test runs corresponded to our basic  configuration. In the case of using the top-rank-based selection
+lgorithm, the behavior of the system is similar to that for the Dice coefficient, with the best results being obtained
+hen limiting the number of candidate n-grams accepted, with H  = 1 as the best configuration, even outperforming
+(
+156 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+Dice. However, in the case of the threshold-based selection algorithm, the results obtained were very poor, being the
+lowest performance obtained so far.
+For the first refinement, word-level pruning, the gains were exactly the same as in the case of the Dice coefficient
+and PMI. The behavior of the system and the results obtained, as stated in Section 5.4, did not significantly differ from
+those obtained with the basic configuration. As in the case of the rest of association measures, the introduction of the
+word-level threshold did not degrade performance, but did reduce both the computing and storage resources required.
+On the other hand, the system again demonstrated its robustness against the distortion introduced by low-probability
+inputs.
+Our last bunch of test runs corresponded to those results obtained applying word-level bidirectional alignment. As
+shown in Section 5.4, the results obtained were not significantly different from those for the regular unidirectional
+alignment, both in the case of applying threshold-based pruning or not – i.e. for W  = 0.15 and W  = 0.00, respectively.
+From this behavior we conclude that, as in the case of the other association measures, the introduction of a bidirec-
+tional word-level alignment not only has no effect on the performance of the system, but has the benefit of reducing
+the resources needed. On the other hand, the system continued to show its robustness against inaccurate or ambiguous
+input word-level alignments.
+7.  Testing  experiments  with  other  language  pairs
+After a first tuning  phase in a ES-to-EN context in order to find a proper running configuration for our system
+(see Sections 5 and 6), it is time to move to a second testing  phase, properly speaking, where we will introduce the
+remaining languages. By means of these new experiments we intend to extend the study of the effectiveness of our
+approach and to prove its generality.
+7.1.  Test  configuration
+It should first be noted that no special tuning was made for any individual language; all the results we are going to
+present now have been obtained using the same running configuration.
+For the purpose of selecting this common configuration, we can benefit from the fact that, as stated during the
+previous discussions:
+(a) The application of the proposed refinements – word-level pruning and bilingual word alignment – does not harm
+performance and, on the contrary, we gain in efficiency by reducing computing and storage resources.
+b) The top-rank-based selection algorithm outperforms the threshold-based one both in terms of performance and
+efficiency – except in the case of pointwise mutual information, where performance is similar.
+(c) Log-likelihood and Dice perform similarly, being significantly superior to pointwise mutual information, whose
+performance was shown to be poor to and less efficient because of the much higher number of candidate translation
+n-grams required to attain its best performance.
+Thus, we finally decided to dismiss the use of pointwise mutual information. In the case of both the Dice coefficient
+and the log-likelihood, for the remainder of our experiments we will adopt the following running configuration as a
+compromise between performance and efficiency:
+• Top-rank-based selection with H  = 1, bidirectional word-level alignment and word-level threshold pruning with
+W = 0.15.
+For the sake of completeness, the results obtained in a ES-to-EN context when using these sub-optimal but more
+efficient configurations are shown in the bottom graph of Fig. 2.7.2.  Test  results
+The results obtained with this common configuration for German (DE), French (FR), Italian (IT), Dutch (NL),
+Swedish (SV) and Finnish (FI) source languages, compared with their corresponding baselines, are presented in Fig. 3.
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 157
+DE-to-EN
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0  0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1
+P
+re
+ci
+si
+on
+ (
+P
+)
+Recall (Re)
+EN 4-grams (MAP=0.3655)
+DE 4-grams (MAP=0.1538)
+Dice int W=0.15 H=1 (MAP=0.2909)
+LogL int W=0.15 H=1 (MAP=0.2959)
+FR-to-EN
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0  0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1
+P
+re
+ci
+si
+on
+ (
+P
+)
+Recall (Re)
+EN 4-grams (MAP=0.3655)
+FR 4-grams (MAP=0.1934)
+Dice int W=0.15 H=1 (MAP=0.2664)
+LogL int W=0.15 H=1 (MAP=0.2735)
+IT-to-EN
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0  0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1
+P
+re
+ci
+si
+on
+ (
+P
+)
+Recall (Re)
+EN 4-grams (MAP=0.3655)
+IT 4-grams (MAP=0.1570)
+Dice int W=0.15 H=1 (MAP=0.2336)
+LogL int W=0.15 H=1 (MAP=0.2307)
+NL-to-EN
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0  0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1
+P
+re
+ci
+si
+on
+ (
+P
+)
+Recall (Re)
+EN 4-grams (MAP=0.3655)
+NL 4-grams (MAP=0.1532)
+Dice int W=0.15 H=1 (MAP=0.2693)
+LogL int W=0.15 H=1 (MAP=0.2854)
+SV-to-EN
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0  0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1
+P
+re
+ci
+si
+on
+ (
+P
+)
+Recall (Re)
+EN 4-grams (MAP=0.3655)
+SV 4-grams (MAP=0.1856)
+Dice int W=0.15 H=1 (MAP=0.2424)
+LogL int W=0.15 H=1 (MAP=0.2515)
+FI-to-EN
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 0  0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1
+P
+re
+ci
+si
+on
+ (
+P
+)
+Recall (Re)
+EN 4-grams (MAP=0.3655)
+FI 4-grams (MAP=0.1329)
+Dice int W=0.15 H=1 (MAP=0.2212)
+LogL int W=0.15 H=1 (MAP=0.2311)
+Fig. 3. Summary MAP results and precision vs. recall graphs for the rest of source languages using the selected common configuration: German
+(DE-to-EN), French (FR-to-EN), Italian (IT-to-EN), Dutch (NL-to-EN), Swedish (SV-to-EN) and Finnish (FI-to-EN).
+N
+h
+s
+S
+n
+E
+ote that, in order to improve readability by not overloading the figures, only the monolingual n-gram based baselines
+ave been used, thus focusing our study on n-gram based retrieval performance. English stemming based results (EN
+tm), which would be common to all figures since they share the same target language, are still available in Fig. 2.
+imilarly, with regard to phrase-based MT baselines (Google  stm  and Google  4-grams), experiments were made – but
+ot displayed – for all the languages involved, showing qualitatively similar results to those previously obtained for
+S-to-EN.
+(
+Q
+158 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+Going back to Fig. 3, the results obtained are very similar to those previously obtained for Spanish. Moreover,
+according to the significance tests performed – remember that two-tailed T-tests over MAP values with α  = 0.05 have
+been applied throughout this work – we can state that, in general:
+(a) Our upper baseline, the n-gram based monolingual run (EN  4-grams), performs significantly better than the n-gram
+based CLIR runs.
+b) The log-likelihood runs perform similarly, with no significant differences, to the corresponding Dice coefficient
+runs, usually outperforming them – except for Italian-to-English, where Dice slightly outperforms log-likelihood.
+(c) Both the log-likelihood and Dice coefficient runs significantly outperform their corresponding lower baselines (LX
+4-grams, where LX stands for the source language), which account for casual matching.
+7.3.  Discussion  of  the  results  with  other  language  pairs
+As can be seen, the results presented above are not different, from a qualitative point of view, from those previously
+obtained for the ES-to-EN CLIR runs. From a quantitative point of view, and focusing on MAP, the results obtained
+are also quite close to those obtained before, since they vary, in general, within the range of the values previously
+obtained for Spanish. The lowest MAP was obtained for the non-Romance and non-Germanic language, Finnish, but
+even in that case we are talking about 0.22–0.23 MAP values, which are close to the expected values according to our
+experiments on Spanish.
+So, this n-gram based approach has been able to perform effective retrieval, thus proving that the validity of this
+technique is independent of the languages involved.
+8.  General  discussion
+As we have stated, n-gram based translation avoids some of the limitations of classic dictionary-based translation
+methods, such as the need for word normalization or the inability to handle misspellings and out-of-vocabulary words.
+In the case of normalization, the overlapping of n-grams corresponding to a given word provides in itself a surrogate
+means to normalize word forms during indexing and translation. This is because those parts shared by a word and its
+morphological variants, their roots and possibly other morphemes, will be translated into the same target n-gram and
+then matched, making retrieval possible. In a similar way, n-gram based translation approaches allow the translation
+and matching of both misspellings and out-of-vocabulary words, since those parts of the unknown word which are
+shared with other known words – either because they are shared roots or morphemes or because they have not been
+affected by the misspelling – can still be translated and matched at the n-gram level.
+Moreover, since this is a knowledge-light approach which does not rely on language-specific processing, it can be
+used for a wide range of languages of very different natures, even in the face of the lack of linguistic information and
+language resources available. In contrast, other more classical CLIR approaches need language-specific resources for
+their application, such as stemmers, stopword lists, lexicons, tagged corpora and bilingual dictionaries, which are not
+always available, even for main European languages (Rehm and Uszkoreit, 2011).
+The results obtained throughout our experiments have shown the consistency across languages, of this kind of n-
+gram based translation approaches. Moreover, these results indicate that both the log-likelihood and the Dice coefficient
+significantly outperform pointwise mutual information, the former performing slightly better. Our tests also showed
+the top-rank-based selection algorithm to be, in general, significantly better not only from a performance but also from
+an efficiency point of view, since the number of translation n-grams to be processed is fewer.As a final summary, it is time to answer the questions we had formulated at the beginning of this study – see Section
+1.2:
+: Is  the  behavior  of  n-gram  based  translation  consistent  across  different  languages?
+A: Yes, the results obtained for the different languages used in our experiments have shown a consistent behavior
+across them.
+Q
+A
+t
+b
+M
+i
+9
+(
+o
+t
+t
+t
+p
+t
+u
+o
+m
+T
+t
+t
+a
+i
+l
+w
+d
+g
+g
+a
+e
+T
+t
+u
+p
+t
+c
+p
+W
+R
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 159
+:  Which  is  the  most  effective  way  of  applying  it?
+: We have found large differences depending on the running configuration used, but when taking as criteria a
+compromise between performance and efficiency, the most promising ones are the following:
+– At word level, the application of a non-standard bilingual alignment and the pruning of input word alignments
+according to a word translation probability threshold (W  = 0.15).
+– At character n-gram level, the use of the Dice coefficient or log-likelihood as an association measure and the
+employment of the top-rank-based selection algorithm restricting H  to a maximum.
+Although there is still a margin for improvement with respect to more complex classical word-based techniques,
+hese results are a further proof of the validity and applicability of character n-gram based approaches for CLIR tasks,
+oth for indexing–retrieval and translation purposes, these not being tied to certain implementations such as that of
+cNamee and Mayfield (2004b) or the present one. For all these reasons we believe that this study constitutes an
+nteresting contribution in the state of the art of this particular field of n-gram based processing.
+.  Conclusions  and  future  work
+This article presents a study on the effectiveness and consistency of Cross-Language Information Retrieval
+CLIR) systems which use character n-grams not only as indexing units, but also as translation units. This kind
+f approaches looks to extend the main advantages of n-grams (simplicity, independency and robustness) not only in
+he indexing–retrieval process, but also in the query translation process.
+For this purpose, we have made use of an implementation of our own which integrates a novel algorithm for parallel
+ext alignment at the subword (i.e. character n-gram) level. This algorithm consists of two phases. In the first phase,
+he most time-consuming, the input parallel corpus is aligned at the word level using a statistical aligner. In the second
+hase, association measures existing between the character n-grams compounding each aligned word pair are computed
+aking as input the translation probabilities calculated in the previous phase. This two-level proposal allows us to speed
+p the training process, concentrating most of the complexity in the word-level alignment phase and making the testing
+f new techniques and new association measures for n-gram alignment easier. Three of the most widely used association
+easures have been considered in this work: the Dice coefficient, pointwise mutual information and log-likelihood.
+he resulting n-gram level alignments were used for query translation at character n-gram level. For this purpose,
+wo algorithms for the selection of candidate translations have been tested: a top-rank-based algorithm, which takes
+he H  highest ranked n-gram alignments; and a threshold-based algorithm, which selects the n-gram level alignments
+ccording to a minimal threshold T.
+Two techniques have been also considered for improving the system: the use of a bidirectional alignment during the
+nput word-level alignment, and the introduction of a minimal word-level translation probability threshold for word-
+evel pruning. Both techniques have allowed us to increase efficiency by significantly reducing the number of input
+ord alignments to be processed and, consequently, the number of output n-gram alignments. This is done without
+egrading the performance of the system. This way, computing and storage resources needed by the system can be
+reatly reduced.
+The results obtained throughout our study not only confirm the consistency across languages of character n-
+ram based approaches for CLIR tasks, both for indexing–retrieval and translation purposes, but also constitute
+ further proof of their validity and applicability, these not being tied to a given implementation. Moreover, our
+xperiments show the remarkable robustness of these approaches against noisy or ambiguous input alignments.
+his factor, together with the inherent language-independent nature of n-grams, make this kind of solutions par-
+icularly interesting when dealing with multilingual environments where annotated language resources are scarce or
+navailable.
+Regarding future work, we plan to continue advancing on our study of the applicability of character n-gram based
+rocessing to IR and CLIR tasks. With respect to n-gram based IR in general, we intend to address some aspects
+hat, at this point, still require attention: firstly, how to properly apply query expansion and relevance feedback in this
+ontext; secondly, how to reduce the larger storage space required by n-gram based indexes and the resulting extra
+rocessing time, in order to both increase the performance of the system and reduce processing and storage resources.
+ith regard to this later aspect, we propose to extend the concept of stopword  to the case of n-grams. Savoy and
+asolofo (2002) made a similar proposal, the use of a stop-n-gram  list for eliminating those most frequent and least
+160 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+discriminative n-grams. However, their list was not automatically generated, but obtained from n-grams created from a
+previously existing stopword list, which means that the system would become language-dependent, in their case from
+Arabic. Foo and Li (2004) used a similar manually created list for Chinese. We propose that such stop-n-grams  should
+be generated automatically from the input texts (Blanco and Barreiro, 2007; Lo et al., 2005) in order to preserve the
+language-independent nature of n-gram based approaches.
+With respect to CLIR in particular, we also intend to study the effects of the input parallel corpus on the alignment
+process with respect to: (a) the minimal input required, following the example of McNamee et al. (2009) and (b) in
+the particular case of the n-gram alignment algorithm presented in the this work, the quality of the first phase word-
+level alignment, that is, if this word alignment can be simplified in order to reduce its associated computational costs.
+Moreover, we want to take advantage of our experience in the study of the impact of misspellings in monolingual IR
+systems (Vilares et al., 2011) and to extend that work to the case of CLIR systems.
+Finally, from a more practical point of view, we believe it would be interesting to use n-gram based translation for
+supporting the generation process of multilingual thesaurus for technical domains, as in the case of MorphoSaurus
+(Schulz et al., 2006) in Medicine, and its application to CLIR tasks (Markó et al., 2005). Twitter and other microblogging
+services will deserve special attention since it is a very noisy multilingual environment, for which specialized linguistic
+resources are still very scarce, particularly for non-English languages. This way, following the example of the research
+community, we intend to study the application of our n-gram based approach to our current research lines in microblog
+text processing for text normalization (Pennell and Liu, 2014), sentiment analysis (Aisopos et al., 2012) and language
+identification tasks (Lui and Baldwin, 2014).
+AcknowledgmentsThis research has been partially funded by the Spanish Ministry of Economy and Competitiveness (through projects
+FFI2014-51978-C2-1-R and FFI2014-51978-C2-2-R) and by the Autonomous Government of Galicia (through grant
+R2014/034).
+A
+R
+A
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 161
+ppendix  A.  Extended  version  of  Fig.  3  containing  stemming  and  Google  Translate  based  results
+eferencesisopos, F., Papadakis, G., Tserpes, K., Varvarigou, T.,2012. Content vs. context for sentiment analysis: a comparative analysis over microblogs.
+In: Proceedings of the 23rd ACM Conference on Hypertext and Social Media. HT’12. ACM, pp. 187–196.
+162 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+Amati, G., van Rijsbergen, C.J., 2002. Probabilistic models of information retrieval based on measuring divergence from randomness. ACM Trans.
+Inf. Syst. 20 (4), 357–389.
+Blanco, R., Barreiro, A.,2007. Static pruning of terms in inverted files. In: Proceedings of the 29th European Conference on IR Research (ECIR
+2007). Vol. 4425 of Lecture Notes in Computer Science. Springer-Verlag, pp. 64–75.
+Büttcher, S., Clarke, C.L., Cormack, G.V., 2010. Information Retrieval: Implementing and Evaluating Search engines. MIT Press.
+Carmel, D., Cohen, D., Fagin, R., Farchi, E., Herscovici, M., Maarek, Y.S., Soffer, A.,2001. Static index pruning for information retrieval systems.
+In: Proceedings of the 24th Annual International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR’01).
+ACM, pp. 43–50.
+Cavnar, W.B., 1994. Using an n-gram-based document representation with a vector processing retrieval model. In: NIST Special Publication 500-225:
+Overview of the Third Text REtrieval Conference (TREC 3), pp. 269–278.
+Chew, P.A., Verzi, S.J., Bauer, T.L., McClain, J.T.,2006. Evaluation of the Bible as a resource for cross-language information retrieval. In: Proceedings
+of the Workshop on Multilingual Language Resources and Interoperability. ACL, pp. 68–74.
+CLEF, 2014. The CLEF Initiative. http://www.clef-initiative.eu.
+Damashek, M., 1995. Gauging similarity with n-grams: language-independent categorization of text. Science 267 (5199), 843–848.
+Dolamic, L., Savoy, J., 2008. UniNE at FIRE 2008: Hindi, Bengali, and Marathi IR. In: Working Notes of the Forum for Information Retrieval
+Evaluation (FIRE 2008).
+Dorr, B., Hovy, E., Levin, L., 2004. Machine Translation: Interlingual methods.
+Ekmekcioglu, F.C., Lynch, M.F., Willett, P., 1996. Stemming and n-gram matching for term conflation in Turkish texts. Inf. Res. 2 (2).
+Escalante, H.J., Solorio, T., Montes-y Gómez, M.,2011. Local histograms of character n-grams for authorship attribution. In: Proceedings of the 49th
+Annual Meeting of the Association for Computational Linguistics: Human Language Technologies (HLT’11) – Volume 1. ACL, pp. 288–298.
+EUROPARL, 2014. European Parliament Proceedings Parallel Corpus 1996–2011. http://www.statmt.org/europarl/.
+Foo, S., Li, H., 2004. Chinese word segmentation and its effect on information retrieval. Inf. Process. Manag. 40 (1), 161–190.
+Gao, Q., Bach, N., Vogel, S.,2010a. A semi-supervised word alignment algorithm with partial manual alignments. In: Proceedings of the Joint 5th
+Workshop on Statistical Machine Translation and MetricsMATR (WMT’10). ACL, pp. 1–10.
+Gao, W., Niu, C., Nie, J.-Y., Zhou, M., Wong, K.-F., Hon, H.-W., 2010b. Exploiting query logs for cross-lingual query suggestions. ACM Trans.
+Inf. Syst. 28, 1–33.
+GIZA, 2014. giza-pp: GIZA++ Statistical Translation Models Toolkit. http://code.google.com/p/giza-pp/.
+Grefenstette, G. (Ed.), 1998. Cross-Language Information Retrieval, Vol. 2 of the Kluwer International Series on Information Retrieval. Kluwer
+Academic Publishers.
+Hollink, V., Kamps, J., Monz, C., De Rijke, M., 2004. Monolingual document retrieval for European languages. Inf. Retr. 7 (1–2), 33–52.
+Huet, S., Lefévre, F.,2011. Unsupervised alignment for segmental-based language understanding. In: Proceedings of the First Workshop on
+Unsupervised Learning in NLP (EMNLP’11). ACL, pp. 97–104.
+Hull, D., Grefenstette, G.,1996. Querying across languages: a dictionary-based approach to multilingual information retrieval. In: Proceedings of
+the 19th Annual International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR’96). ACM, pp. 49–57.
+Järvelin, A., Talvensaari, T., Järvelin, A.,2008. Data driven methods for improving mono- and cross-lingual IR performance in noisy environments.
+In: Proceedings of the Second Workshop on Analytics for Noisy Unstructured Text Data (AND’08). Vol. 303 of ACM International Conference
+Proceeding Series. ACM, pp. 75–82.
+Khreisat, L., 2009. A machine learning approach for Arabic text classification using n-gram frequency statistics. J. Informetr. 3 (1), 72–77.
+Koehn, P., 2005. Europarl: a parallel corpus for statistical machine translation. In: Proceedings of the 10th Machine Translation Summit (MT Summit
+X). Corpus available at EUROPARL (2014), pp. 79–86.
+Koehn, P., Och, F.J., Marcu, D.,2003. Statistical phrase-based translation. In: NAACL ‘03: Proceedings of the 2003 Conference of the North
+American Chapter of the Association for Computational Linguistics on Human Language Technology. ACL, pp. 48–54.
+Kwok, K., Choi, S., Dinstl, N., 2005. Rich results from poor resources: NTCIR-4 monolingual and cross-lingual retrieval of Korean texts using
+Chinese and English. ACM Trans. Asian Lang. Inf. Process. 4, 136–162.
+Lee, J.H., Ahn, J.S.,1996. Using n-grams for Korean text retrieval. In: Proceedings of the 19th Annual International ACM SIGIR Conference on
+Research and Development in Information Retrieval (SIGIR’96). ACM, pp. 216–224.
+Lehmann, W.P., 1992. Historical Linguistics. Taylor & Francis, London (Chapter 9).
+Lo, R., He, B., Ounis, I., 2005. Automatically building a stopword list for an information retrieval system. In: Proceedings of the 5th Dutch–Belgian
+Information Retrieval Workshop (DIR’05).
+Lui, M., Baldwin, T.,2014. Accurate language identification of Twitter messages. In: Proceedings of the 5th Workshop on Language Analysis for
+Social Media (LASM 2014). ACL, pp. 17–25.
+Lui, M., Lau, J.H., Baldwin, T., 2014. Automatic detection and language identification of multilingual documents. Trans. Assoc. Comput. Linguist.
+2, 27–40.
+Ma, Y., Way, A., 2010. HMM word-to-phrase alignment with dependency constraints. In: Proceedings of the COLING 2010/SIGMT Fourth Workshop
+on Syntax and Structure in Statistical Translation (SSST-4), pp. 101–109.
+Manning, C.D., Schütze, H., 1999. Foundations of Statistical Natural Language Processing. The MIT Press.
+Markó, K., Schulz, S., Medelyan, O., Hahn, U.,2005. Bootstrapping dictionaries for cross-language information retrieval. In: Proceedings of the
+28th Annual International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR’05). ACM, pp. 528–535.
+McCarley, J.,1999. Should we translate the documents or the queries in cross-language information retrieval? In: Proceedings of the 37th Annual
+Meeting of the Association for Computational Linguistics (ACL’99). ACL, pp. 208–214.
+McNamee, P., 2008. Textual representations for corpus-based bilingual retrieval. University of Maryland at Baltimore County (Ph.D. thesis).
+McNamee, P., Mayfield, J., 2004a. Character n-gram tokenization for European language text retrieval. Inf. Retr. 7 (1–2), 73–97.
+M
+M
+M
+M
+M
+M
+M
+N
+N
+N
+O
+O
+O
+O
+P
+P
+R
+R
+R
+S
+S
+S
+S
+S
+S
+T
+T
+V
+V
+V
+V
+V
+W
+Z
+Z
+J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164 163
+cNamee, P., Mayfield, J., 2004b. JHU/APL experiments in tokenization and non-word translation. In: Peters, C., Gonzalo, J., Braschler, M.,
+Kluck, M. (Eds.), Comparative Evaluation of Multilingual Information Access Systems, Vol. 3237 of Lecture Notes in Computer Science.
+Springer-Verlag, pp. 85–97.
+cNamee, P., Mayfield, J., 2005. Cross-Language Retrieval Using HAIRCUT at CLEF 2004, Vol. 3491 of Lecture Notes in Computer Science.
+Springer-Verlag, pp. 50–59.
+cNamee, P., Mayfield, J., Nicholas, C.,2009. Translation corpus source and size in bilingual retrieval. In: Proceedings of Human Language
+Technologies: The 2009 Annual Conference of the North American Chapter of the Association for Computational Linguistics, Companion
+Volume. Short Papers. NAACL-Short’09. ACL, pp. 25–28.
+iller, E., Shen, D., Liu, J., Nicholas, C., 2000. Performance and scalability of a large-scale n-gram based information retrieval system. J. Digit.
+Inf. 1 (5), 1–25.
+iller, P.W., Chiswick, B.R., 2004. Linguistic distance: a quantitative measure of the distance between English and other languages. Discussion
+Paper 1246. Institute for the Study of Labor (IZA).
+ustafa, S.H., 2005. Character contiguity in n-gram-based word matching: the case for Arabic text searching. Inf. Process. Manag. 41 (4), 819–827.
+ustafa, S.H., Al-Radaideh, Q.A., 2004. Using n-grams for Arabic text searching. J. Am. Soc. Inf. Sci. Technol. 55 (11), 1002–1007.
+akov, P., Ng, H.T., 2012. Improving statistical machine translation for a resource-poor language using related resource-rich languages. J. Artif.
+Intell. Res. 44, 179–222.
+ie, J.-Y., 2010. Cross-Language Information Retrieval, Vol. 8 of Synthesis Lectures on Human Language Technologies. Morgan & Claypool
+Publishers.
+unzio, G.M.D., Ferro, N., Mandl, T., Peters, C., 2006. CLEF 2006: ad hoc track overview. In: Working Notes of the CLEF 2006 Workshop, pp.
+21–34, Available at CLEF (2014).
+ard, D.,1998. A comparative study of query and document translation for cross-language information retrieval. In: Proceedings of the Third
+Conference of the Association for Machine Translation in the Americas on Machine Translation and the Information Soup (AMTA’98). Springer-
+Verlag, pp. 472–483.
+ch, F.J., Ney, H., 2003. A systematic comparison of various statistical alignment models. Comput. Linguist. 29 (1), 19–51, Toolkit available at
+GIZA (2014).
+gawa, Y., Matsuda, T., 1999. Overlapping statistical segmentation for effective indexing of Japanese text. Inf. Process. Manag. 35 (4),
+463–480.
+unis, I., Lioma, C., Macdonald, C., Plachouras, V., 2007. Research directions in Terrier: a search engine for advanced retrieval on the web.
+Novática/UPGRADE Spec. Issue Web Inf. Access 8 (1), 49–56, Terrier toolkit available at TERRIER (2012).
+ennell, D.L., Liu, Y., 2014. Normalization of informal text. Comput. Speech Lang. 28 (1), 256–277.
+otthast, M., Barrón-Cedeño, A., Stein, B., Rosso, P., 2011. Cross-language plagiarism detection. Lang. Resour. Eval. 45, 45–62,
+http://dx.doi.org/10.1007/s10579-009-9114-z.
+ehm, G., Uszkoreit, H. (Eds.), 2011. META-NET White Paper Series. Springer, Available online at http://www.meta-net.eu/whitepapers.
+esnik, P., Smith, N.A., 2003. The web as a parallel corpus. Comput. Linguist. 29 (3), 349–380.
+obertson, A.M., Willett, P., 1998. Applications of n-grams in textual information systems. J. Doc. 54 (1), 48–69.
+alton, G., 1989. Automatic Text Processing: The Transformation, Analysis, and Retrieval of Information by Computer. Addison-Wesley.
+apkota, U., Solorio, T., Montes-y Gómez, M., Ramírez-de-la Rosa, G., 2013. Author profiling for English and Spanish text. In: Notebook for PAN
+at CLEF 2013.
+avoy, J., 2003. Cross-language information retrieval: experiments based on CLEF 2000 corpora. Inf. Process. Manag. 39, 75–115.
+avoy, J., Rasolofo, Y., 2002. Report on the TREC 11 experiment: Arabic, named page and topic distillation searches. In: NIST Special Publication
+500-251: The Eleventh Text Retrieval Conference (TREC 11), pp. 765–774.
+chulz, S., Markó, K., Daumke, P., Hahn, U., Hanser, S., Nohama, P., de Andrade, R.L., Pacheco, E., Romacker, M.,2006. Semantic atomicity and
+multilinguality in the medical domain: design considerations for the morphosaurus subword lexicon. In: Proceedings of the 5th International
+Conference on Language Resources and Evaluation (LREC 2006). European Language Resources Association (ELRA).
+tamatatos, E., 2009. A survey of modern authorship attribution methods. J. Am. Soc. Inf. Sci. Technol. 60 (3), 538–556.
+errier, 2012. Terrier IR Platform. http://www.terrier.org.
+omović, A., Janičić, P., Kešelj, V., 2006. n-Gram-based classification and unsupervised hierarchical clustering of genome sequences. Comput.
+Methods Programs Biomed. 81 (2), 137–153.
+ilares, J., Oakes, M.P., Tait, J.I.,2007. A first approach to CLIR using character n-grams alignment. In: Evaluation of Multilingual and Multi-Modal
+Information Retrieval. Vol. 4730 of Lecture Notes in Computer Science. Springer-Verlag, pp. 111–118.
+ilares, J., Oakes, M.P., Vilares, M.,2007. Character n-grams translation in cross-language information retrieval. In: Natural Language Processing
+and Information Systems. Vol. 4592 of Lecture Notes in Computer Science. Springer-Verlag, pp. 217–228.
+ilares, J., Oakes, M.P., Vilares, M., 2008. English-to-French CLIR: a knowledge-light approach through character n-grams alignment. In: Vol.
+5152 of Lecture Notes in Computer Science. Springer-Verlag, pp. 148–155.
+ilares, J., Oakes, M.P., Vilares, M., 2009. Character n-grams as text alignment unit: CLIR applications. In: Recent Advances in Natural Language
+Processing V. Vol. 309 of Current Issues in Linguistic Theory. John Benjamins Publishing Company.
+ilares, J., Vilares, M., Otero, J., 2011. Managing misspelled queries in IR applications. Inf. Process. Manag. 47 (2), 263–286.
+u, D., He, D., Ji, H., Grishman, R.,2008. A study of using an out-of-box commercial MT system for query translation in CLIR. In: Proceedingsof the 2nd ACM Workshop on Improving non English Web Searching (iNEWS’08). ACM, pp. 71–76.
+eman, D., 2009. Using unsupervised paradigm acquisition for prefixes. In: Evaluating Systems for Multilingual and Multimodal Information
+Access. Vol. 5706 of Lecture Notes in Computer Science. Springer, pp. 983–990.
+obel, J., Dart, P., 1995. Finding approximate matches in large lexicons. Softw. Pract. Exp. 25 (3), 331–345.
+164 J. Vilares et al. / Computer Speech and Language 36 (2016) 136–164
+Jesús Vilares graduated in Computer Science Engineering from the University of A Coruña (Spain) in 2000. After a short period as a lecturer at
+the University of Vigo (Spain), he obtained a Ph.D. Grant from the Spanish Ministry of Education (FPU Grant) at the University of A Coruña,
+where he obtained his Ph.D. in Computer Science in 2005. He is currently an Associate Professor at this university and he has been a member of
+the founding committee of the Spanish Society for Information Retrieval until 2014. His research work focuses on Natural Language Processing –
+currently focused on microblog processing – text mining and information retrieval.
+Manuel Vilares has an M.Sc. in Applied Mathematics from the University of Santiago de Compostela (Spain, 1987), an M.Sc. in Software
+Engineering from CERICS (France, 1988), and a Ph.D. in Computer Science from the University of Nice – Sophia-Antipolis (France, 1992). He
+initially worked at INRIA (France) and later in Spain (1992), where he became Full Professor in Computer Science at the University of Vigo (2002).
+His research work focuses on Natural Language Processing, Logic Programming, Programming Language Design and Information Extraction.
+Miguel A. Alonso graduated in Computer Science from the University of A Coruña (Spain) in 1993, where he started his research career. He spent
+a year at the Ramón Piñeiro Center for Research on Humanities (Santiago de Compostela, Spain) and then a year at the Rocquencourt research unit
+of INRIA (French National Institute for Research in Computer Science and Control). Since 1997 he has been a member of the Faculty of Computer
+Science of the University of A Coruña, where he obtained his Ph.D. degree in 2000, and since 2003 he has been an Associate Professor at that
+university. His research work focuses on Natural Language Processing and its application to Information Retrieval and Text Mining (particularly
+Opinion Mining).Michael Oakes received a Ph.D. in Computer Science from the University of Liverpool in 1994. After his recent posts as Senior Lecturer in
+Computing at the University of Sunderland and Visiting Researcher at Uni Research, Bergen, he joined the Research Group of Computational
+Linguistics of the University of Wolverhampton as Reader in Computational Linguistics. His research work focuses on Information Retrieval,
+Computational Stylometry, and Statistics for Linguistics.

@@ -1,0 +1,2440 @@
+Automated genre recognition using frame
+statistics
+Anders Sabinsky Tøgern
+e-mail: ast@hoast.dk
+CPR: 270880
+Supervisor: Jakob Grue Simonsen
+June 19th, 2010
+Department of Computer Science,
+University of Copenhagen
+Abstract
+I examine the feasibility of performing automated genre recognition of texts us-
+ing semantic frames and machine learning. I present an implementation that
+runs on any given corpus of plain text files using a part of it for training and
+the rest for testing. I compare my results with those of related work in the field,
+which is primarily based on lexical and syntactic information. I show that using
+semantic frames yields fairly good results, but combining them with words and
+punctuation marks are superior to most other work in the field with a minimum
+error rate of 4.89% on the entire written part of the OANC [4], not quite matching
+the 2.5% error rate by [66]. The main draw back of using semantic frames is the
+high preprocessing time required for extracting semantic frames from the texts,
+however I find that using semantic frames has good potential and could perform
+even better within the field of automated genre recognition if some more work
+is put into how spelling errors are handled and optimising the distance function
+used by the discriminant analysis.
+Keywords: genre recognition, semantic frames, FrameNet, LTH parser, clas-
+sifier, machine learning, discriminant analysis, OANC, Python, MDP, NumPy,
+NLTK
+Contents
+1 Introduction 1
+1.1 Objective . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.2 Expectations of the reader . . . . . . . . . . . . . . . . . . . 4
+1.3 Frames . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.4 Genre recognition . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.5 On-line copy and accompanying CD . . . . . . . . . . . . . 8
+2 Genre recognition and
+related work 9
+3 Corpora 13
+3.1 Ideal corpus . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+3.2 Selecting a corpus . . . . . . . . . . . . . . . . . . . . . . . . 18
+4 Semantic parsers 22
+4.1 SemEval-2007 . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+4.2 UTD-SRL . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+4.3 LTH . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+4.4 CLR . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+4.5 Shalmaneser . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+4.6 Selecting a semantic parser . . . . . . . . . . . . . . . . . . . 24
+5 Classifiers 26
+5.1 Naïve Bayes . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+5.2 Support Vector Machines . . . . . . . . . . . . . . . . . . . . 26
+5.3 Nearest Neighbor . . . . . . . . . . . . . . . . . . . . . . . . 27
+5.4 Discriminant analysis . . . . . . . . . . . . . . . . . . . . . . 27
+5.5 Selecting a classifier . . . . . . . . . . . . . . . . . . . . . . . 28
+6 Implementation 29
+6.1 External libraries . . . . . . . . . . . . . . . . . . . . . . . . . 29
+6.2 Selecting training and testing data . . . . . . . . . . . . . . . 30
+6.3 Tokenising texts . . . . . . . . . . . . . . . . . . . . . . . . . 31
+6.4 Harvesting frames . . . . . . . . . . . . . . . . . . . . . . . . 32
+6.5 Discriminant analysis . . . . . . . . . . . . . . . . . . . . . . 34
+7 Experiments 36
+7.1 Preparing experiments . . . . . . . . . . . . . . . . . . . . . 36
+1
+7.1.1 Counting word frequencies . . . . . . . . . . . . . . . 37
+7.1.2 Counting frame frequencies . . . . . . . . . . . . . . 37
+7.2 Experiments . . . . . . . . . . . . . . . . . . . . . . . . . . . 38
+7.2.1 Using the most frequent words in the corpus . . . . 39
+7.2.2 Using the most frequent words in English . . . . . . 40
+7.2.3 Taking punctuation marks into account . . . . . . . . 41
+7.2.4 Using the most frequent frames in the corpus . . . . 43
+7.2.5 Combining frames and words . . . . . . . . . . . . . 46
+7.2.6 Combining frames, words and punctuation marks . 47
+7.3 Time efficiency . . . . . . . . . . . . . . . . . . . . . . . . . . 48
+8 Using the LTH parser 50
+8.1 Executing the LTH parser . . . . . . . . . . . . . . . . . . . . 50
+8.2 Interpreting output data . . . . . . . . . . . . . . . . . . . . 52
+8.3 Limitations of the LTH parser . . . . . . . . . . . . . . . . . 52
+9 Working with the OANC 53
+10 Results and future
+work 54
+A Domains of the OANC 67
+B Texts missing genre
+information in OANC 68
+C The most frequent entities 70
+D The accompanying CD 72
+1 Introduction
+With the ever increasing popularity of the Internet and web blogs used
+for expressing whatever hearts content imaginable along with the elec-
+trification of an increasing amount of old texts in any genre information
+has never been more of a jungle to get lost in. On top of that people de-
+mand relevant information on any subject to be easier to find than ever,
+and there is no reason to believe that this is about to turn.
+Automated genre recognition of texts is one means to aid people in
+limiting the amount of information they need to go through to find what
+they are looking for.
+In this project I will investigate the feasibility of performing automated
+genre recognition using semantic expressions to describe texts. I consider
+genre to be the major styles such as commerce, fiction, leisure, science, etc.
+with sub styles (or sub genres) such as social science and natural science.
+The identifiable genres will be similar to the domains of the Open
+American National Corpus (OANC) [4] as outlined in Table 6 in Appendix
+A. As an example of fiction, consider the following part from The Hitch-
+hiker’s Guide to the Galaxy [29].
+Another thing that got forgotten was the fact that against all proba-
+bility a sperm whale had suddenly been called into existence several
+miles above the surface of an alien planet.
+And since this is not a naturally tenable position for a whale, this
+poor innocent creature had very little time to come to terms with
+its identity as a whale before it then had to come to terms with not
+being a whale any more.
+Now, consider the quite different example of documentary from The
+Complete Making of Indiana Jones [60].
+But again, after a couple of takes, the director felt the spiders were
+“too lethargic” and had fans trained on them to wake them up -
+2
+whereupon the tarantulas were off and running. “Nobody real-
+ized they could hop and climb Plexiglas until then,” Spielberg ex-
+plained. “A lot of them took off after the crew. I’m talking about
+people running for their lives. . . ”
+Although both The Hitchhiker’s Guide to the Galaxy and Indiana Jones
+are fiction a documentary about how the Indiana Jones movies were cre-
+ated is not fiction, but a “dumb” search engine might only act on the ti-
+tles within the search terms and return both titles for a search for fiction.
+Using automated genre recognition to classify the titles in genres would
+eliminate The Complete Making of Indiana Jones from the search results and
+only include titles relevant to the user.
+Automated genre recognition has been performed in several ways, mainly
+using lexical analysis, but also word statistics and semantic analysis to
+some degree. Lexical analysis is usually based on lix, punctuation and
+statistics like the length of words and sentences, and not on the actual
+meaning of the analysed texts. Thus, it does not rely on the meaning of
+words or sentences, but has the strength of surviving spelling errors. On
+the other hand it is sensitive to wrong grammar.
+Word statistics, which is basically counting the number of occurrences
+of words in the corpus, is very simple, but rather powerful. It has the
+strength of surviving grammatical errors, but fails to correctly recognise
+wrongly spelled words as their correctly spelled counterparts.
+Semantic analysis, on the other hand, attempts to extract meaning
+from sentences in the texts, which contains much more genre specific in-
+formation than lexical entities and word statistics, but is, like words statis-
+tics, sensitive to spelling errors.
+Lexical analysis use the characteristics of how punctuation marks are
+used to recognise a genre. For example it is quite likely for an interview to
+contain many more question marks than a science fiction novel. Further,
+some genres may contain longer sentences or a higher number of commas
+per sentences than others, which can be used to classify texts to genres.
+Word statistics count the frequencies of words and usually use the n
+most common words in the applied corpora or in the entire language of
+the corpora of training data to get a measurement of how they are used
+in different genres, the result of which can be applied on the testing cor-
+pora to categorise the texts it contains. Further, punctuation marks like
+question marks and exclamation marks can be used to further define and
+identify genres.
+New advances in automated semantic analysis of texts lends credence
+to the idea that semantic classifiers can be used, e.g. in love stories, sen-
+3
+tences more often concern amorous emotions and bodily movement than,
+for example, political non-fiction. It is this extra layer of information that
+I will take advantage of in order to create a better classifier than those
+using only lexical analysis.
+One type of semantic classifiers are semantic frames1 which have the
+ability to identify more correctly the meaning of sentences in the text and
+based on that it might be possible to perform more precise genre recog-
+nition. Figure 1 shows an example of a sentence broken down into frame
+elements. Frames will be described in more detail shortly.
+Mr. Smith left for Paris by train︸                                   ︷︷                                   ︸
+Departing
+Figure 1: A simplified example of a sentence identified as a Traversing frame.
+Genre recognition is not an easy task, not even if performed manually
+because what properties of a text qualifies it to be in one genre rather than
+another can be a very subjective opinion, thus making it hard to verify
+results of automated genre recognition. Luckily a number of text corpora
+exist for which the genre of each contained text has been carefully chosen
+and attached as meta data to the texts. This predefined genre information
+can be used to verify the correctness of an automated genre recognition on
+the texts in the corpora.
+But even with the genre pre-defined the actual task of performing au-
+tomated genre recognition has a lot of pitfalls that must be taken into ac-
+count. These are, among others, how to correctly interpret words that have
+different meaning depending on their context; how to interpret punctua-
+tions, contracted words, contracted words, etc. I will not go into greater
+detail about these pitfalls in this project, but direct the reader to [61] for a
+detailed discussion and how they can be solved.
+By using the FrameNet lexical database [1] to find frames in the texts
+it is possible to get a very precise meaning of the sentences making up the
+texts and thus a good fundament for genre recognition based on semantic
+frames.
+This project proposes a method for automated genre analysis using
+semantic frames and machine learning along with a brief comparison to
+other methods used in the field.
+1Semantic frames have derived from Charles J. Fillmore’s case grammar [61] first in-
+troduced in 1968.
+1.1 Objective 4
+1.1 Objective
+The objective of this project is to investigate the feasibility of using seman-
+tic frames over lexical analysis for automated genre recognition. Ideally,
+the goal is to present a method, based on semantic frames, that is top of
+the class.
+1.2 Expectations of the reader
+For the reader to get the full benefit from reading this project he or she
+must have a bachelor’s degree in Computer Science. Further, it might be
+an advantage to have knowledge about statistics and machine learning on
+an introductory level.
+1.3 Frames
+Frames or semantic frames are sets of labels describing the semantics of
+sentences. Figure 2 contains an example of how a semantic frame has been
+created from a sentence.
+Mr. Smith left for Paris by train︸      ︷︷      ︸
+Theme
+︸   ︷︷   ︸
+Goal
+︸  ︷︷  ︸
+MoT︸                                   ︷︷                                   ︸
+Departing
+Figure 2: An example of a semantic frame annotated according to the FrameNet
+lexical database, where Mr. Smith is the Theme, Paris is the Goal and
+the train is the Method_of_transportation.
+The sentence describes a travel scenario containing the frame elements
+Theme, Goal and Method_of_transportation. The word left is the key-
+word for this frame telling FrameNet to construct a frame from the sen-
+tence. It is known as the target or lexical unit of the frame and determines
+which frame it belongs to and thus how to further interpret the sentence.
+The target does not have to be a single word, but can as well be a combi-
+nation of words.
+The sentence in Figure 2 does not necessarily need the means of trans-
+portation to be specified for it to be considered a Departing frame. The
+sentence in Figure 3 is just as good albeit with less information.
+Several words or combinations of words can be target of the same
+frame making the sentence ambiguous, that is potentially belong to sev-
+eral frames. However, a single word or combination of words can have
+1.3 Frames 5
+Mr. Smith left for Paris︸      ︷︷      ︸
+Theme
+︸   ︷︷   ︸
+Goal︸                       ︷︷                       ︸
+Departing
+Figure 3: A simplified version of the sentence in Figure 2. Both sentences have
+the same lexical meaning and thus fits within the same type of frame.
+The only difference is the above sentence contains less information.
+different meaning depending on the context in which they occur result-
+ing in different semantic frames. An example of this is the word wants
+which can both be used to describe an emotion of desire matching a De-
+siring frame as in Figure 4 or possession matching a Possession frame as
+in Figure 5.
+Mr. Smith wants the gardner to mow the lawn︸      ︷︷      ︸
+Experiencer
+︸       ︷︷       ︸
+Foc
+︸              ︷︷              ︸
+Event︸                                                      ︷︷                                                      ︸
+Desiring
+Figure 4: An example of a Desiring frame. Mr. Smith is the Experiencer who
+experiences a desire for having the gardner being a Focal_participant
+in getting the Event of mowing the lawn done.
+The gardner wants a better lawn mower︸       ︷︷       ︸
+Owner
+︸︷︷︸
+Depictive
+︸        ︷︷        ︸
+Pos︸                                              ︷︷                                              ︸
+Possession
+Figure 5: An example of a Possession frame.
+In Figures 4 and 5 wants is the target, but the categorisation of the sen-
+tences depends on the context in which the word occurs. The first sentence
+contains a person (Mr. Smith) and an event (to mow the lawn) constituting
+the frames Experiencer and Event which, paired with the wants target,
+results in a Desiring frame, whereas the second sentence contains a per-
+son (the gardner) and a possession (lawn mower) which, paired with the
+wants target, results in a Possession frame.
+Frames can be related to each other, e.g. the Departing frame is a sub-
+frame of the more general Traversing frame.
+1.4 Genre recognition 6
+The sentence in Figure 6 is an example of an Arriving frame, which
+can be considered as the opposite of a Departing frame and thus is also a
+sub-frame of the Traversing frame.
+Mr. Smith came to Paris︸      ︷︷      ︸
+Theme
+︸  ︷︷  ︸
+Goal︸                         ︷︷                         ︸
+Traversing
+Figure 6: An example of a Arriving frame which is a sub-frame of the Travers-
+ing frame.
+Due to the constant evolution of languages it is important to be able to
+identify the similarities between the same word written in different ways.
+This is also true for dialects. For example English is not just English all
+over the world – in U.S.A. it is very common to use the word aint instead
+of the British English contractions isn’t and aren’t, thus simplifying the
+language.
+Extracting semantic frames from a text is not an easy task for a com-
+puter because the computer does not know the meaning of the words in
+the text, nor does it know the different meanings a single word can have
+depending on the context in which it is present. This makes it very hard
+for the computer to map sentences to frames and requires lookup in very
+large databases such as FrameNet. For example distinguishing between
+the meanings of the word wants as shown in Figures 4 and 5 not only re-
+quires the computer to look up the target, but also to identify and look up
+other words in the sentences and map these to the target to get the cor-
+rect meaning of it and thus the sentence to eventually tag it as the correct
+frame.
+1.4 Genre recognition
+Using computers for automated genre recognition in texts is a rather new
+task having been researched upon since the 1980s.
+Various methods have been used to perform automated genre recog-
+nition, both for parsing the texts to get a feature set that describes the
+different genres and for performing the actual genre recognition or classi-
+fication based on the parsing results.
+A widely used method for parsing texts into feature sets is counting
+words - that is using the frequencies of occurrences of the most frequent
+words in the given corpus [32; 41; 45; 46; 48; 49], or in the entire language
+1.4 Genre recognition 7
+in which the corpus is written [66], as a basis for the classification of the
+texts in the corpus. One popular representation for word counts is bag-of-
+words [33; 41; 44; 69], which is essentially a random list of words for each
+genre.
+Other highly popular methods for parsing are part-of-speech [41; 44; 45;
+47; 68; 69] and sentence complexity [32; 41; 44; 48] which are respectively
+a collection of the functions words can have like noun, verb, adjective,
+adverb, pronoun, etc. and a measure, liuke lix, of the complexity of sen-
+tences in a text.
+The above mentioned methods are rather simple as they only work
+on statistics. Other, more advanced approaches involve the semantics to
+include the meaning of the words and sentences of a text [49; 53; 72],
+which in the case of semantic frames [61] is to break the input texts down
+into entities that represent the semantic elements of the text.
+Other less used approaches involve n-grams[69] and bags of part-of-
+speech n-grams [33] and probably other combinations of lexical parsers.
+Based on the initial parsing a number of different classifiers can be ap-
+plied to determine the genre of the input texts based on the chosen feature
+set. Usually these classifiers need training by running them on a part of
+the corpus that has already been annotated with genre through some other
+process, e.g. manually. The classifiers then learn - to some level - which
+properties are significant for which genres and can apply this knowledge
+to divide the remaining part of the corpus or other texts into genres inde-
+pendent of any predefined genre attributes on those texts.
+In general various machine learning algorithms are used as classifiers
+of which the naïve Bayesian is one of the more popular ones [32; 41; 48; 69]
+because of its ease of training and is some times used together with support
+vector machines (SVM) [41; 48; 69] which are popular for their strength in
+solving classification problems and can also be used independently. A
+classifier that has been used to produce some quite good results [66] is dis-
+criminant analysis, but it is not yet used widely. Another popular choice
+for solving classification problems like automated genre recognition us-
+ing machine learning are decision trees [45; 46] which are constructed from
+the training data and then applied to the remaining corpus. Several algo-
+rithms can be used to generate decision trees, but the C4.5 algorithm is
+particularly popular for automated genre recognition [41; 43; 69].
+Several other techniques for classifying genres of texts have been used
+in the field: the domain transfer [43], the multi-way distributional clustering
+[33], the k-nearest neighbor [49; 69], the fully-connected feed-forward multi-
+layer perceptron (MLP) [46], latent dirichlet[33], the maximum entropy[41],
+the random forest [48], the Euclidean (cos) similarity [68], the corpus centroid
+1.5 On-line copy and accompanying CD 8
+[37] and many more.
+Some studies combine two or more of the mentioned techniques to pro-
+duce better classifiers, e.g. Finn and Kushmerick combines the machine
+learning algorithm C4.5 with domain transfer to produce a general clas-
+sifier that is capable of recognising genres on a corpus that has not been
+used for training [43].
+In particular Stamatatos et. al.’s method [66] stands out as the highest
+scoring classification approach with an accuracy of 97% yet perceived [57;
+68] using discriminant analysis, which is considerably higher than some
+of the other high-scoring contenders like Dewdney et. al. [41], with an
+accuracy of 92.1% using SVM. The methods scoring closest to these with
+classification accuracy of 90% are based on some of the same approaches,
+e.g. SVM [64] and the naïve Bayesian classification [32].
+1.5 On-line copy and accompanying CD
+A copy of this report along with the content of the accompanying CD can
+be found on-line at http://hoast.dk/academic-projects/automated-genre-
+recognition-using-frame-statistics/.
+Besides the report, the accompanying CD contains all the figures in
+individual PDF files.
+2 Genre recognition and
+related work
+Automated genre recognition is about determining in which genre one or
+more texts are written based on prior knowledge of the genres of other
+texts. It is useful for, e.g. narrowing down a search result by letting the
+user specify a genre which all returned results must belong to. The data
+searched by the search engine should thus be annotated with genre so that
+the search engine can match the user query to the data and return only
+relevant results. The problem, then lies in annotating the data with genre,
+which might be cumbersome or even impossible if the database is growing
+rapidly, as e.g. an article base of a large news corporation or a library
+of public documents such as Wikipedia [73] in which case an automated
+system for genre annotation would be very helpful.
+However, performing genre recognition is not an easy task – whether
+it is automated or manual – because a text can contain long passages that
+are not specific to the overall genre of the text. Such passages might fool
+an automated system for performing genre recognition because it knows
+nothing of the meaning of the words and sentences in the text and is thus
+unable to disambiguate an action scene from a romantic scene. Hence,
+it is necessary to do a great deal of manual labour in order to construct
+a corpus of texts that are annotated with appropriate genres. Naturally,
+such a corpus should contain texts in as many different genres as possible
+for it to be useful for training an automated genre recognition system. See
+Table 1 on page 16 for a list of corpora and their properties with respect
+to doing automated genre recognition.
+A lot of work has been done within the field of automated genre recog-
+nition on various origins of texts, such as internet blogs (weblogs) [48; 65],
+news articles [59; 66], reviews [44], novels [33; 47; 49; 53], etc. using var-
+ious feature sets and classifiers, the most efficient of which will be de-
+scribed in the following.
+Some of the highest scoring methods are based on corpora of only 2
+genres [52; 63], which results in the simplest classification problem with a
+10
+50−50 chance of correct classification. These methods obtain error rates as
+low as 4.5% using discriminant analysis and 0.7% using the naïve Bayes,
+respectively. In this project I strive to include more than 2 genres to get a
+more general impression of my method’s efficiency.
+Automated genre recognition entails performing mainly two steps; har-
+vesting of a feature set and classifying the model with the harvested fea-
+ture set using the chosen classifier.
+Widely used feature sets are bag-of-words (BOW) [33; 41; 44; 69], part-
+of-speech (POS) [41; 44; 45; 68; 69] and sentence complexity [32; 41; 44;
+48]. BOW simply treats the input text as a collection of words, disregard-
+ing order and grammar, thus no meaning can be extracted from the feature
+set. POS annotates the input text with the relationships between words,
+thus marking each word as either a noun, verb, adjective or adverb mak-
+ing it possible to extract some sense of meaning from the feature set. Many
+corpora are annotated using POS [2–4; 12–14; 40]. Sentence complexity is
+a measure determined by several factors of the input text; the length of
+sentences, the density of punctuation marks, the length of words and pos-
+sible other factors. In general sentence complexity is closely related to lix
+[34].
+A notable feature set is the frequency of the most frequent words in
+the language of the corpus which is used by one of the most successful
+methods within the field of automated genre recognition [66].
+Finally, I would like to mention trigrams [58] as a feature set that has
+been used to produce some fair results [33; 69]. Some feature sets can be
+combined, e.g. bags of POS and bags of POS n-grams as used in [33].
+For performing genre recognition there are a number of classifiers, that
+work on the collected feature set, most of which are machine learning al-
+gorithms that contains both a training phase and a testing phase, thus
+being taking longer time to complete than classifiers only requiring a sin-
+gle iteration. Some of the most widely used classifiers are based on trees,
+such as decision trees [45; 69] or discriminant analysis [52; 66; 67], both
+of which are machine learning algorithms.
+Discriminant analysis has been used to produce some of the best re-
+sults in the field with a feature set consisting of the frequency of the
+10− 50 most frequent words in the written English language (rather than
+the most frequent words in the used corpus as used by others [45; 46])
+by Stamatatos et. al. [66]. They have achieved an error rate as low as
+2.5% using a custom corpus consisting of 160 texts in 4 genres from the
+Wall Street Journal Corpus [14] and taking the 8 most frequent punctua-
+tion marks and the 20 most frequent words in the English language into
+account. Half of the corpus was used for training and the other half for
+11
+testing. They found that the use of the most frequent words i the en-
+tire English language (based on the BNC) and the additional information
+gained by using the most frequent punctuation marks helped to improve
+the accuracy remarkably compared to previous work.
+Discriminant analysis has been used in other work as well, but not
+with the same level of success. Karlgren and Cutting [52] have achieved
+an error rate of 4.4% using discriminant analysis, but only with texts in
+2 different first-level genres. Using 4 second-level genres they achieve an
+error rate of 26.8% which is far from the results of Stamatatos et. al. Karl-
+gren and Cutting use as feature set a combination of POS, word length,
+sentence complexity and document length.
+Although widely used decision trees have not been used to produce
+top results as these in general lie in the range 10%− 40% error rate using
+various feature sets [57] and corpora.
+Of other machine learning classifiers used to produce good result are
+support vector machines (SVM) and the naïve Bayes. Using POS as feature
+set Dewdney et. al. have been able to get an error rate of 7.9% using SVM
+[41] and a custom corpus compiled at CMU2. Marina Santini has achieved
+error rates of 0.7%−1.6% and 13%−28.9% using a method based on a POS
+feature set and a the naïve Bayes classifier for 2 and 10 genres of the BNC
+[63], respectively.
+Some attempts have been made using classifiers that are not based on
+machine learning, among which are multi-layer perceptrons (MLP) and
+multi-way distributional clustering. Forsbom [46] has performed auto-
+mated genre recognition using fully-connected feed-forward multi-layer
+perceptrons with a feature set of the 50 most frequent words in Swedish
+based on the Stockholm-Umeå Corpus [13]. She achieved an error rate
+of 48.6%, which is far from the achievements by Stamatatos et. al. us-
+ing discriminant analysis. Bekkerman et. al. have performed multi-way
+distributional clustering, which is an unsupervised algorithm that, like
+discriminant analysis, is based on vector space. However, multi-way dis-
+tributional clustering is an unsupervised algorithm that needs no training
+and thus only requires a single iteration making it faster than discriminant
+analysis, but not necessarily better for the purpose of genre recognition.
+Based on the BNC they use two feature sets; BOW and bag of n-grams of
+POS and achieve their best result using a combination of BOW and POS bi-
+grams with an error rate of 41.5%. This might seem like a poor result, but
+using an unsupervised and thus faster classification method is expected to
+have limited accuracy.
+2Carnegie Mellon University, http://www.cmu.edu
+12
+In general it seems that work within the area of automated genre iden-
+tification is most concerned about finding results rather than making the
+approaches and data available to the public, e.g. by basing their work on
+an open, non-custom corpus. Doing so would make it possible for others
+to reproduce and prove their results and thus compare their own meth-
+ods to those within the field. Most work based on open corpora use the
+Brown Corpus [52; 57], which might prove inadequate for genre identi-
+fication, although it contains some very nice annotations of the texts it
+contain. However, other work exists that is based on other open corpora
+like OANC [72] and Project Gutenberg [49; 53].
+Much work [33; 47; 66] is in some way based on the BNC, which is
+understandable as it is a very nice corpus (see my description of the BNC
+compared to the OANC in 3.2 on page 18) and it is not hard to get a hold
+of, but it does cost a considerable amount of money (£500,-) making it
+unfeasible for low budget research.
+Other work is based on highly customised corpora that, at best, are ex-
+tremely hard to get a hold of [32; 37; 41; 44; 48; 65; 68; 69]. It will be hard
+to compare results with this kind of work, although those based on web
+pages [37; 48; 65; 68; 69] might benefit from a state-of-the-art collection of
+web pages to reflect the rapid development of information on the Internet.
+3 Corpora
+The method for automated genre recognition presented in this project
+must be tested on one or more corpora of texts, the suitable properties
+of which are listed below. If any two or more corpora fulfill these proper-
+ties there should be no harm in using all of them for testing because the
+more data that is used for proving the method the more accurate it can be
+considered.
+Length Using texts containing only sentences or paragraphs that mostly
+consist of elements that are eligible for a single genre is too simple
+and thus not suitable for testing because successful testing on such
+texts will probably not mean successful testing on longer texts. Texts
+of at least novel length are more suitable for testing as these most
+likely will contain a mix of sentences that fit in different genres and
+as such will put the method to a greater test of finding the overall
+genre of a text.
+Genre To be able to easily verify the result of the method it is important
+that the texts in the corpus are annotated with already pre-defined
+genres that can be used for training and verification. These genre
+annotations will most likely have been decided upon by manual ver-
+ification by whomever made the corpus.
+Age Many corpora contain texts solely from the 18th and 19th century
+and thus only contain genres present that time. Many new genres
+have come since then, especially with the introduction of the Inter-
+net and digital media like web blogs. Therefore corpora containing
+texts of more recent origin are more desirable to verify that new as
+well as old genres can be identified.
+Language Because the method will be based on the FrameNet project the
+primary language will be English, both British and American. Al-
+though parts of the FrameNet lexical database support other lan-
+guages such as French the support for this is not yet adequate for
+practical use.
+14
+Availability To the extent possible it is preferable if the corpora used for
+testing are easily available and free as this will make it possible for
+other parties to verify the method with minimum effort on acquiring
+the same corpora.
+Quantity The quantity of a corpus is the number of texts it contains. This
+number should be as high as possible for the method to be tested as
+thoroughly as possible.
+Diversity Just because a corpus contains a lot of texts does not necessarily
+make it ideal for testing genre recognition. Naturally the texts must
+be distributed into a number of different genres and preferably in a
+well balanced manner.
+Anatomy To be able to distinguish genres from each other, it must be
+possible to tell the difference between the texts they contain. If the
+texts of two or more genres resembles each other too much it will be
+hard to tell the difference between them in terms of the word counts
+or semantic frames that can be extracted from them. Although the
+genres can be said to be different from a subjective point of view,
+by a human, they must be possible to distinguish by a computer.
+Examples of genres that are likely to be too similar for a computer
+to distinguish between them could be romantic novels and romantic
+letters.
+There exist a number of corpora that fulfill the meta data and language
+properties described above, but only a small sub set of these corpora also
+fulfill the remaining properties. The properties that least corpora fulfill
+are age and availability. Most new texts are still copyrighted and not re-
+leased under public licenses and can as such not be included in publicly
+available corpora which is why old texts are very common and most cor-
+pora stick to texts from a specific time period.
+Table 1 contains an overview of the corpora that have been taken into
+consideration as testing material. A description of the corpora actually
+selected for this task follows.
+1
+5
+Corpus Quantity Diversity Text lengths Meta data Text age Language Availability
+Brown corpus 500 15 Approx. 2,000 words Genre tags Approx. 1961 American English Free
+Wall Street Journal 2,499 - - - - American English US $300, free for members
+British National Corpus (BNC) [3] 3,144 46 100 mill. words Genre tags 1960− 1993 British English £500 for institutional license
+American National Corpus (ANC) [2] 10,821 - - - 1900− American English US $75 for first release
+Open American National 6,424 - 11,406,155 words - 1900− American English Free
+Corpus (OANC) [4]
+Project Gutenberg [7] 30,000+ in - - - - - Free
+several languages
+Digging into Data Challenge [5] - - - - - - -
+The MONK Project (Wright 2,585 - - - - - Public in general
+American Fiction Collection) [9] (parts restricted)
+Project Open Shakespeare - - - - - - CC Attribution license
+Eissen and Stein 800 8 - - - - -
+Rehm 200 84 - - - - -
+Roussinov et. al. 1,076 116 - - - - -
+Crowston et. al. 70 1 - - - - -
+Dewe et. al. 1,358 11 - - - - -
+Craven et. al. 8,282 7 - - - - -
+Crowston et. al. (2) 837 48 - - - - -
+European Language Resources - - - - - - ¤750 annual fee
+Association (ELRA) [6]
+International Computer Archive - - - - - - US $592
+of Modern English (ICAME) [8]
+Oxford Text Archive (OTA) [11] - - - - - - Free
+Child Language Data - - - - - - -
+Exchange System (CHILDES) [10]
+Stockholm-Umeå Corpus (SUC) 1,040 9 - - - - -
+LDC North American - - - - - - -
+Newswire Corpora
+The Bergen Corpus of London - - - - - - -
+Teenage Language [15]
+Michigan Corpus of Academic - - - - - - -
+Spoken English [16]
+European Corpus Initiative Multi- - - - - - - -
+lingual Corpus I (ECI/MCI) [17]
+Bulgarian National Corpus [18] - - - - - - -
+The CELT Project - - - - - - -
+Continued on next page. . .
+1
+6
+Table 1 continued
+Corpus # Texts # Genres Text lengths Meta data Text age Language Availability
+(Corpus of Electronic Texts) [19]
+The English-Norwegian - - - - - - -
+Parallel Corpus [20]
+Oslo Multilingual Corpus [21] - - - - - - -
+The FIDA Corpus of - - - - - - -
+Slovene Language [22]
+National Corpus of Polish [23] - - - - - - -
+The Newcastle Electronic Corpus - - - - - - -
+of Tyneside English (NECTE) [24]
+Old French Corpus - - - - - - -
+(Base de Français Médiéval) [25]
+Literature Online [26] - - - - - - -
+The ARTFL Project [27] - - - - - - -
+The Multext Corpora [28] - - - - - - -
+Reuters corpus [40] 810,000 - - Genre tags 1996− 1997 English Free
+Table 1: An overview of the corpora that have been taken into consideration for testing the proposed method for automated genre
+recognition.
+3.1 Ideal corpus 17
+3.1 Ideal corpus
+Because ever more texts are being published in one way or another through-
+out the world I find it most feasible to focus on automated genre recogni-
+tion of more recent texts and genres as from 1930 until now, thus just
+including texts from some of the most important events in recent history,
+such as World War II.
+The texts in the corpus must be of a length that allows the method to be
+verified as working on texts of all lengths, thus optimally there is no lower
+limit to the length of the texts, however according to [49] the LTH parser,
+which is used to find frames in texts using the FrameNet lexical database,
+works best with texts of 300 or more sentences and at least 1,000 words.
+There is no upper limit to how long a text can be, the method should be
+able to correctly identify the genre of texts of any length.
+The corpus must contain at least 3 different genres for the results to be
+interesting, but more than 3 genres are preferred. Further, the number of
+texts that the corpus contains for each genre should be adequate for the
+method’s result to prove its correctness. There is no upper bound to the
+number of texts in the corpus, however too many texts might result in the
+method not delivering its result within acceptable time. It is preferred
+that each genre has at least 100 texts resulting in a total of at least 300
+texts for the corpus.
+It is important that the texts in the different genres are adequately dif-
+ferent for a computer to be able to distinguish the genres, which eventu-
+ally means that the genres should be far enough from each other to fulfill
+this. Thus, a corpus consisting of genres that are all variations of science
+fiction novels or hardware manuals is ill suited for use with automated
+genre recognition because the texts it contains are very likely to be almost
+similar in semantic structure.
+As previously mentioned the texts in the corpus should be annotated
+with their genre for easy verification of the automated genre recognition.
+Due to the limitations of the FrameNet lexical database mainly sup-
+porting the English language the texts in the corpora must be in English,
+however of no specific dialect, but neither too old in style.
+The corpus must be publicly available and preferably free, so that oth-
+ers can reproduce my results or compare their method to mine.
+3.2 Selecting a corpus 18
+3.2 Selecting a corpus
+Based on my requirements for a corpus to use for genre recognition I have
+chosen the Open American National Corpus (OANC) [4] as it fulfills most
+of the requirements.
+The written part of the OANC consists of more than 11.5 million words
+in approximately 6,500 texts spread throughout 9 genres giving an aver-
+age of 720 texts in each genre, each consisting of 1,750 words. However,
+the OANC is not well balanced, e.g. fiction only contains a single text
+whereas periodicals contains 4,531 texts, thus not fulfilling my require-
+ment for diversity. It does more than fulfill my requirement for genres,
+however, although the fiction genre is practically unusable as using the
+single text for training leaves no text for testing.
+This is not the only bias of the corpus; the length of the texts differ as
+well with a majority of the texts being in the order of 4− 8kB and the rest
+varying up to a size of around 100kB. Thus, my criterion for the length of
+the texts is not fulfilled, however the quantity criterion is well fulfilled.
+Naturally all the texts in the OANC are written in American English,
+thus fulfilling my criterion on language as American English is supported
+by the FrameNet lexical database.
+The texts are distributed over 9 genres, thus fulfilling my criterion of
+at least 3 genres, although one of the genres only contain a single text.
+The texts are aged from 1990 until now so it does not fulfill my require-
+ment of the texts aging from around 1930 until now, however the corpus
+is free to the public and thus fulfills my requirement of availability.
+Despite the seemingly many shortcomings of the OANC it seems to be
+the better choice with the free availability weighting a lot on the scale.
+The ideal choice would probably be the British National Corpus (BNC) [3]
+as it contains many more words (approximately 100 million) and fulfills
+my age criterion containing texts from 1960 − 1993. The BNC does not
+contain as many texts as the OANC, but with the much higher word count
+the texts must be much longer, thus fulfilling my criterion on text length.
+The anatomy of the OANC is also well suited for automated genre
+recognition because the texts it contains are significantly different across
+genres. The following lists examples of texts from the different genres of
+the OANC to show the anatomy of the corpus.
+Commerce
+In the late 1940s, Bond Stores, the largest men’s clothing chain at
+the time, created a sensation in New York City by offering a wide
+3.2 Selecting a corpus 19
+selection of suits with two pairs of pants instead of one, reintroduc-
+ing a level of product choice not seen since before the war. When
+the line of hopeful buyers at its Times Square store stretched around
+the block, Bond had to impose a limit of two suits per customer.
+Title: A stitch in time, File: written_2/non-fiction/OUP/Abernathy/ch1.txt
+Natural science
+Using sophisticated methodology to determine total body water and
+extracellular water, they demonstrate a 6.7% deficit in total body
+water and an 11.7% deficit of intracellular water, providing an im-
+portant indication of the volumes of fluid that may be required to
+optimize hydration.
+Title: Volume Status in Severe Malaria .., File: written_2/technical/plos/pmed.0020027.txt
+Social science
+Like the weather, atoms nowadays are freely talked about but the
+ordinary person rarely does anything about them. We know that
+water is H2O and (if we are sufficiently dyspeptic) that baking soda
+is NaHCO3; and it is generally agreed that uranium is quite heavy
+and that certain isotopes of it can be manipulated in such a way as
+to make a very big bang.
+Title: The carnival of the elements, File: written_1/journal/vebatim/VOL23_4.txt
+Periodicals
+Steve Forbes, Gary Bauer, and Alan Keyes lobbed grenades at him.
+They all bounced harmlessly off. Bush’s effectiveness didn’t have
+much to do with the quality of his answers. These were merely
+adequate, giving off in some cases a Quaylean whiff of heavy pre-
+programming, especially on foreign policy topics. Rather, Bush’s
+appeal derived from his demeanor.
+Title: Bush debates!, File: written_1/journal/slate/Article247_4108.txt
+Leisure
+Ke Nani Kai Resort $$ Kaluakoi Resort, Kaluakoi Road, Maunaloa,
+HI 96770; Tel. (808) 552 − 2761 or (800) 888 − 2791; fax (808)
+552− 0045; <www.marcresorts.com>. A family resort on the west
+side of the island, Ke Nani Kai consists of spacious fully-appointed
+apartments, a swimming pool, tennis courts, and a golf course.
+Walk to Kepuhi Beach, drive to 3-mile-long Papohaku Beach. 120
+rooms.
+Title: Hawaii, File: written_2/travel_guides/berlitz1/HandRHawaii.txt
+3.2 Selecting a corpus 20
+World affairs
+Oregon’s 16 Legal Aid offices strive to provide civil legal services
+for the state’s lowincome population. About 20 percent of Oregon
+residents qualify for the legal aid but only about 111 lawyers (less
+than 1 percent of the bar) compose the state’s legal aid services net-
+work. Legal Aid offices reject two out of three people that qualify
+for help and have a legitimate grievance because they don’t have the
+resources officials said.
+Title: The bend bulletin, File: written_2/technical/government/Media/TheBend_Bulletin.txt
+Based on the above examples some of the genres obviously distinguish
+themselves from the others, e.g. leisure, which lists an address, a phone
+number and an e-mail address in a way that seems inappropriate for, e.g.
+a novel.
+Commerce distinguishes itself by being focused on commerce related
+things, like stores, products and customers, but the writing style some-
+what resembles that of natural science and world affairs. Natural science,
+however, distinguishes itself from commerce and the others by contain-
+ing scientific words and measures, and little about people in general. The
+latter being significant for distinguishing social science from natural sci-
+ence because social science contains some of the same elements as natural
+science, like scientific words and measures, but is focused on people’s re-
+lation to it and thus contains socially related words as well. Periodicals
+can be distinguished by its narrative style, which resembles that of some
+novels, which are not part of the OANC and thus are not included here,
+but periodicals contains far from the same number of quotations. Further
+periodicals contain a lot of political terms as do world affairs, but world
+affairs also contain figures like economic amounts, population counts, etc.
+Looking at the punctuation marks of the texts in the various genres, it
+is clear that most of them are written in pretty much the same way, how-
+ever, genres such as natural science and social science stand out because
+of the more scientific notation they use, e.g. per cent signs and possible
+formulas. Further, leisure stands out because of the way addresses, phone
+numbers, e-mail addresses, etc. are represented separated by semi colon.
+I think that it is fair to say that the OANC fulfills the anatomy criterion.
+The reason that I chose not to go with the BNC is that it is not free and
+that it is not easily acquired.
+Another option is the Reuters corpus [40] which is made for the pur-
+pose of language research and thus contains many useful annotations, e.g.
+genre. Although the corpus contains a plethora of texts in the form of
+3.2 Selecting a corpus 21
+news articles I am afraid that these texts are too short or spans too few
+genres.
+4 Semantic parsers
+In this section I will discuss different semantic parsers that all work with
+the FrameNet database and I will discuss my choice of parser used in this
+project.
+4.1 SemEval-2007
+In 2007 Collin Baker, Michael Ellsworth and Katrin Erk from the FrameNet
+team organized a workshop3, as part of the SemEval-2007 conference4,
+with the task of constructing a semantic parser for extraction of frame
+semantic structures from plain text documents using FrameNet.
+The outcome of the workshop was three solutions from The University
+of Texas with UTD-SRL [30], Lund’s Tekniska Högskola with LTH [51]
+and CL Research with CLR [55]. I will describe the three solutions in the
+following sections along with the Shalmaneser parser [42] that did not
+participate in the workshop.
+4.2 UTD-SRL
+UTD-SRL [30] extracts frame semantic structures from plain text docu-
+ments by a data processing step that recognises named entities in the input
+text followed by four sub-tasks disambiguating frames, detecting frame
+element boundaries, classifying grammatical function labels and classify-
+ing frame element labels.
+Their approach is based on machine learning using maximum entropy
+for classification of grammatical function labels and classification of frame
+element labels, and support vector machines for frame disambiguation
+and frame element boundary detection to train their model in each of the
+four steps.
+Running their model on the test data provided for the workshop they
+achieved the following results using partial frame matching, semantic de-
+pendency and no named entities:
+3http://framenet.icsi.berkeley.edu/semeval/FSSE.html
+4http://nlp.cs.swarthmore.edu/semeval/
+4.3 LTH 23
+Precision Recall F-score
+80.35% 49.79% 61.35%
+Table 2: The results of running the UTD-SRL parser on the corpus provided for
+the SemEval-2007 workshop.
+4.3 LTH
+The LTH parser [51] uses the Penn-Treebank [14] based parser by Char-
+niak (Charniak parser) [39] for grammatical annotation parsing to prepare
+the input for frame detection.
+After processing by the Charniak parser and filtering out any words
+not invoking a frame the input is classified using a SVM trained on all
+ambiguous words in the FrameNet database to perform word sense disam-
+biguation. Finally a SVM classifier is used to extract the frame elements
+from the input.
+The LTH parser was the highest scoring parser of the SemEval-2007
+event with the following results (based on partial credit, which is given
+for wrong, but closely related matches):
+Precision Recall F-score
+78% 60% 68%
+Table 3: The results of running the LTH parser on the corpus provided for the
+SemEval-2007 workshop.
+4.4 CLR
+The CLR parser [55] is grammar based and builds a parse tree of the input
+having single words in the leaves and grammatical components as nodes.
+It actively updates the tree during parsing by applying grammar rules to
+develop dependency relations. To disambiguate words and sentences it
+performs a number of parses eliminating the least well-formed.
+Next, the parser identifies dependency relationships using discourse
+analysis to further disambiguate all words and identify relations between
+sentence elements.
+Finally all nouns, verbs, adjectives or adverbs is lemmatised to their
+base form which is then looked up in the FrameNet database. For am-
+biguous words each sense is given a score and the highest scoring sense is
+chosen as the base for the frame.
+4.5 Shalmaneser 24
+Their results on running the parser on the test data provided for the
+workshop are not as high as those for the UTD-SRL and LTH parsers:
+Precision Recall F-score
+55% 37% 44%
+Table 4: The results of running the CLR parser on the corpus provided for the
+SemEval-2007 workshop.
+4.5 Shalmaneser
+Shalmaneser [42] is a software package that is a part of the German SALSA
+project 5 and works on both English and German texts using the FrameNet
+1.2 database for English.
+The parser is implemented as a supervised learning task for frame and
+frame element assignments based on a the naïve Bayes classifier working
+on verb targets, grammatical functions of the target words, bag-of-words
+context with window sizes of one or more sentences, and bi-grams and
+tri-grams centered on the target words. It uses syntactic features to assign
+frame elements.
+There are no real results from running the parser on a corpus similar to
+that provided for the SemEval-2007 workshop, however the team behind
+the parser claims it to have low accuracy due to the limited number of
+frames available in FrameNet and the limited word sense coverage. Using
+FrameNet 2.0 might improve its performance.
+4.6 Selecting a semantic parser
+Based on the fine results, the easy availability and the fact that others at
+DIKU6 has worked with the LTH parser I have chosen it as the parser to
+use in this project.
+The UTD-SRL parser does not perform as well as the LTH parser – at
+least not on the corpus provided for the SemEval-2007 workshop. Further,
+the LTH parser’s use of the Charniak parser to preprocess its input seems
+like a sensible solution.
+The Shalmaneser parser both performs lower that the LTH parser and
+is based on the old FrameNet 1.2 database, whereas the LTH parser is
+5http://www.coli.uni-saarland.de/projects/salsa/page.php?id=index
+6Department of Computer Science, University of Copenhagen, Denmark,
+http://diku.dk
+4.6 Selecting a semantic parser 25
+based on the FrameNet 2.0 database and could probably be upgraded
+to support new releases of the FrameNet database, thus the LTH parser
+should be able to identify more frames than the Shalmaneser parser.
+5 Classifiers
+Within the field of automated genre recognition and related fields such
+as author attribution a number of classifiers are commonly used to pro-
+cess the chosen feature set. In this section I will discuss some of the most
+successful classifiers and discuss my criteria for selecting one.
+5.1 Naïve Bayes
+The naïve Bayes [62] is generally a very popular classifier, especially within
+natural language processing because it scales well and is very effective
+[62].
+Using the classifier consists of first executing a training pass to build a
+model of how different data is categorised, e.g. how texts are divided into
+genres, followed by a testing pass where the model is used to categorise
+previously unknown data, e.g. a new text. In the testing pass the naïve
+Bayes uses a deterministic prediction by choosing the most likely class for
+the unknown data based on what it has learned in the training pass. This
+means that data in classes that has not been included in the training pass
+will still be classified, but to a known class that lies closest to the actual
+class, which might be far from the actual class.
+There exists a special boosted version of the naïve Bayes classifier that
+is one of the most effective learning algorithms [62].
+5.2 Support Vector Machines
+Support Vector Machines (SVM) [62] are a kind of neural networks [62]
+and has been used extensively for automated recognition of handwritten
+digits, but has recently found its way into natural language processing and
+automated genre recognition.
+As with the naïve Bayes classifier SVM requires a training phase to
+be able to classify unknown data. The classifier works by optimizing the
+problem of finding linear separators between data points represented by
+nonlinear functions in n dimensions using quadratic programming [62].
+5.3 Nearest Neighbor 27
+Because of the nonlinear (multi-layer) nature of support vector ma-
+chines they are very hard to train, but, if done successfully, they are very
+effective [62].
+5.3 Nearest Neighbor
+Nearest neighbor [62] is a very simple classifier that is simple to imple-
+ment and requires only little tuning. It is used moderately within the field
+of automated genre recognition where its performance is average.
+It requires training, as with the previous classifiers, but scales badly
+with increase in dimension of the data set because it looks at the k nearest
+neighbors of a data point x to determine if it is the best match to the input
+[62]. If the data set is large k, which is usually determined by the size of
+the data set, might be too large for this lookup to be feasible compared
+to other classifiers. The classifier is based on a distance measure used to
+determine the data point x based on its distance to the k nearest neigh-
+bors [62]. Usually the standard deviation or the Mahalanobis distance is
+used as the distance measure because they are more general than, say, the
+Euclidean distance and thus makes a better measure if the variables (di-
+mensions) of the data set are different and thus cannot be measured in the
+same way (e.g. travel distance vs. speed) [62].
+5.4 Discriminant analysis
+Discriminant analysis [50] is not widely used within the field of automated
+genre recognition, but has been used to produce some of the best results
+[66].
+It is a fairly simple algorithm that, like the previously described classi-
+fiers, require a training pass [50]. As nearest neighbor it measures the dis-
+tance from a given, previously unknown data point to each of the points it
+has been trained with and returns a deterministic prediction by choosing
+the class that the known vector that is closest to the new vector belongs to
+[50].
+Thus, it uses a distance measure in the same way as nearest neighbor,
+but usually the Euclidean distance instead of the Mahalanobis.
+5.5 Selecting a classifier 28
+5.5 Selecting a classifier
+Because I strive to compare my results with those of Stamatatos et. al.
+[66] using the same method, but with semantic frames instead of word
+statistics I have chosen to use the same classifier as they use; discriminant
+analysis. As distance measure I use the Euclidean distance because all
+the variables in my vectors are the same type and thus there is no need
+to use different distance measures for the variables. [66] does not specify
+which distance measure they use, so I assume that they use the Euclidean
+distance, which seems to be the default for discriminant analysis.
+6 Implementation
+In this section I will describe the most important parts of my implementa-
+tion for automated genre recognition. Trivial parts, like how to count the
+number of occurrences of words in a text, is considered something that the
+reader is capable of doing and will not be explained here.
+My implementation is written in Python and requires Python 2.6. It
+has not been tested with Python 3.0 or above and there are no guarantees
+that it will work with anything else than Python 2.6.
+6.1 External libraries
+I use a number of external libraries for different purposes in my imple-
+mentation. I will briefly introduce each of them here and explain more of
+their use in the following sub sections.
+MDP Modular toolkit for Data Processing [70] is a free toolkit for per-
+forming different advanced kinds of data processing among which
+is discriminant analysis, which I am particularly interested in and is
+the reason for including this library.
+NumPy NumPy7 is a high precision library for Python that introduces
+some advanced data structures and the ability to do high precision
+math in Python. It is a requirement for using MDP, but I also use its
+internal array data structure, which supports multi-dimensional ar-
+rays and works with the matrix data structure also used by MDP. It
+further introduces advanced manipulation methods of its data struc-
+tures, such as calculating dot products, inverse matrices and other
+useful linear algebra methods.
+NLTK The Natural Language ToolKit [56] contains methods useful for
+natural language processing, like tokenisation and stemming.
+PyYAML PyYAML8 is a an implementation of YAML – a human friendly
+data serialization standard - for Python used by the NLTK.
+7http://numpy.scipy.org/
+8http://pyyaml.org/
+6.2 Selecting training and testing data 30
+6.2 Selecting training and testing data
+Because the OANC is so much out of balance as it is (see Section 3.2 for
+my discussion of the chosen corpus) I have implemented a way of specify-
+ing how genres and texts are selected for inclusion in the analysis using a
+parameter, skip count.
+Splitting the corpus in training data and testing data is done in 2 passes;
+the first pass selects the part of the corpus used for training, and the sec-
+ond pass selects the part used for testing, excluding any texts previously
+selected for training as well as genres completely excluded from training.
+By default half of the corpus is selected for training and the other half for
+testing.
+Skip count puts a lower bound, k, on the number of texts that can be
+used for training or testing the model, so a genre is excluded if it contains
+less than k texts. This boundary is always applied if it is greater than 0 and
+the number of texts in a genre is less than k. A skip count of 0 indicates
+that the remaining texts should be included. In practice skip count is 0
+for selecting testing data to test on as many texts as possible, even if it is
+only a few. It is more important to have many texts for training to give the
+model a general impression of what identifies a genre.
+Table 5 shows an example of selecting the training and testing corpus
+based on a skip count value of 150. Because Genre#2 contains less than
+150 texts it is excluded and only Genre#1 and Genre#3 are included.
+Genre#1 Genre#2 Genre#3
+Total texts 500 100 250
+Training texts 250 - 125
+Testing texts 250 - 125
+Table 5: Example of how texts and genres are included or excluded based on the
+specified skip count. A skip count of 150 has been applied in the exam-
+ple.
+When selecting the training data a randomised list of all texts to be
+included from the corpus is generated using the shuffle() method of
+the built-in Python random package. This method uses the Python ran-
+dom() method to randomise the order of the input list and returns the list
+containing the elements in randomly permuted order. This ensures that
+neither the training corpus or the testing corpus is biased towards any or-
+der of the used corpus. It also causes subsequent runs of my method to
+produce slightly different results because the texts included for training
+and testing are not the same across runs, which, in turn, produces more
+6.3 Tokenising texts 31
+general results than if specific, known parts of the corpus were used for
+training and testing.
+6.3 Tokenising texts
+The part of my method that is based on word and punctuation marks
+statistics require the texts to be split up into words and punctuation marks
+in order to be able to count these. For this I use the NLTK which provides
+easy to use methods for tokenising texts into a variety of segments, like
+sentences and words.
+When each text is read it is decoded to plain ASCII from the UTF-8
+representation they are stored in in the files. Further, they are converted
+to all lower case letters to make it easier to match the words to the most
+frequent words in the English language because these, as represented in
+[66], do not distinguish between upper and lower case.
+To tokenise the texts into their word entities I use the word_tokenize()
+method of the NLTK, which preserves some of the most important syntac-
+tical characters like decimal separators in numbers (, and .) and apostro-
+phes (’) in contracted words. Because this method requires its input as
+single sentences I first tokenise the texts to sentences using the English
+sentence detector shipped with the NLTK.
+Then, each single word is added to a list in its shortest form, which I
+extract using a Porter stemmer shipped with the NLTK as part of the stem
+package. Because the word tokeniser includes all entities in its output
+I make sure not to add any punctuation marks to the list, by using the
+list of punctuation marks from the native Python string package to filter
+them out.
+If punctuation marks are to be taken into account these are extracted
+in a subsequent loop for each sentence using the WordPunctTokenizer()
+method of the NLTK’s tokenize package. This tokenizer splits the sen-
+tences in their smallest entities while still preserving whole words, thus
+isolating punctuation marks as part of the process, so that it is possible
+to match all punctuation marks in the text to a list of the most frequent
+punctuation marks in the English language. Matching punctuation marks
+are added to the list of words such that it contains all entities for the given
+text.
+There is a slight inaccuracy in this method because punctuation marks
+used in numbers, etc. are included, which is essentially wrong, as they
+should not be interpreted as punctuation marks and thus not included in
+the statistics. I have chosen to ignore this because I expect it to have only
+little effect on the result.
+6.4 Harvesting frames 32
+Because this tokenisation of the texts results in the list containing all
+words and possibly all punctuation marks in each text it does not change
+between runs of my method. Advantage can be taken of this fact to speed
+up the time consuming process of tokenising the texts by saving the list as
+a pickle that can be loaded during subsequent runs of my method, so that
+the tokenisation only has to be done one time for each text. The pickle is
+saved to disk next to the text it belongs to. One pickle is saved for the list
+only containing words and another for the list containing both words and
+punctuation marks.
+Once a text has been tokenised the number of extracted entities are
+calculated and stored in a dictionary with the word or punctuation mark
+as key and the count as value.
+This dictionary contains all words and punctuation marks in the text
+and must be filtered to only contain the entities of interest for the partic-
+ular run of the method, depending on the parameters given. This is done
+using a list of the entities of interest to only extract the entities and their
+counts from the dictionary that are to be included. During this process
+the counts are normalised to lie in the the range 0.0..1.0 to represent the
+counts as the interrelationship between them rather than as their absolute
+values, which cannot be used to compare their interrelationship across
+multiple texts. The result is a list containing only the measure of inter-
+relationship for each entity, which will be used directly in the training or
+testing of the discriminant analysis.
+6.4 Harvesting frames
+Running my method using frames instead of words as entities is done in
+much the same way as with words except that the tokenisation step is
+replaced with running the LTH parser on the input texts and parsing the
+output XML to get the semantic frames.
+I run the LTH parser in a separate step prior to running the classifier.
+Given a root folder this step extracts frames from all .txt files in the direc-
+tory tree beneath it excluding any files or folders specified by an exclude
+parameter.
+Extracting frames from the texts involves executing the following steps
+for each file:
+1. The first thing to be done is to create a folder structure for the output
+and intermediate files in the specified target folder. In the target
+folder a folder with the same name as the base name of the current
+text file is created. In this folder is then created tmp and out folders
+for the intermediate files and output XML file, respectively.
+6.4 Harvesting frames 33
+2. Next the .anc file accompanying the current text file is copied to the
+root of the texts folder in the target folder. This is done to keep all
+relevant information in the same directory tree.
+3. If specified the files can be split up into chunks. If a chunk size
+is specified and is greater than 0 the current text is split up into a
+number of chunks, each containing approximately the number of
+words specified as chunk size, to make it easier for the LTH parser
+to work on it. The text is split up into sentences using the same sen-
+tence detector from the NLTK as initially used for tokenising texts
+into words. The chunks are split up such that they come as close
+to containing the specified number of words while only containing
+complete sentences. Each chunk is written to a temporary file in the
+current text’s tmp folder.
+4. When a text has been chunked up the chunks are tokenised using the
+external tokenisation scripts tokenizer.pl and post_tokenizer.py
+both of which are described in Section 8. The tokenised chunks
+are written to new temporary files in the same folder as the input
+chunks.
+5. When all chunks have been prepared a special job file for use as
+input to the LTH parser is written for the current text. The job file
+specifies the path of all the chunks and the path to put the resulting
+XML file, which is the current text’s out folder, as well as a bunch
+of other parameters for use internally by the LTH parser as briefly
+described in Section 8. The job file is saved to a file in the current
+text’s tmp folder.
+6. Because the LTH parser has a tendency to get stuck in an infinite
+loop I have chosen to introduce a timeout on its execution time in
+terms of when its output file was last changed. This is only possible
+because the LTH parser writes its output progressively and does not
+keep it in memory until it is done and then write it to file. I have
+implemented the timeout by executing the LTH parser in a sepa-
+rate process and repeatedly polling the return code of that process
+checking the modification time of its output file for every poll. To
+avoid hammering the output file and blocking the disk I/O I have
+introduced a delay of 20 seconds between every poll. This delay is
+an active wait of the process executing my method and not on the
+separate process executing the LTH parser. This effectively means
+that timeout values effectively are multiples of 20 and the smallest
+timeout takes at least 20 seconds to be effective.
+6.5 Discriminant analysis 34
+When this post processing of the texts are done the target folder will
+contain a folder for each included text from the specified root folder and
+the out folder of these will contain the XML file describing the semantic
+frame structure of the text.
+In an intermediate step between running the LTH parser on the texts
+and running the classifier the frames names are read from the output XML
+file and written to a pickle for use later, so that subsequent runs of the
+classifier does not need to parse the XML file.
+While running the classifier using frame statistics the frames for each
+included file are loaded from the pickle saved in the pre processing step.
+If a new text has been added to the corpus the pre processing step is auto-
+matically executed for it in order to have the frame information available
+for future use.
+If both frames and words, and possibly punctuation marks, are to be
+included in the classification data the word and punctuation entities ex-
+tracted previously are extended with the frame information for each text.
+The list of the most frequent entities to include in the classification is ex-
+tended with frame information as well after which the process follows the
+same steps after tokenisation as without frames.
+When using frames it is necessary to have a list of the most frequent
+frames to extract these from each text. As described in Section 7.1.2 I use
+the 50 most frequent frames in the OANC rather than the 50 most frequent
+frames in the English language. I do this by first extracting all frames
+from all files in the corpus, counting them and calculating the average
+frequency of each frame based on the number of occurrences of each frame
+and the number of texts in the OANC. This is done in a separate pass prior
+to running the classifier using frames.
+6.5 Discriminant analysis
+For performing discriminant analysis I use the free toolkit MDP, which
+contains methods for performing the training and execution passes of
+multi-class discriminant analysis.
+From the MDP I use the FDANode class which implements a multi-class
+variant of the Fisher linear discriminant analysis. The FDANode class con-
+tains methods for training and execution and can be trained in multiple
+steps. The result after training and testing is kept in two variables: one
+containing the transposed of the projection matrix and one containing the
+mean of the training data.
+I train an instance of the FDANode each genre at a time using a 2-
+dimensional array representing texts in the first dimension and words,
+6.5 Discriminant analysis 35
+punctuation marks and/or frames in the other.
+The FDANode class is implemented in a way that requires its train method
+to be called two times with the same training data with an intermediate
+call to a method forcing the node to stop training. The first call calculates
+the means of the entire training data and the second call calculates the
+covariance matrices.
+When the node has been trained it can be executed on a vector, x, of
+observations of the same length as the second dimension of the training
+data, t. Executing the node returns a new vector, o, representing the point
+in space of x relative to the points in t. Further, the two variables of the
+FDANode are set to the transposed of the projection matrix, v, and the mean
+of the input data, avg. These can together with t be used to determine the
+genre of x. First the mean-corrected training data is projected in space for
+each genre:
+Pgenre = tgenre − avg · v, (1)
+next the minimum distance from o to the points of t for each genre is
+calculated:
+distgenre = min(dist(Pgenre, o)), (2)
+where dist() is a function calculating the distance between Pgenre and o,
+and min() is a function returning the minimum value, distgenre, of a set.
+Finally the genre which the smallest distgenre belongs to is returned as the
+most probable match for x.
+In my implementation the dist() function calculates the Euclidean dis-
+tance in all dimensions between its argument.
+7 Experiments
+In this section I explain my experiments and present their results. I have
+conducted several experiments on my implementation for genre recogni-
+tion; one experiment is an attempt to reproduce the results of Stamatatos
+et. al. [66], with and without taking punctuations marks into account. The
+second experiment is much similar to the first one, but instead of word fre-
+quencies I use the most common semantic frames in the OANC. In the last
+experiment I try out various combinations of words, punctuation marks
+and frames in an attempt to further improve the results.
+Because semantic frames represent the meaning of parts of the text I
+hope that they will perform better than simple words, as these represent
+no actual meaning, i.e. the semantic frame analysis tries to disambiguate
+the meaning of words whereas words are just words with no deeper con-
+cept of meaning.
+7.1 Preparing experiments
+The OANC is encoded using UTF-8, so all texts are decoded to get the
+correct representation of all characters in the texts before processing.
+All tests have been conducted on the same machine with the following
+specs:
+CPU Intel Core 2 Duo, E8500, 3.16GHz
+Memory 8GB
+HDD 400GB, ext3 formatted
+Swap 50GB linux-swap
+OS Ubuntu 8.10 Intrepid Ibex
+7.1 Preparing experiments 37
+7.1.1 Counting word frequencies
+For counting word frequencies the texts in the corpus are tokenised all the
+way down to single words an punctuation marks. To match the words of
+the texts properly to the most frequent words both are represented using
+only lower case letters, which can be done because the words themselves
+does not contain any meaningful information when the method is based
+on counting their frequencies. Further, the words are represented by their
+stems to make it easier to match all possible inflections.
+I use the same 50 most frequent words in the English language as Sta-
+matatos et. al. does in [66]. See Table 9 in Appendix C for a listing of the
+50 most frequent words in the English language.
+7.1.2 Counting frame frequencies
+Counting frame frequencies is much more cumbersome than counting
+word frequencies because a prior frame analysis must be done to tokenise
+the texts into frames, the numbers of which are then counted for each text.
+This process is defined by the following pipeline and batch operations:
+1. Tokenise each text of the corpus into files containing a sentence on
+each line (see my discussion of the LTH parser in Section 4 for more
+details)
+2. Extract frames from each text in the corpus
+3. Count the number of occurrences of different frames in each text
+4. Count the overall number of frames in the entire corpus
+The second step is by far the most resource and time consuming as it
+entails executing the LTH parser on each text. The parser uses approx-
+imately 3GB of physical memory and 100% processor time on a single
+core9. See Section 7.3 for more information on the running time of the
+LTH parser.
+The LTH parser creates some rather large output files in .XML format,
+in the range of 0.5-12MB for texts up to 100kB, which makes the third
+step a resource and time consuming task as well, however not in the same
+magnitude as the second step.
+Refer to Table 12 in Appendix C for a listing of the 50 most frequent
+frames in the OANC.
+9The LTH parser is not multithreaded, although a wrapper could be written to execute
+two or more instances of the it in parallel.
+7.2 Experiments 38
+One major difference between using word frequencies and frame fre-
+quencies is that while Stamatatos et. al. have been able to extract the 50
+most frequent words in the English language from the very comprehen-
+sive British National Corpus (BNC) I have only extracted the most fre-
+quent frames from the OANC, which contains much less information (see
+my discussion of corpora in Section 3.2 for more information on the two
+corpora) and, thus cannot be considered general for the entire English lan-
+guage.
+Because frames represent the meaning of a text and not merely a basic
+statistical measure they are very sensitive to style and genre. Thus, finding
+the most frequent frames in the English language based on frame analysis
+on a large corpus like the BNC might only prove feasible for doing analysis
+on the BNC or another corpus of the same composition of genres and with
+the same quantity per genre. E.g. extracting the most frequent frames
+from a corpus containing texts in the genres fiction, journalism and ro-
+mance is likely to produce wrong results when used with a corpus either
+containing more genres or totally different genres.
+This means that my comparison between the two methods – perform-
+ing automated genre recognition using word frequencies vs. frame fre-
+quencies has a slight bias towards the former because the basis for the
+training and testing of the method is based on more information, how-
+ever I have extracted the 50 most frequent words in the OANC, as listed
+in Table 10 in Appendix C, for an additional and more fair comparison
+between using words and frames as the basis for performing automated
+genre recognition.
+7.2 Experiments
+Like in [66] I use the simple machine learning algorithm discriminant anal-
+ysis for training and classifying texts. Because discriminant analysis works
+in vector space by projecting the text to be classified onto the trained data
+I use the Euclidean distance as a measure for how closely a text is related
+to a genre. [66] does not mention anything about how they perform this
+projection other than using linear discriminant analysis.
+Other measures than the Euclidean distance, like Mahalanobis dis-
+tance, might perform better, but I have not had the time with this project
+to make such sub optimisation.
+In the figures below, the legend contains the number of texts used for
+training and the number of genres spanned by these texts. The complete
+number of texts used for both training and testing is approximately twice
+the number of texts used for training, depending on whether the included
+7.2 Experiments 39
+genres contains an odd or even number of texts.
+7.2.1 Using the most frequent words in the corpus
+I have conducted a series of tests using my implementation of Stamatatos
+et. al.’s method on the 10−50 most frequent words in the OANC to reflect
+what others have done before me [35] and as a basis for measuring the
+performance of my implementation on the 10−50 most frequent words in
+the English language as done by Stamatatos et. al. [66].
+10 20 30 40 50
+Most frequent words in the OANC
+8
+10
+12
+14
+Er
+ro
+r r
+at
+e 
+(%
+)
+Skip count=0 (all 3023 texts in 6 genres)
+Skip count=20 (3020 texts in 5 genres)
+Skip count=40 (3006 texts in 4 genres)
+Skip count=200 (2917 texts in 3 genres)
+Figure 7: The results of running my implementation of Stamatatos et. al.’s
+method on the entire written OANC corpus with various number of
+the most frequent words of the corpus and the skip count parameter. It
+is clear that my method peaks using the 45 most frequent words and a
+skip count value of 40 with an error rate of 7.04%.
+A total of 32 tests with various values for the skip count parameter
+and number of most frequent words have been conducted. For each of the
+skip count values of 0, 20, 40, and 200 – with 0 including all texts in every
+genre – I have run the method on the 10-50 most frequent words with an
+increment of 5 words. The result can be seen in Figure 7 which shows a
+7.2 Experiments 40
+graph of the error rate of the method for each number of the most frequent
+words used as well as the value of the skip count parameter.
+It is clear that my implementation run on the OANC peaks using the 45
+most frequent words, from the corpus, with a skip count of 40, effectively
+excluding any genre containing less than 40 texts, thus leaving 4 genres to
+work on, which is acceptable according to my criterion on the diversity of
+the corpus, as described in Section 3.
+The peak error rate achieved by this method is 7.04%, which is 4.54%
+higher than what Stamatatos et. al. achieves using the most frequent
+words in the entire English language.
+7.2.2 Using the most frequent words in English
+I have conducted the same series of tests as above using the 10 − 50 most
+frequent words in the English language, as specified in Table 1 in [66]
+rather than the 10− 50 most frequent words in the corpus.
+The result can be seen in Figure 8. It is clear that my implementation
+run on the OANC peaks using the 50 most frequent words of the English
+language together with a skip count of 40. The error rate achieved at this
+point is 6.34%, which is 3.84% higher than that of Stamatatos et. al.’s.
+Contrary to what was expected, using the most frequent words of the
+entire English language produces a result that is slightly better than us-
+ing the most frequent words in the corpus. Naturally the opposite was
+expected because using the most frequent words in the corpus is like de-
+signing the method for the corpus, which would be cheating. I have, how-
+ever, included this run as a reference point for running my method using
+semantic frames because I use the most frequent frames in the OANC and
+not in the entire English language, as discussed in Section 7.1.2. Although
+using the most frequent words in the corpus could be considered cheating
+it is obviously not beneficial in all situations when selecting the training
+corpus randomly, thus including different texts at each run. The random
+selection of the texts might bias the word count of the training corpus
+away from the collected word count of the entire corpus if excluding texts
+that, during collection, has biased the word count of the entire corpus.
+However, Stamatatos et. al. experience the same tendency in [66], where
+their runs using the most frequent words in the corpus performs worse
+than using the most frequent words in English. Taking the average of
+multiple runs might prove my assumption correct by using various ran-
+domly chosen texts for training, but I do not have the time in this project
+to validate this new assumption.
+Because Stamatatos et. al. have defined their corpus themselves they
+7.2 Experiments 41
+10 20 30 40 50
+Most frequent words in English
+6
+8
+10
+12
+14
+16
+Er
+ro
+r r
+at
+e 
+(%
+)
+Skip count=0 (all 3023 texts in 6 genres)
+Skip count=20 (3020 texts in 5 genres)
+Skip count=40 (3006 texts in 4 genres)
+Skip count=200 (2917 texts in 3 genres)
+Figure 8: The results of running my implementation of Stamatatos et. al.’s
+method on the entire written OANC with various number of the most
+frequent words of the English language and the skip count parameter.
+It is clear that my method peaks using the 40 most frequent words and
+a skip count value of 40 with an error rate of 6.34%.
+have not had any problems with it being unbalanced and as such have
+had no use of a parameter equivalent to the skip count parameter I have
+introduced. This gives them a slight advantage, which can be seen from
+the results in that my highest accuracy rate is several per cent lower than
+theirs.
+7.2.3 Taking punctuation marks into account
+As for the previous tests I have conducted the same series of tests using the
+10 − 50 most frequent words in the English language with the additional
+entities of the eight most frequent punctuation marks, also in the English
+language, as specified by Stamatatos et. al. [66]. Table 11 in Appendix C
+lists these punctuation marks.
+Defining quotes as being some of the most frequent punctuation marks
+is somewhat ambiguous because there are several forms of quotes used
+7.2 Experiments 42
+in practice: ", ’, ´, ‘, some of which are repeated to form other quotes:
+‘‘, ´´. I have chosen to only recognise " and ’ as quotes because, to my
+understanding, accents are only used in certain languages to disambiguate
+words spelled or sounded in the same way.
+To count parentheses correctly I assume that every opening parenthesis
+has a corresponding closing parenthesis, thus only counting the opening
+parentheses. This avoids the problem of wrongly counting the number of
+parentheses, e.g. if a text contains itemisations of the form a) . . . , b) . . . ,
+etc.
+10 20 30 40 50
+Most frequent words and punctuation marks
+6
+8
+10
+12
+14
+16
+18
+Er
+ro
+r r
+at
+e 
+(%
+)
+Skip count=0 (all 3023 texts in 6 genres)
+Skip count=20 (3020 texts in 5 genres)
+Skip count=40 (3006 texts in 4 genres)
+Skip count=200 (2917 texts in 3 genres)
+Figure 9: The results of running my implementation of Stamatatos et. al.’s
+method on the entire written OANC with various numbers of the most
+frequent words of the English language including punctuation marks
+and the skip count parameter. This method seems to peak at a com-
+bined word and punctuation count of 50 and a skip count of 40 with
+an error rate of 6.47%, which is slightly worse than when not including
+punctuation marks.
+The results of running my implementation of Stamatatos et. al.’s method
+including punctuation marks can be seen in Figure 9. When including
+punctuation marks the method peaks at a combined word and punctua-
+tion count of 50 and a skip count of 40, which is exactly the same as when
+7.2 Experiments 43
+not including punctuation marks, however, the former results in a slightly
+lower accuracy with an error rate of 6.47% against the latter’s 6.34%.
+This result is contrary to that of Stamatatos et. al. who achieve an
+improvement of including punctuation marks. One possible explanation
+for this is that I select the texts to include for training and testing ran-
+domly and thus subsequent runs of my method on the same corpus and
+with the same parameters will produce slightly different results, whereas
+Stamatatos et. al does not explain in detail how they select the texts for
+training and testing, but simply note that they use half of the corpus for
+each.
+7.2.4 Using the most frequent frames in the corpus
+When using the most frequent frames in the OANC, without additional in-
+formation, the results are quite good. The lowest error rate is 7.36% using
+the 35 most frequent frames and a skip count of 200, as shown in Figure
+10. This is not quite as good as when using words and does not match
+the results of Stamatatos et. al. However, the classification accuracy when
+using less frequent frames are generally better than when using words,
+with or without punctuation marks. When using words, the best result
+with only the 10 most frequent words is 13.49%, but for frames the cor-
+responding result is 12.70%, almost a percent better, thus for low entity
+counts using frames might generally be better than words, but it hardly
+makes up for the excessive preprocessing time required for extracting the
+frames.
+That frames perform better than words at low entity counts could be
+explained by the most frequent words in this case are too general across
+the genres, e.g. the most frequent word in English, the, probably has a
+very even representation across genres.
+It might seem that using a much lower number of different frames than
+the number of different words might be feasible with some optimisations,
+however the relationship between the number of frames and words is not
+as unbalanced as it might seem. The texts in the OANC contain a total of
+682 different frames and a total of 216,700 different words, thus it might
+seem as though the possibility of identifying a genre based on the most fre-
+quent words in it is much higher than if based on the most frequent frames
+because there are many more words available to identify the genre. This
+is also visible from the graph in Figure 11, which shows the number of
+words and frames included in calculating the frequency of these. E.g. the
+10 most frequent frames are calculated based on a total of 42,124 frames,
+including duplicates, whereas the 10 most frequent words are calculated
+7.2 Experiments 44
+10 20 30 40 50
+Most frequent semantic frames
+8
+10
+12
+14
+Er
+ro
+r r
+at
+e 
+(%
+)
+Skip count=0 (all 3023 texts in 6 genres)
+Skip count=20 (3020 texts in 5 genres)
+Skip count=40 (3006 texts in 4 genres)
+Skip count=200 (2917 texts in 3 genres)
+Figure 10: The result of running my method using only the most frequent frames
+in the OANC. The reults are quite good, with a minimum error rate of
+7.36% at 35 entities and a skip count of 200.
+based on a total of 148,665 words.
+Because semantic frames are an expression for the meaning of one or
+more words or entire sentences, this comparison might not be fair and it
+would be just to divide the number of words with the average number of
+words used to generate a frame in order to get a more comparable mea-
+sure.
+The seemingly extremely high word count is partly caused by the to-
+kenisation of the texts of the OANC into words and the inclusion of num-
+bers and other non-word structures that are maintained by the tokenisa-
+tion. Of the 50 most frequent words none of such odd word-entities are
+included.
+That there are many more words than frames for the same text causes
+some problems with automated genre recognition because some of the
+most frequent frames might not be present, at all, in a number of texts
+if the frame count comes from a single genre that is more unique than
+other genres, e.g. medical journals, and thus contains a high frequency
+of the same frames, thus biasing the measure of the most frequent frames
+7.2 Experiments 45
+0 10 20 30 40 50
+Most frequent entities
+0
+200000
+400000
+600000
+800000
+En
+tit
+y 
+co
+un
+t
+Frames (682 distinct frames in total)
+Words (216,700 distinct words in total)
+Figure 11: The relationship between the number of words and frames used to
+calculate the most frequent words and frames, respectively.
+towards that genre.
+This problem is much smaller with words because most of the most
+frequent words in the corpus or the English language are so common that
+they cannot be avoided in most properly written texts.
+Entities of which there are no occurrences in a text result in zero-
+entries in the vector representing the text for the discriminant analysis,
+which eventually results in Inf10 or NaN11 when the vector is normalised.
+To correct for this I replace any occurrences of Inf or NaN with zero after
+normalising the vector, thus maintaining its normalised form.
+10Inf is a NumPy symbol representing infinitum
+11NaN is a NumPy symbol representing Not a Number usually caused by the limited
+precision in computers or division by zero
+7.2 Experiments 46
+7.2.5 Combining frames and words
+To try and further improve the results of using semantic frames I have
+combined the most frequent words in English with frames, such that they
+are combined interchangeably, including the same number of words and
+frames (±1 for odd numbers of entities) to a total of no more than the
+specified number of entities.
+The result in Figure 12 shows an improvement by this combination
+over all of the above runs with a minimum error rate of 5.27%, which is
+an improvement of 1.07% over using the most frequent words in English.
+It is clear that using a skip count of 200 is superior to the other values of
+skip count with any number of entities, however it peaks at 45 entities,
+thus including the 23 most frequent words of the English language and
+the 22 most frequent frames of the OANC.
+10 20 30 40 50
+Most frequent words and semantic frames
+6
+8
+10
+12
+14
+16
+18
+Er
+ro
+r r
+at
+e 
+(%
+)
+Skip count=0 (all 3023 texts in 6 genres)
+Skip count=20 (3020 texts in 5 genres)
+Skip count=40 (3006 texts in 4 genres)
+Skip count=200 (2917 texts in 3 genres)
+Figure 12: The result of running my method using a combination of the most
+frequent words in English and frames, interchangeably. This combi-
+nation improves the accuracy of the classification further with an error
+rate of 5.27%.
+It is, however, only in very limited circumstances that it would be fea-
+sible to include frames to get the extra per cent of improvement because of
+7.2 Experiments 47
+the additional preprocessing time required by this, as explained in Section
+7.3.
+7.2.6 Combining frames, words and punctuation marks
+Although I have not had success with including the most frequent punc-
+tuation marks I have conducted an experiment doing so because of the
+improvement Stamatatos et. al. achieves.
+It seems that a combination of the most frequent words in the English
+language, semantic frames and punctuation marks further improves the
+result, peaking at a skip count of 200 using the 50 most frequent entities
+with an error rate of 4.89%, as shown in Figure 13.
+10 20 30 40 50
+Most frequent words, punctuation marks and semantic frames
+6
+8
+10
+12
+14
+16
+18
+Er
+ro
+r r
+at
+e 
+(%
+)
+Skip count=0 (all 3023 texts in 6 genres)
+Skip count=20 (3020 texts in 5 genres)
+Skip count=40 (3006 texts in 4 genres)
+Skip count=200 (2917 texts in 3 genres)
+Figure 13: The result of running my method using a combination of both words,
+punctuation marks and frames improves the result even further with
+a lowest error rate of 4.89%.
+While this is the best result I have achieved it is 2.34% worse than the
+best result of Stamatatos et. al. [66] and probably takes much longer time
+to achieve because of the extra preprocessing time for extracting semantic
+frames from the texts. Stamatatos et. al. does not specify the execution
+time for their method, but given the enormous difference in execution
+7.3 Time efficiency 48
+time between using only words and using semantic frames I would sup-
+pose that the execution time of their method, not using semantic frames,
+is as low as the execution time for my method when not using frames, as
+discussed in the next section.
+Again, using a skip count of 200 performs better with any number of
+entities than any of the other values of skip count, but they all seem to
+follow the same pattern, slightly increasing in error rate with 35 and 45
+entities.
+7.3 Time efficiency
+Performing automated genre recognition using word frequencies is by far
+the fastest method in terms of consumed wall-clock time compared to us-
+ing frame frequencies because extracting frames from the corpus is very
+time consuming.
+While extracting frames from a text requires prior tokenisation and
+preprocessing of the text into a representation where each sentence is on
+a separate line and all punctuation marks are surrounded by white space,
+etc. (see Section 8 for a discussion of the pitfalls of using the LTH parser),
+extracting words and punctuation marks for word frequencies requires
+only a tokenisation step that splits the input text into single words and
+punctuation marks, which are then counted.
+Once the tokenisation and preprocessing steps for extracting frames
+are completed the LTH parser is invoked on the reformatted text. This
+step is the most time consuming with the startup of the LTH parser itself
+taking more time than the tokenisation step for most texts and the parsing
+of the text taking far more time.
+The preprocessing steps extracting word frequencies from the entire
+written part of the OANC takes 11 minutes and 3 seconds on the test ma-
+chine, while the post processing steps for frames on the entire written part
+of the OANC, takes 8 days, 1 hour, 58 minutes and 57 seconds on the test
+machine. This is 1053 times longer than the pre processing for words and
+by that vast measure it seems highly infeasible to include frames on any
+level, even if they performed better than the results of Stamatatos et. al.
+The classification part of the method is exactly the same no matter the
+kind of entity, but although the tendency in the graph in Figure 8 indicates
+that using more than the 50 most frequent words might provide better
+results, it will also increase the computation time, which is almost linear
+in the number of entities as shown in Figure 14.
+The reason for the almost linear running time is that the vectors used
+for classification have the same length, n, as the number of entities used,
+7.3 Time efficiency 49
+10 20 30 40 50
+Most frequent words
+400
+600
+800
+1000
+1200
+Ex
+ec
+ut
+io
+n 
+tim
+e 
+(s
+ec
+on
+ds
+)
+Skip count=0 (all 3023 texts in 6 genres)
+Skip count=20 (3020 texts in 5 genres)
+Skip count=40 (3006 texts in 4 genres
+Skip count=200 (2917 texts in 3 genres)
+Figure 14: The execution time of running my implementation of Stamatatos
+et. al.’s method on the entire written OANC compared to the number
+of most frequent words in the English language and the skip count
+parameter. Obviously the running time is almost linear in the number
+of the most frequent entities used to classify the texts. This is general
+for all kinds of entities and is not specific to using words.
+which eventually results in the internal covariance matrix to have shape
+n × n, thus increasing the time it takes to invert it and to apply it on the
+test vectors.
+The long execution time of the frame based method gives rise to con-
+sidering alternative methods based on simpler processing of the texts, e.g.
+an extension of the word count based method that use more effort on the
+tokenisation and learning steps, thus to be more thorough and accurate.
+Such a method will take longer time to execute than the one based on word
+counts, but should take no more time to execute than the frame based
+method to be taken into consideration. This is, of course, only relevant if
+the method is considerably more accurate than either of the other meth-
+ods.
+8 Using the LTH parser
+Because the LTH parser [51] has been developed for a competition12 and
+not with the purpose of being released to the public as an actual product13
+it requires some tweaking to use in an efficient manner. In this section I
+will share my experiences and hard-learned lessons with using the LTH
+parsers to parse most of the written OANC [4].
+8.1 Executing the LTH parser
+The LTH parser is a Java application and thus has a very limited heap
+space for its internal data structures, which can get very large. To avoid
+the parser to crash it is necessary to increase its heap space considerably.
+I have defined a heap space of 3000MB which has proven to be adequate
+for running the parser on texts of at most 150KB.
+Further I have chosen to utilize the 64-bit architecture of the machine
+on which I have run my implementation by specifying this to the Java
+Virtual Machine (JVM). I have not tested if it improves performance of
+the parser, so it might be superfluous. On the other hand it makes no
+harm as long as it does not introduce new problems running the parser.
+The parser takes as input a job file that specifies which texts to parse
+and the command of a pre-parsing program that is executed prior to pars-
+ing the input. The pre-parser program by default used by the LTH parser
+is the Charniak parser14 developed at Brown University and has itself has
+several limitations. One of which is a hard-coded limit on the number of
+words a sentence can consist of, which is no more than 300 words. If the
+Charniak parser encounters a sentence containing more than 300 words
+it simply terminates with a NullPointerException, thus terminating all
+the work specified in the current job file. Containing sentences of no more
+12It was created for the SemEval-2007 conference workshop on writing a parser for
+FrameNet as described in Section 4.
+13It can be downloaded from http://nlp.cs.lth.se/software/semantic_parsing:
+_framenet_frames/, which contains very basic instructions on using it.
+14The parser has been developed by Eugene Charniak and can be downloaded from his
+homepage: http://www.cs.brown.edu/~ec/
+8.1 Executing the LTH parser 51
+than 300 words is only one of the requirements for the input texts. To
+avoid having too long sentences break the execution of batch runs I parse
+each text in its own process using job files only specifying a single input
+text. I also give the Charniak parser a further parameter to disable its
+internal tokenisation of the input, which allows me to control the input
+completely.
+The people behind the LTH parser have written a tokenisation script
+that can be run on the input texts prior to running the Charniak parser and
+LTH parser. The purpose of the tokenisation script is to eliminate some of
+the syntax that causes the Charniak parser or the LTH parser to termi-
+nate prematurely or enter an infinite loop. Unfortunately this tokenisa-
+tion script does not take all situations into account and it even introduces
+a few problematic situations itself, usually related to punctuation marks
+ending up on separate lines. Because the LTH parser treats single lines
+as sentences it fails to parse lines not containing any meaningful parts.
+The following lists all special cases that I have handled as a separate post
+tokenisation step between applying the original tokenisation script and
+running the Charniak parser and LTH parser:
+» Move ending parentheses and double quotes standing on a line of its
+own to the end of the preceding line, separated by a space.
+» Make sure that double quotes ("), opening parenthesis ((), hyphens
+(-) and square brackets ([ and ]) are surrounded by spaces.
+» Limit a series of numbers (of any syntax, e.g. 3, 3.14, 3,14, +3.14,
+−3.14, etc.) to only the first number. This can be done without af-
+fecting the result because assume that a series of numbers has the
+same semantic meaning as a single number.
+» Remove lines not containing any alphabetic characters and thus not
+containing any information used for semantic frame analysis.
+» Append lines that begin with a period to the end of the preceding
+line, separated by a space.
+» Replace accents used as quotes (´ and ‘) with real quotes (’)
+The post tokenisation script performs other adjustments that are cour-
+tesy of Jensen, Petterson and d’Hermilly who have previously worked with
+the LTH parser and encountered similar problems [72].
+8.2 Interpreting output data 52
+8.2 Interpreting output data
+The LTH parser produces some huge output data in XML format. The size
+of the output depends on the complexity of the texts and can vary a lot. I
+have encountered output file up to 12MB for input texts of slightly more
+than 100KB.
+Represented as XML the output is easily read by a computer (if you
+are not concerned about disk I/O and memory consumption), although it
+seems like an enormous overhead, especially if you only need a little part
+of the extracted information, as I did.
+8.3 Limitations of the LTH parser
+Besides the strict requirements of the input texts as described previously,
+the LTH parser has some additional limitations to consider. For one, the
+parser takes quite long time to start, approximately 30 seconds on the test
+machine I used, which is not an actual limitation, but something to keep
+in mind when running it in batch mode. If the input texts are split up
+into chunks that take less time to run than it takes to start the parser it
+might not be feasible unless there are some very good reasons to split up
+the texts. Of course if the entire input text is very small there is not much
+to do about it. In this situation it might be feasible to include more input
+files in one job file to have the parser work on all of them in one run, but
+in sequential order, so that it does not use as many resources, as it would
+have done if all the chunks were a single text, thus limiting the number of
+times it has to restart, but also increasing the risk of exceptions caused by
+the Charniak parser to break the parsing of more than one text.
+The other limitation is that the parser requires a lot of physical mem-
+ory and processing power. On my test machine it uses approximately
+300MB of physical memory besides the 3000MB heap space allocated by
+the JVM, and 100% processing power on a single core (the parser is single-
+threaded). It seems that the amount of physical memory needed by the
+parser depends on the complexity and the length of the sentences of the
+input texts, thus it might be feasible to split the input texts up into as
+few chunks as possible while keeping the resource consumption within
+the limitations of the machine on which it is run, to lower the number of
+restarts and maximise the resource efficiency.
+9 Working with the OANC
+Using the OANC [4] as a corpus for automated genre recognition has some-
+times been a challenge both due to inconsistencies in the meta data and
+the compatibility of the LTH parser with some of the genres.
+The texts in the OANC are contained in UTF-8 encoded plain text for-
+mat without annotations. The formatting of each type of text is different
+depending on its source, so that some texts contains headers and footers
+and others do not.
+Annotations for each text are kept in side car files only one of which is
+of interest in this project. The accompanying .anc file is an XML formatted
+metadata container describing a text with title, author, release date and
+other metadata. Of particular interest for this project the file contains a
+textclass tag containing several domain and subject defining sub tags
+of which I am interested in the domain sub tag describing the domain or
+genre the equivalent text belongs to. For all texts in the corpus I read this
+tag to get its genre.
+Unfortunately there are some inconsistencies in the OANC meta data,
+as not all texts are accompanied by an .anc file and not all .anc files con-
+tain the needed domain tag. Tables 7 and 8 in Appendix B lists the texts
+missing the accompanying .anc file and those which .anc files are missing
+the domain tag, respectively. All of these files are automatically excluded
+from my work, although I could annotate them manually with genre, but
+then, there would be no guarantee that my tagging would be consistent
+with the rest of the OANC.
+Further, the OANC contains a collection of technical texts that con-
+tain mathematical notation (in plain text), usually consisting of a series of
+numbers and non-alphabetical characters. The LTH parser is very poor at
+parsing such elements of the input texts causing it to either terminate pre-
+maturely or, most often, enter an infinite loop. For a great part of the texts
+I have introduced counter measures for this kind of notations as described
+in Section 8.
+10 Results and future
+work
+In this section I will discuss the results I have achieved using my method,
+as well as the feasibility of using semantic frames for performing auto-
+mated genre recognition. Further, I will suggest a number of modifications
+and further tests to perform in possible future work.
+As mentioned in Section 7.2.3 Stamatatos et. al. does not mention in
+detail how they select texts for training and testing from their corpus, they
+only mention, that they use half of the corpus for each pass. This, along
+with the fact that they have compiled a highly customised corpus of texts
+from The Wall Street Journal, with genres they more or less define them-
+selves, I consider a viable reason for my method not producing as good re-
+sults as they do. Selecting the texts for training and testing randomly from
+a corpus that is not perfectly balanced must be considered to best reflect
+a real life situation and taking that into account I find my results rather
+good, no matter the entities used - words, punctuation marks, frames or a
+combination thereof.
+With the result of a lowest error rate of 6.34% for running my method
+on the OANC using the most frequent words in the English language I
+find my method well comparable to the error rate of 2.5% achieved by Sta-
+matatos et. al. [66], taking into account the different corpora we have used,
+as explained above. Although there is a difference of 3.84% between the
+methods and runs using the different corpora I would expect the method
+of Stamatatos et. al. to produce a result that is closer to mine if run on a
+similar corpus, hence it is extremely regrettable that they have not used
+a standard “off-the-shelf” corpus to make such a comparison easier and
+more fair.
+Looking at the graph in Figure 8 it is clear that using skip counts of
+40 and 200 peaks at the highest number of entities, thus including more
+entities might produce better results, but with the cost of longer execution
+time.
+How peculiar it may be, my method produces a higher error rate, of
+6.47%, when including punctuation marks than when only using words,
+55
+which is contrary to the results of Stamatatos et. al who achieve an er-
+ror rate very close to 0 when including punctuation marks. Unfortunately
+they do not specify the exact error rate achieved for this method, only
+that the accuracy is > 97%, which is, at most, 3.47% better than what I
+get. Again, this could be specific to the corpora that we use, but it is most
+definitely also affected by the way I select texts from the OANC by ran-
+domising the texts before selection to generalise my method as much as
+possible. This naturally affects the average length of the included texts
+and thus the word, punctuation mark or frame count to be different for
+each run, which in the end affects the achieved error rate. However, I do
+not expect this random selection to cause a change in smallest achieved
+error rate of more than 1% at most, but this is reasoning and is not sup-
+ported by formal testing.
+Another rather strange result is that when running my method using
+the most frequent words in the OANC instead of in the English language,
+I get a higher error rate, of 7.04%, than when using the more general most
+frequent words in the English language. As described in Section 7.2.2 us-
+ing the most frequent words in the corpus is like designing the method to
+the specific corpus, which is to be considered cheating because the results
+does not say anything about the generality of the method. It also means
+that the results of using the most frequent words in the corpus should
+produce better results than when using the most frequent words in the
+language, for which I get a lowest error rate of 6.34%. As with the other
+results the generality of my method, achieved by selecting the texts for
+training and testing randomly, might be causing this and it can be argued
+that repeated runs using the most frequent words in the corpus and in the
+language, respectively, will show the tendency of using the former to pro-
+duce slightly better results. Unfortunately I have not had the time in this
+project to conduct such experiment, and as Stamatatos et. al. experience
+the same tendency in [66] I do not find it important to do so.
+Using only the most frequent frames in the OANC my method achieves
+a lowest error rate of 7.36%, when using the 35 most frequent frames,
+which is remarkably good taken into account that the OANC contains
+quite a lot of rather short texts containing few sentences, thus leaving lit-
+tle content to generate frames resulting in only a few frames. Some texts
+contain as low as 2 frames, which is very bad for the method because their
+lack of genre related information make them very hard to classify. This
+problem is much smaller, if evident at all, for using words, because even
+the short texts contain enough words to make a fair classification. Com-
+pared to using words, using frames performs only 1.02% worse, which
+is better than what I expected. However, the additional execution time
+56
+caused by the heavy preprocessing that is necessary for using frames calls
+for results that are much better than this to be justified.
+Using both the most frequent words in English and the most frequent
+semantic frames in the OANC further improves the classification with an
+error rate of 5.27%. This execution peaks at using the 45 most frequent
+entities, which is 10 more than for using only frames, thus the higher clas-
+sification rate is achieved on behalf of longer classification time because of
+the longer vectors used in the classification.
+My best result is achieved using a combination of the most frequent
+words in English, the most frequent punctuation marks and the most fre-
+quent semantic frames. This combination achieves a lowest error rate of
+4.89% using a skip count of 200 and the 50 most frequent entities. This is
+closing in on the results of Stamatatos et. al., but taking the extra prepro-
+cessing time required for extracting frames into account it is not feasible
+to use this combination i practice.
+As described in Section 7.3 the preprocessing time for using frames
+is 1053 times longer than for using words, taking more than 8 days for
+the entire written OANC. Even if using semantic frames for automated
+genre recognition is improved drastically the extreme preprocessing time
+puts some restrictions on the situations where it would be feasible to use
+semantic frames. Clearly it is unsuited for use in situations where collec-
+tions of texts rapidly grow by large numbers of unclassified texts, e.g. if
+a collection of texts grow by 1,000 texts each day, the classification using
+frames would have an ever growing work load requiring large amount of
+processing resources day and night. However, in situations where new,
+unclassified texts come in at a moderate pace, e.g. Project Gutenberg, the
+initial collection of texts could be classified in an initial process, probably
+taking weeks or even months and, subsequently, each new text could be
+classified with much less effort as it is added to the collection.
+When comparing my method to that of Stamatatos et. al. I find it fair
+to also compare the execution times, however, this is not possible because
+Stamatatos et. al. [66] does not mention anything about the execution
+time of their method, thus a completely fair comparison cannot be per-
+formed. It is my view, however, that the method of Stamatatos et. al.
+takes about the same time to execute as my method when not including
+semantic frames because of the similarity in the two methods and thus
+their method can be considered as being better when disregarding how
+they select texts for their corpus and define their genres.
+It seems that there is a tendency of grouping by the value of skip count,
+where skip counts of both 40 and 200 in general produce better results
+than skip counts of 0 and 20. Of course higher skip counts limit the num-
+57
+ber of different genres, so naturally the classification error will decrease as
+the skip count increases, but there still seems to be a magic spot between
+using skip counts of 20 and 40, respectively including 3 and 4 genres.
+Looking at the number of texts included with each skip count compared to
+the number of genres, the difference between using a skip count of 20 and
+40 is only 14 texts, which leaves only little training of the 4th genre when
+using a skip count of 20. This is a very probable cause of the higher classi-
+fication error when using the lower skip count. Looking at the text counts
+also explains why using skip counts of 0 and 20 does not produce much
+different results. Although there is a difference of a single genre, there is
+only a difference of 3 texts, meaning that the additional genre has only
+been trained with 3 texts. Because I have used half the corpus for training
+and the other half for testing this only leaves 2 − 3 texts for testing this
+additional genre. It is because of such lack of balance of the OANC that I
+have introduced the skip count parameter, but it is also interesting to see
+how the classification behaves when some genres are under-represented.
+It seems that the more different kinds of entities are included the more
+linearly shaped the graphs become, thus indicating a more steady decline
+in error rate along the number of entities used.
+A quite remarkable difference between my results and those of Sta-
+matatos et. al. [66] is that their method obviously seems to peak using be-
+tween 20 and 30 entities and become significantly worse at entities higher
+than this, while my method generally seems to peak at high entity counts,
+between 35 and 50 indicating that their method is better at handling a
+low number of entities with the advantage that this should require less
+execution time by the classifier.
+According to [49] the LTH parser works best on texts containing 300
+or more sentences and at least 1,000 words, which, for the majority of
+texts in the OANC, is not fulfilled. Thus, I am quite certain that running
+my method on another corpus than the OANC, e.g. the BNC [3], would
+produce better results because of the higher average frame count per text
+that would come from the longer texts. Further, using a more well bal-
+anced corpus would help to improve the classification accuracy at lower
+skip count values, again the BNC is a good candidate.
+Conclusively, I consider using semantic frames a viable resource for
+performing automated genre recognition. Although it does not beat the
+highest scoring methods in the field [63; 66], it is a prospect for produc-
+ing even higher results with a number of optimisations, like using another
+corpus for more fair comparison to other methods and optimising the pre-
+processing step by e.g. accounting for spelling errors to be able to include
+even more words in the frame extraction. It is a pity that extracting se-
+58
+mantic frames from texts takes such excessive amount of time as it does,
+otherwise using semantic frames for automated genre recognition would
+be much more attractive and thus more research would be put into using
+it. This will not happen, however, before someone takes the time neces-
+sary to write a proper parser for extracting semantic frames from texts.
+I have gathered a list of possible future work, that are likely to either
+improve the accuracy or performance, or further prove the generality of
+my method. Below are listed some of the future work that I find obvious
+as a follow up to this project.
+» To further test my method it would be a very great addition to apply
+it on a larger corpus containing not only more texts, but also more
+genres and greater average length of the texts. At the time of writ-
+ing, the BNC [3] seems like the obvious choice for this, although it
+costs money. Testing on a comprehensive corpus like the BNC will
+also prove the generality of my method, assuming successful testing,
+which is a classification rate as good as or hopefully better than what
+Stamatatos et. al. was able to achieve in [66].
+» Because longer texts are more likely to contain sentences that cover
+a greater number of semantic frames than short texts, it would be a
+welcome exercise to run the method on a corpus of long texts using
+only frames to see if the classification results improve due to less
+zero-entries in the vectors.
+» To make the method more attractive a number of optimisations for
+speed would be welcome. Besides extending the already implemented
+speed optimisations of saving and loading repetitively used static
+data in compact data structures on disk optimisation of the FDA
+would be most welcome as the execution step of the currently used
+FDA, including interpretation of its result, is by far the most time
+consuming part of the entire process using 95% of the execution
+time for words using all texts and the 10 most frequent words in
+the English language.
+» To improve the classification rate it might be worth considering us-
+ing a different distance measure than the Euclidean distance. This
+could be a number of other measures, e.g. the Mahalanobis dis-
+tance [38], the Hellinger distance [71], the Kullback-Leibler diver-
+gence (information gain) [54], the Cramér-von Mises criterion [31],
+the Fisher information metric [36], or another statistical similarity
+measure.
+59
+» It might be worth considering a completely different classifier or an
+improved variation of the Fisher discriminant analysis, if such exists.
+» When including punctuation marks, only punctuation marks that
+are part of the grammar of the text should be included and those oc-
+curring in numbers and the like should be excluded from the statis-
+tics to improve the correctness of the classification. This would pre-
+vent a lot of numbers to have influence on the classification results.
+» To improve the resource consumption when extracting frames by
+running the LTH parser using timeout the implementation should
+be changed to avoid active waiting, e.g. by using an actual timer to
+wake the thread every 20th second. Ideally, getting a notification
+from the file system every time the file changes or when it has not
+changed in x seconds would be better because it would move the
+timing to the operating system.
+» Implementing the method in another programming language, like
+ANSI C or C++, might improve the performance over my implemen-
+tation in Python. Alternatively only the most time consuming parts
+could be implemented as C libraries called by the Python implemen-
+tation to keep most of the implementation in the easily understand-
+able and maintainable Python programming language.
+» Extending the preprocessing step by correcting spelling errors to in-
+clude even further words in the semantic frame extraction and clas-
+sification could produce slightly more optimal results.
+References
+[1] FrameNet, March 12, 2010 at 10:57 UTC. URL http://framenet.
+icsi.berkeley.edu/.
+[2] American National Corpus, March 12, 2010 at 10:58 UTC. URL
+http://www.americannationalcorpus.org/SecondRelease/.
+[3] British National Corpus, March 12, 2010 at 10:58 UTC. URL http:
+//www.natcorp.ox.ac.uk/.
+[4] Open American National Corpus, March 12, 2010 at 10:59 UTC. URL
+http://www.americannationalcorpus.org/OANC/.
+[5] Digging Into Data Challenge, March 12, 2010 at 11:00 UTC. URL
+http://diggingintodata.org.
+[6] European Language Resources Association, March 12, 2010 at 11:00
+UTC. URL http://www.elra.info/.
+[7] Project Gutenberg, March 12, 2010 at 11:00 UTC. URL http://www.
+gutenberg.org.
+[8] Internation Computer Archive of Modern English, March 12, 2010 at
+11:00 UTC. URL http://icame.uib.no/.
+[9] The MONK Project, March 12, 2010 at 11:00 UTC. URL http://
+monkproject.org.
+[10] Child Language Data Exchange System, March 12, 2010 at 11:01
+UTC. URL http://childes.psy.cmu.edu.
+[11] Oxford Text Archive, March 12, 2010 at 11:01 UTC. URL http://
+ota.ahds.ac.uk.
+[12] Brown Corpus, June 7, 2010 at 14:10 UTC. URL http://icame.uib.
+no/brown/bcm.html.
+[13] Stockholm-Umeå Corpus, June 7, 2010 at 14:18 UTC. URL http:
+//www.ling.su.se/staff/sofia/suc/suc.html.
+[14] The Penn Treebank Project, May 30, 2010 at 16:33 UTC. URL http:
+//www.cis.upenn.edu/~treebank/.
+REFERENCES 61
+[15] The Bergen Corpus of London Teenage Language, March 20, 2010 at
+16:57 UTC. URL http://www.hd.uib.no/colt/.
+[16] Michigan Corpus of Academic Spoken English, March 20, 2010 at
+16:58 UTC. URL http://quod.lib.umich.edu/m/micase/.
+[17] European Corpus Initiative Multilingual Corpus I (ECI/MCI), March
+20, 2010 at 17:00 UTC. URL http://www.elsnet.org/resources/
+eciCorpus.html.
+[18] Bulgarian National Corpus, March 20, 2010 at 17:01 UTC. URL
+http://ibl.bas.bg/en/BGNC_en.htm.
+[19] Corpus of Electronic Texts, March 20, 2010 at 17:03 UTC. URL http:
+//www.ucc.ie/celt/.
+[20] The English-Norwegan Parallel Corpus, March 20, 2010 at
+17:04 UTC. URL http://www.hf.uio.no/ilos/forskning/
+forskningsprosjekter/enpc/.
+[21] Oslo Multilingual Corpus, March 20, 2010 at 17:05 UTC. URL http:
+//www.hf.uio.no/ilos/OMC/.
+[22] The FIDA Corpus of Slovene Language, March 20, 2010 at 17:07
+UTC. URL http://www.fida.net/eng/.
+[23] National Corpus of Polish, March 20, 2010 at 17:08 UTC. URL http:
+//nkjp.pl/.
+[24] The Newcastle Electronic Corpus of Tyneside English (NECTE),
+March 20, 2010 at 17:09 UTC. URL http://research.ncl.ac.uk/
+necte/.
+[25] Old French Corpus (Base de Français Médiéval), March 20, 2010 at
+17:11 UTC. URL http://bfm.ens-lsh.fr/.
+[26] Literature Online, March 20, 2010 at 17:12 UTC. URL http://lion.
+chadwyck.com/marketing/editpolicy2.jsp.
+[27] The ARTFL Project, March 20, 2010 at 17:14 UTC. URL http://
+artfl-project.uchicago.edu/.
+[28] The Multext Corpora, March 20, 2010 at 17:17 UTC. URL http:
+//aune.lpl.univ-aix.fr/projects/multext/MUL4.html.
+REFERENCES 62
+[29] Douglas Adams. The Ultimate Hitchhiker’s Guide. Wings Books, 1996.
+ISBN 0517149257.
+[30] Cosmin Adrian Bejan and Chris Hathaway. UTD-SRL: A Pipeline Ar-
+chitecture for Extracting Frame Semantic Structures. In SemEval ’07:
+Proceedings of the 4th International Workshop on Semantic Evaluations,
+pages 460–463, Morristown, NJ, USA, 2007. Association for Compu-
+tational Linguistics.
+[31] T. W. Anderson. On the Distribution of the Two-Sample Cramer-von
+Mises Criterion. The Annals of Mathematical Statistics, 33(3):1148–
+1159, 1962.
+[32] Yong Bae Lee and Sung Hyon Myaeng. Text Genre Classification with
+Genre-revealing and Subject-revealing Features. In SIGIR ’02: Pro-
+ceedings of the 25th Annual International ACM SIGIR Conference on
+Research and Development in Information Rretrieval, pages 145–150.
+ACM, 2002. ISBN 1-58113-561-0.
+[33] Ron Bekkerman, Koji Eguchi, and James Allan. Unsupervised Non-
+topical Classification of Documents. Technical report, Center of In-
+telligent Information Retrieval, UMass Amherst, 2006.
+[34] C. H. Björnsson. Läsbarhet. Liber, 1968.
+[35] John Burrows. Not Unless You Ask Nicely: The Interpretative Nexus
+Between Analysis and Information. Literary and Linguistic Comput-
+ing, vii:91–110, 1992.
+[36] Xavier Calmet and Jacques Calmet. Dynamics of the Fisher Informa-
+tion Metrics. Physical Review, 71(5):056109, 2005.
+[37] Jebari Chaker and Ounelli Habib. A New Approach for Flexible Doc-
+ument Categorization. In Proceedings of World Academy of Science,
+volume 20 of Journal of Science, Engineering and Technology, pages
+32–35. World Academy of Science, April 2007.
+[38] Prasanta Chandra Mahalanobis. On the Generalised Distance in
+Statistics. In Proceedings National Institute of Science, India, volume 2,
+pages 49–55, April 1936. URL http://ir.isical.ac.in/dspace/
+handle/1/1268.
+[39] Eugene Charniak. A Maximum-Entropy-Inspired Parser. Technical
+report, Providence, RI, USA, 1999.
+REFERENCES 63
+[40] Tony G. Rose David D. Lewis, Yiming Yang and Fan Li. RCV1: A
+New Benchmark Collection for Text Categorization Research. Journal
+of Machine Learning Research, 5:361–397, 2004.
+[41] Nigel Dewdney, Carol V. Dykema, and Richard MacMillan. The
+Form is the Substance: Classification of Genres in Text. In Proceed-
+ings of the Workshop on Human Language Technology and Knowledge
+Management, pages 1–8. Association for Computational Linguistics,
+2001.
+[42] Katrin Erk and Sebastian Pado. Shalmaneser - A Flexible Toolbox
+for Semantic Role Assignment. In Proceedings of LREC 2006, Genoa,
+Italy, 2006.
+[43] Aidan Finn and Nicholas Kushmerick. Learning to Classify Docu-
+ments According to Genre. Technical report, Smart Media Institute,
+Department of Computer Science, University College Dublin, Ire-
+land, 2003.
+[44] Aidan Finn and Nicholas Kushmerick. Learning to Classify Docu-
+ments According to Genre. Journal of the American Society for Infor-
+mation Science and Technology, 57(11):1506–1518, 2006. ISSN 1532-
+2890.
+[45] Eva Forsbom. Feature Ectraction for Genre Classification. Technical
+report, Graduate School of Language Technology at Uppsala Univer-
+sity, Sweden, 2005.
+[46] Eva Forsbom. Feature Combination for Genre Classification. Tech-
+nical report, Graduate School of Language Technology at Uppsala
+University, Sweden, 2006.
+[47] Jan A. Gasthaus. Prototype-Based Relevance Learning for Genre
+Classification, 2007.
+[48] Jade Goldstein Stewart. Genre Oriented Summarization. PhD the-
+sis, Language Technologies Institute, School of Computer Science,
+Carnegie Mellon University, 2009.
+[49] Steffen Hedegaard. Automated Semantic Analysis for Stylometry.
+Master’s thesis, Department of Computer Science, University of
+Copenhagen, 2009.
+[50] Carl J. Huberty. Applied Discriminant Analysis. Wiley-Interscience,
+first edition edition, 1994. ISBN 9780471311454.
+REFERENCES 64
+[51] Richard Johansson and Pierre Nugues. LTH: Semantic Structure Ex-
+traction using Nonprojective Ddependency Trees. In SemEval ’07:
+Proceedings of the 4th International Workshop on Semantic Evaluations,
+pages 227–230, Morristown, NJ, USA, 2007. Association for Compu-
+tational Linguistics.
+[52] J. Karlgren and D. Cutting. Recognizing Text Genres with Simple
+Metrics Using Discriminant Analysis. In Proceedings of 15th Inter-
+national Conference on Computational Linguistics, pages 1071–1075,
+Kyoto, Japan, 1994.
+[53] Thomas Kjeldsen. Statistical Characterization of Syntactical and Se-
+mantic Structures in Literary Authorship, 2009. Department of Com-
+puter Science, University of Copenhagen.
+[54] Solomon Kullback and Richard Leibler. On Information and Suf-
+ficiency. The Annals of Mathematical Statistics, 22(1):79–86, March
+1951.
+[55] Ken Litkowski. CLR: Integration of FrameNet in a Text Represen-
+tation System. In SemEval ’07: Proceedings of the 4th International
+Workshop on Semantic Evaluations, pages 113–116, Morristown, NJ,
+USA, 2007. Association for Computational Linguistics.
+[56] Edward Loper and Steven Bird. NLTK: The Natural Language
+Toolkit. CoRR, cs.CL/0205028, 2002.
+[57] Mitja Luštrek. Overview of Automatic Genre Identification. Techni-
+cal report, Department of intelligent Systems, Jožef Stefan Institute,
+Slovenia, 2007.
+[58] Christopher D. Manning and Hinrich Schütze. Foundations of Statis-
+tical Natural Language Processing. MIT Press, Cambridge, MA, USA,
+1999. ISBN 0-262-13360-1.
+[59] Philipp Petrenz. Assesing Approaches to Genre Classification. Mas-
+ter’s thesis, School of Informatics, University of Edinburgh, 2009.
+[60] J. W. Rinzler. The Complete Making of Indiana Jones. Ballatine Books,
+2008. ISBN 9780345501295.
+[61] Josef Ruppenhofer, Michael Ellsworth, Miriam R. L. Petruck,
+Christopher R. Johnson, and Jan Scheffczyk. FrameNet II: Extended
+Theory and Practice. The FrameNet Project, August 2006.
+REFERENCES 65
+[62] Stuart Russell and Peter Norvig. Artificial Intelligence - A Modern
+Approach. Pearson Education, Inc., international edition, 2nd edition
+edition, 2003. ISBN 0130803022.
+[63] Marina Santini. A Shallow Approach to Syntactic Feature Extraction
+for Genre Classification. In Proceedings of the 7th Annual Colloquium
+for the UK Special Interest Group for Computational Linguistics, Birm-
+ingham, UK, 2004.
+[64] Marina Santini. Automatic Identification of Genre in Web Pages. PhD
+thesis, University of Brighton, 2007.
+[65] Marina Santini. Automatic Genre Identification: Towards a Flexible
+Classification Scheme, 2007.
+[66] Efstathios Stamatatos, Nikos Fakotakis, and George Kokkinakis. Text
+Genre Detection Using Common Word Frequencies. In Proceedings
+of the 18th Conference on Computational Linguistics, pages 808–814.
+Association for Computational Linguistics, 2000.
+[67] Efstathios Stamatatos, Nikos Fakotakis, and George Kokkinakis. Au-
+tomatic Text Categorization in Terms of Genre and Author. Compu-
+tational Linguistics, 26(4):471–495, 2000. ISSN 0891-2017.
+[68] Benno Stein and Sven Meyer zu Eissen. Distinguishing Topic from
+Genre. In Klaus Tochtermann and Hermann Maurer, editors, Pro-
+ceedings of the 6th International Conference on Knowledge Management
+(I-KNOW 06), Graz, Journal of Universal Computer Science, pages
+449–456. Springer, September 2006.
+[69] Elizabeth Sugar Boese. Stereotyping the Web: Genre Classification of
+Web Documents. Master’s thesis, Department of Computer Science,
+Colorado State University, March 2005.
+[70] Zito Tiziano, Wilbert Niko, Wiskott Laurenz, and Berkes Pietro.
+Modular toolkit for Data Processing (MDP): A Python Data Process-
+ing Framework. Frontiers in Neuroinformatics, 2, 2008.
+[71] A. W. van der Vaart. Asymptotic Statistics (Cambridge Series in Sta-
+tistical and Probabilistic Mathematics). Cambridge Series in Statistical
+and Probabilistic Mathematics. Cambridge University Press, October
+1998. ISBN 9780521496032.
+REFERENCES 66
+[72] Troels Wiberg Jensen, Sune Petterson, and Pascal D’Hermilly. Plagia-
+rism of English Texts Using Frame-Based Paraphrasing, 2009. De-
+partment of Computer Science, University of Copenhagen.
+[73] Wikipedia. Wikipedia, The Free Encyclopedia, 2010. URL http:
+//wikipedia.org. [Online; accessed 2010-06-05].
+A Domains of the OANC
+Commerce
+Natural science
+Social science
+Periodicals
+Leisure
+World affairs
+Table 6: The domains of the OANC which are used as genres.
+B Texts missing genre
+information in OANC
+written_1/letters/icic/102CT L001 written_1/letters/icic/120CUL044 written_1/letters/icic/513C −L142 written_1/letters/icic/532C −L247
+written_1/letters/icic/102CT L002 written_1/letters/icic/120CUL045 written_1/letters/icic/513C −L143 written_1/letters/icic/533C −L248
+written_1/letters/icic/102CT L003 written_1/letters/icic/120CUL046 written_1/letters/icic/513C −L144 written_1/letters/icic/533C −L249
+written_1/letters/icic/102CT L004 written_1/letters/icic/121CXL186 written_1/letters/icic/513C −L149 written_1/letters/icic/533C −L250
+written_1/letters/icic/103C −L055 written_1/letters/icic/123CUL197 written_1/letters/icic/513C −L150 written_1/letters/icic/533C −L251
+written_1/letters/icic/103C −L056 written_1/letters/icic/130CWL228 written_1/letters/icic/513C −L151 written_1/letters/icic/534C −L252
+written_1/letters/icic/105CWL038 written_1/letters/icic/134CUL236 written_1/letters/icic/513C −L152 written_1/letters/icic/535C −L205
+written_1/letters/icic/105CWL039 written_1/letters/icic/135CWL234 written_1/letters/icic/513C −L153 written_1/letters/icic/535C −L206
+written_1/letters/icic/105Cwl040 written_1/letters/icic/137CUL232 written_1/letters/icic/513C −L154 written_1/letters/icic/536CUL230
+written_1/letters/icic/105CWL061 written_1/letters/icic/150CZL269 written_1/letters/icic/513C −L155 written_1/letters/icic/537C −L268
+written_1/letters/icic/105CWL062 written_1/letters/icic/301CUL073 written_1/letters/icic/513C −L156 written_1/letters/icic/601CZL183
+written_1/letters/icic/105CWL063 written_1/letters/icic/301CUL074 written_1/letters/icic/513C −L157 written_1/letters/icic/602CZL282
+written_1/letters/icic/105CWL064 written_1/letters/icic/301CUL075 written_1/letters/icic/513C −L158 written_1/letters/icic/602CZL283
+written_1/letters/icic/105CWL065 written_1/letters/icic/301CUL076 written_1/letters/icic/513C −L159 written_1/letters/icic/602CZL284
+written_1/letters/icic/105CWL066 written_1/letters/icic/302CZL188 written_1/letters/icic/513C −L160 written_1/letters/icic/602CZL285
+written_1/letters/icic/106CWL027 written_1/letters/icic/303C −L189 written_1/letters/icic/513C −L161 written_1/letters/icic/602CZL286
+written_1/letters/icic/106CWL028 written_1/letters/icic/306CT L229 written_1/letters/icic/513C −L162 written_1/letters/icic/602CZL287
+written_1/letters/icic/106CWL029 written_1/letters/icic/308CUL226 written_1/letters/icic/513C −L163 written_1/letters/icic/602CZL288
+written_1/letters/icic/106CWL030 written_1/letters/icic/318C −L294 written_1/letters/icic/513C −L164 written_1/letters/icic/602CZL289
+written_1/letters/icic/106CWL031 written_1/letters/icic/320C −L296 written_1/letters/icic/513C −L165 written_1/letters/icic/602CZL290
+written_1/letters/icic/107CYL010 written_1/letters/icic/401CVL005 written_1/letters/icic/513C −L166 written_1/letters/icic/603CWL190
+written_1/letters/icic/107CYL011 written_1/letters/icic/401CVL006 written_1/letters/icic/513C −L168 written_1/letters/icic/603CWL191
+written_1/letters/icic/108CXL024 written_1/letters/icic/401CVL007 written_1/letters/icic/513C −L169 written_1/letters/icic/603CWL192
+written_1/letters/icic/108CXL025 written_1/letters/icic/402CWL184 written_1/letters/icic/513C −L170 written_1/letters/icic/603CWL193
+written_1/letters/icic/108CXL026 written_1/letters/icic/402CWL185 written_1/letters/icic/513C −L171 written_1/letters/icic/603CWL194
+written_1/letters/icic/108CXL199 written_1/letters/icic/406CUL238 written_1/letters/icic/513C −L175 written_1/letters/icic/603CWL195
+written_1/letters/icic/109CYL019 written_1/letters/icic/406CUL293 written_1/letters/icic/513C −L176 written_1/letters/icic/608CXL226
+written_1/letters/icic/109CYL020 written_1/letters/icic/407CQL123 written_1/letters/icic/513C −L177 written_1/letters/icic/608CXL262
+written_1/letters/icic/109CYL021 written_1/letters/icic/407CQL124 written_1/letters/icic/513C −L178 written_1/letters/icic/608CXL263
+written_1/letters/icic/109CYL022 written_1/letters/icic/407CQL235 written_1/letters/icic/513C −L182 written_1/letters/icic/608CXL264
+written_1/letters/icic/109CYL023 written_1/letters/icic/501C −L077 written_1/letters/icic/514C −L131 written_1/letters/icic/608CXL265
+written_1/letters/icic/110CYL067 written_1/letters/icic/501C −L078 written_1/letters/icic/514C −L132 written_1/letters/icic/609CWL239
+written_1/letters/icic/110CYL068 written_1/letters/icic/502C −L079 written_1/letters/icic/514C −L179 written_1/letters/icic/609CWL240
+written_1/letters/icic/110CYL069 written_1/letters/icic/502C −L080 written_1/letters/icic/514C −L180 written_1/letters/icic/609CWL241
+written_1/letters/icic/110CYL070 written_1/letters/icic/502C −L083 written_1/letters/icic/514C −L181 written_1/letters/icic/609CWL242
+written_1/letters/icic/110CYL071 written_1/letters/icic/502C −L084 written_1/letters/icic/516CZL125 written_1/letters/icic/609CWL243
+written_1/letters/icic/110CYL072 written_1/letters/icic/503C −L085 written_1/letters/icic/516CZL210 written_1/letters/icic/609CWL244
+written_1/letters/icic/110CYL200 written_1/letters/icic/503C −L086 written_1/letters/icic/516CZL212 written_1/letters/icic/609CWL257
+written_1/letters/icic/112C −L012 written_1/letters/icic/503C −L087 written_1/letters/icic/517CWL088 written_1/letters/icic/609CWL258
+written_1/letters/icic/112C −L013 written_1/letters/icic/504C −L089 written_1/letters/icic/518CWL233 written_1/letters/icic/609CWL259
+written_1/letters/icic/112C −L014 written_1/letters/icic/504C −L090 written_1/letters/icic/520CUL227 written_1/letters/icic/609CWL260
+written_1/letters/icic/112C −L015 written_1/letters/icic/504C −L093 written_1/letters/icic/525C −L138 written_1/letters/icic/609CWL261
+written_1/letters/icic/112C −L016 written_1/letters/icic/504C −L094 written_1/letters/icic/526C −L273 written_1/letters/icic/610CVL121
+written_1/letters/icic/113CWL017 written_1/letters/icic/504C −L097 written_1/letters/icic/526C −L274 written_1/letters/icic/610CVL122
+written_1/letters/icic/113CWL018 written_1/letters/icic/504C −L099 written_1/letters/icic/526C −L275 written_1/letters/icic/613CWL231
+written_1/letters/icic/114CUL057 written_1/letters/icic/504C −L100 written_1/letters/icic/530C −L207 written_1/letters/icic/618CRL134
+written_1/letters/icic/114CUL058 written_1/letters/icic/504C −L101 written_1/letters/icic/530C −L208 written_1/letters/icic/622CQL281
+written_1/letters/icic/114CUL059 written_1/letters/icic/504C −L102 written_1/letters/icic/530C −L209 written_1/letters/icic/702C −L187
+written_1/letters/icic/114CUL060 written_1/letters/icic/504C −L106 written_1/letters/icic/530C −L211 written_1/letters/icic/704CZL201
+written_1/letters/icic/115CVL035 written_1/letters/icic/504C −L107 written_1/letters/icic/530C −L213 written_1/letters/icic/710CYL237
+written_1/letters/icic/115CVL036 written_1/letters/icic/504C −L108 written_1/letters/icic/530C −L214 written_1/letters/icic/711CWL295
+written_1/letters/icic/115CVL037 written_1/letters/icic/505C −L095 written_1/letters/icic/530C −L215 written_1/letters/icic/714C −L270
+written_1/letters/icic/116CUL032 written_1/letters/icic/505C −L096 written_1/letters/icic/530C −L216 written_1/letters/icic/714C −L271
+written_1/letters/icic/116CUL033 written_1/letters/icic/505C −L119 written_1/letters/icic/530C −L217 written_2/non-fiction/OUP/Castro/chA
+written_1/letters/icic/116CUL034 written_1/letters/icic/507CYL112 written_1/letters/icic/530C −L218 written_2/non-fiction/OUP/Castro/chB
+written_1/letters/icic/117CWL008 written_1/letters/icic/508CZL113 written_1/letters/icic/530C −L219 written_2/non-fiction/OUP/Castro/chC
+written_1/letters/icic/117CWL009 written_1/letters/icic/509C −L115 written_1/letters/icic/530C −L220 written_2/non-fiction/OUP/Castro/chL
+written_1/letters/icic/118CWL048 written_1/letters/icic/509C −L116 written_1/letters/icic/530C −L221 written_2/non-fiction/OUP/Castro/chM
+Continued on next page. . .
+69
+Table 7 continued
+written_1/letters/icic/118CWL049 written_1/letters/icic/509C −L253 written_1/letters/icic/530C −L222 written_2/non-fiction/OUP/Castro/chN
+written_1/letters/icic/118CWL050 written_1/letters/icic/509C −L254 written_1/letters/icic/530C −L223 written_2/non-fiction/OUP/Castro/chO
+written_1/letters/icic/119CWL041 written_1/letters/icic/509C −L255 written_1/letters/icic/530C −L224 written_2/non-fiction/OUP/Castro/chQ
+written_1/letters/icic/119CWL042 written_1/letters/icic/509C −L256 written_1/letters/icic/530C −L225 written_2/non-fiction/OUP/Castro/chV
+written_1/letters/icic/119CWL043 written_1/letters/icic/513C −L140 written_1/letters/icic/531C −L245 written_2/non-fiction/OUP/Castro/chW
+written_1/letters/icic/119CWL047 written_1/letters/icic/513C −L141 written_1/letters/icic/532C −L246 written_2/non-fiction/OUP/Castro/chZ
+Table 7: Texts of the OANC which accompanying .anc file does not contain a
+domain tag and thus no genre information.
+written_2/technical/government/media/FY_04_Budget_Outlook_
+written_2/technical/government/media/Poor_Lacking_Legal_Aid_
+Table 8: Texts of the OANC that are not accompanied by an .anc file.
+C The most frequent entities
+1. the 11. with 21. are 31. or 41. her
+2. of 12. he 22. not 32. an 42. n’t
+3. and 13. be 23. his 33. were 43. there
+4. a 14. on 24. this 34. we 44. can
+5. in 15. i 25. from 35. their 45. all
+6. to 16. that 26. but 36. been 46. as
+7. is 17. by 27. had 37. has 47. if
+8. was 18. at 28. which 38. have 48. who
+9. it 19. you 29. she 39. will 49. what
+10. for 20. ’s 30. they 40. would 50. said
+Table 9: The 50 most frequent words in the English language as presented by
+Stamatatos et. al. in [66].
+1. the 11. ’s 21. by 31. do 41. use
+2. of 12. for 22. they 32. n’t 42. all
+3. and 13. you 23. uh 33. know 43. there
+4. to 14. with 24. but 34. were 44. ha
+5. a 15. wa 25. we 35. an 45. about
+6. in 16. on 26. or 36. yeah 46. if
+7. that 17. as 27. not 37. he 47. more
+8. i 18. be 28. thi 38. one 48. can
+9. it 19. have 29. at 39. so 49. time
+10. is 20. are 30. from 40. like 50. hi
+Table 10: The 50 most frequent words in the OANC.
+71
+1. . (period)
+2. , (comma)
+3. : (colon)
+4. ; (semi colon)
+5. " (quote)
+6. ( (opening parenthesis)
+7. ? (question mark)
+8. - (hyphen)
+Table 11: The 8 most frequent punctuation marks as presented by Stamatatos et.
+al. in [66].
+1. statement 18. desirability 35. substance
+2. aggregate 19. capability 36. measure_duration
+3. food 20. people 37. being_obligated
+4. likelihood 21. buildings 38. perception_experience
+5. building_subparts 22. locale_by_use 39. kinship
+6. dimension 23. awareness 40. existence
+7. scrutiny 24. frequency 41. natural_features
+8. text 25. similarity 42. giving
+9. calendric_unit 26. roadways 43. coming_to_believe
+10. observable_bodyparts 27. ingestion 44. communicate_categorization
+11. using 28. intentionally_act 45. becoming
+12. political_locales 29. part_orientational 46. change_position_on_a_scale
+13. leadership 30. inclusion 47. relative_time
+14. increment 31. type 48. intoxicants
+15. quantity 32. self_motion 49. becoming_aware
+16. medical_conditions 33. arriving 50. expertise
+17. evidence 34. importance
+Table 12: The 50 most frequent frames in the OANC.
+D The accompanying CD
+This section contains a short overview of the content of the accompanying
+CD, in a tree structure similar to the folder structure of the CD.
+» report – contains the report in PDF format
+» figures – contains the figures used in the report
+» src – contains the source code
