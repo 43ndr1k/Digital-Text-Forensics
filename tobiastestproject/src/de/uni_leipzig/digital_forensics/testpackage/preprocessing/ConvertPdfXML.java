@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_forensics.testpackage.preprocessing;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -17,6 +18,12 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.microsoft.OfficeParser;
+import org.apache.tika.parser.pdf.PDFParser;
+import org.apache.tika.sax.BodyContentHandler;
 import org.apache.xmlbeans.impl.soap.Node;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.DOMException;
@@ -44,8 +51,10 @@ public class ConvertPdfXML {
 	
 	static int MIN_TITLE_LENGTH = 3;
 	static int MAX_TITLE_LENGTH = 500;
+	static int TITLE_LIKE_LENGTH = 200;
+	static int AUTHOUR_SEARCH_LENGTH = 500;
+
 	static String NO_ENTRY = "No proper data found.";
-	// -> List!
 	static String BLOCK_WORDS[] = {".pdf",".doc",".dvi","title","Chapter","rights reserved","Article", "http"};
 
 	/**
@@ -81,19 +90,20 @@ public class ConvertPdfXML {
 	}
 	
 	/** extracts first page and runs a NE-recognition. 
-	 * 
+	 * => pdfbox
 	 * @param stripper to extract first page of doc
 	 * @param doc 
 	 * @return String authors
 	 * @throws IOException 
+	 * 
 	 */
 	private String extractAuthors(PDFTextStripper stripper, PDDocument doc) throws IOException{
 
 		stripper.setStartPage(0);
 		stripper.setEndPage(1);
-		
 		String firstPage= stripper.getText(doc);
-		String pdfbeginning = firstPage.substring(0, Math.min(firstPage.length(), 500));
+		String pdfbeginning = firstPage.substring(0, Math.min(firstPage.length(),
+				AUTHOUR_SEARCH_LENGTH));
 		MyNameGetter nameFinder = new MyNameGetter();
 		try {
 			List<String> myNames = nameFinder.findName(pdfbeginning);
@@ -118,6 +128,42 @@ public class ConvertPdfXML {
 
 }
 	
+	/**extracts first page and runs a NE-recognition. 
+	 * => tika
+	 * 
+	 * @param handler
+	 * @return
+	 * @throws IOException
+	 */
+	private String extractAuthors(BodyContentHandler handler) throws IOException{
+
+		String pdftext = handler.toString();
+	    String pdfbeginning = pdftext.substring(0, Math.min(pdftext.length(), AUTHOUR_SEARCH_LENGTH));
+
+		MyNameGetter nameFinder = new MyNameGetter();
+		try {
+			List<String> myNames = nameFinder.findName(pdfbeginning);
+			if (myNames.isEmpty()){
+				return NO_ENTRY;
+			}
+			else{
+				if (myNames.size() == 1){
+					return myNames.get(0);
+				} else {
+					return StringUtils.join(myNames, ", ");
+				}
+				
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (java.lang.NullPointerException e){
+			return NO_ENTRY;
+		}
+		return NO_ENTRY;
+
+}
+
 	/**
 	 * 
 	 * @param doc
@@ -195,47 +241,19 @@ public class ConvertPdfXML {
 		}
 	} // end of function
 	
-	public String escape_xml_with_apache_commons (String text) {
-
-	    String escapedXML = StringEscapeUtils.escapeXml(text);
-	    
-	    //assertEquals(text, escapedXML);
-	    return escapedXML;
+	/**
+	 * 
+	 * @param fileName
+	 * @return
+	 */
+	private static String getExtension(String fileName) {
+		String extension = "";
+		int i = fileName.lastIndexOf('.');
+		if (i > 0) {
+		    extension = fileName.substring(i+1);
+		}
+		return extension.toLowerCase();
 	}
-	@Deprecated
-	public String escape_xml_with_straight_java (String XML_TO_ESCAPE) {
-		XML_TO_ESCAPE = XML_TO_ESCAPE.replaceAll("\\p{Cntrl}", "");
-		
-	    StringBuilder escapedXML = new StringBuilder();
-	    for (int i = 0; i < XML_TO_ESCAPE.length(); i++) {
-	        char c = XML_TO_ESCAPE.charAt(i);
-	        switch (c) {
-	        case '<':
-	            escapedXML.append("");
-	            break;
-	        case '>':
-	            escapedXML.append(" ");
-	            break;
-	        case '\"':
-	            escapedXML.append(" ");
-	            break;
-	        case '&':
-	            escapedXML.append(" ");
-	            break;
-	        //case ' ': escapedXML.append("&apos;");
-	        //break;
-	        default:
-	        	if (c > 0x7e){
-	        		escapedXML.append(" ");// + ((int) c) + ";"); 
-	        		}
-//	        	if (Character.isWhitespace(c)){
-//	        		escapedXML.append(" ");
-//	        	}
-	        	else escapedXML.append(c);
-	        	}
-	        } 
-	    	return escapedXML.toString(); 
-	    	}
 	
 	/**
 	 * 
@@ -273,6 +291,170 @@ public class ConvertPdfXML {
 		}
 		return sb.toString();
 	}
+	
+	/** Converts PDF file to XML-data
+	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
+	 *  and similar methods.
+	 *  - writing in writeToXML
+	 *  TODO: also accept HTML
+	 *  TODO: take result with highest score. (DBLP)
+	 * 
+	 * @param file
+	 * @param docId
+	 * @throws IOException
+	 */
+	public void runWithTika(File file, int docId) throws IOException{
+		DBLPDataAccessor da = new DBLPDataAccessor();
+		
+        LocalDateTime now = LocalDateTime.now();	
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String parseTime = now.format(formatter);
+        
+		try { 
+
+			String originalFilename = file.getName();
+			String outputName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
+			// because i run the function from outside. change if used 'dynamically'
+			String outputPath = "/home/tobias/mygits/Digital-Text-Forensics/xmlFiles/"+ outputName;			
+			String title = null;
+			String author = null;
+			String pubDateString = null;
+			
+			/*--------------------------------------------------------
+			 * get doc with tika
+			 *--------------------------------------------------------*/
+		      BodyContentHandler handler = new BodyContentHandler(-1);// disable limit
+		      Metadata metadata = new Metadata();
+		      FileInputStream inputstream = new FileInputStream(file);
+		      ParseContext pcontext = new ParseContext();
+		      
+		      PDFParser pdfParser = new PDFParser(); 
+		      OfficeParser officeParser = new OfficeParser();
+
+		      if (getExtension(file.toString()).equals("doc")){
+		    	  // doesn't always work. 
+		    	  System.out.println(file.toString());
+
+			      try {
+					officeParser.parse(inputstream, handler, metadata, pcontext);
+			      } catch (SAXException e) {
+					e.printStackTrace();
+			      } catch (TikaException e) {
+					e.printStackTrace();
+				}
+		      } else if (getExtension(file.toString()).equals("pdf")){
+			      try {
+					pdfParser.parse(inputstream, handler, metadata, pcontext);
+			      } catch (SAXException e) {
+					e.printStackTrace();
+			      } catch (TikaException e) {
+					e.printStackTrace();
+				}
+		      } else {
+		    	  System.out.println(file.toString());
+		      }
+			
+			/*----------------------------------------------
+			 * get & set the title
+			 *----------------------------------------------*/
+			String tikaTitle = clean_field(metadata.get("title"));
+			Boolean success = false;
+			if (Objects.equal(tikaTitle, NO_ENTRY) || (tikaTitle.length()==0)) {
+				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
+				
+				if (!Objects.equal(tikaTitle, NO_ENTRY)) {
+					title = secondTryTitle;
+					success = true;
+				} // else is handled like discussed with "titleLike"
+			} else {
+				title = tikaTitle;
+				success = true;
+			}
+
+			Article article = null;
+			if (success) {
+				/*----------------------------------------------
+				 * only use DBLP if we have an OK title
+				 *----------------------------------------------*/
+				try{
+					article = da.getArticleObj(title);
+				} catch(java.net.UnknownHostException uhe){
+					System.out.println(file.getName());
+				}
+				
+			}
+			if (article != null) {
+				// wenn er was findet, dann nimm das auch: natuerlich fehleranfaellig.
+				// idee: nimm das mit dem hoechsten score. TODO
+				List<String> authors = article.getAuthors();
+				StringBuilder sb = new StringBuilder();
+				for (int i=0;i<authors.size();i++){
+					sb.append(authors.get(i));
+				}
+				author = sb.toString();
+				pubDateString = article.getPublicationDate();
+				
+			} else {
+				article = new Article();
+				/*----------------------------------------------
+				 * if there aren't any results:
+				 *----------------------------------------------*/
+				 
+				String first_try_author = clean_field(metadata.get("Author"));
+				if (Objects.equal(first_try_author, NO_ENTRY)
+						|| (first_try_author.length()==0)) {
+					// try to extract name with NE in first section.
+					String second_try_author = clean_field(extractAuthors(handler));
+					
+					if (Objects.equal(second_try_author, NO_ENTRY) 
+							|| (first_try_author.length()==0)) {
+						author = NO_ENTRY;
+					} else {
+						author = second_try_author;
+					}
+				} else {
+					author = first_try_author;
+				}
+				
+				try{
+					pubDateString = metadata.get("created");
+				}
+				catch (java.lang.NullPointerException npe) {
+					pubDateString = NO_ENTRY;
+				}
+			}
+			
+			String fullText = handler.toString();
+			//\"§$%&/()=\\ß{}[]€@]
+			// \\p{Punct}
+			//fullText = Normalizer.normalize(fullText, Normalizer.Form.NFD);
+			//fullText = fullText.replaceAll("[^A-Za-z0-9] ","").replace("\\s+", "+");//p{Cntrl}
+			fullText = stripNonValidXMLCharacters(fullText);
+			fullText = fullText.replaceAll("\\p{C}", " ");
+
+			if (!success){
+				title = fullText.substring(0, Math.min(fullText.length(), 200));
+			}
+			article.setTitle(title);
+			article.setAuthors(author);
+			article.setPublicationDate(pubDateString);
+			article.setMyAbstract("Dummy. Please Implement.");
+			article.setFileName(originalFilename);
+			article.setFilePath(outputPath);
+			article.setDoi(String.valueOf(docId));
+			article.setParseDate(parseTime.replace(" ", "T"));
+			article.setFullText(fullText);
+			
+			writeToXML(article,outputPath);
+
+		} catch (DOMException e1) {
+			e1.printStackTrace();
+		} catch (java.lang.NullPointerException npe){
+			System.out.println(file.getName());
+		}
+	} // end of run-tika-function
+
+	
 	
 	/** Converts PDF file to XML-data
 	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
@@ -432,6 +614,7 @@ public class ConvertPdfXML {
 
 
 	} // end of function
+	
 	
 	/** There are some characters which should not occur in a cdata section
 	 *  these are filtered out in this function. Probably there is a more efficient

@@ -1,12 +1,7 @@
 package de.uni_leipzig.digital_forensics.testpackage.preprocessing;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
-
-import com.google.common.base.Objects;
 
 public class ConvertPdfXMLTester {
 	static String dataDirPath =  "/home/tobias/Dokumente/authorship-material-stathis/";
@@ -17,7 +12,8 @@ public class ConvertPdfXMLTester {
 	 */
 	public static void runPreproccessing() throws IOException {
 		File[] files = new File(dataDirPath).listFiles();
-		PdfFileFilter filter = new PdfFileFilter();
+		PdfFileFilter pdfFilter = new PdfFileFilter();
+		DocFileFilter docFilter = new DocFileFilter();
 		ConvertPdfXML converter = new ConvertPdfXML();
 	      int index = 0;
 	      int fileNumber = files.length;
@@ -27,8 +23,9 @@ public class ConvertPdfXMLTester {
 	            && !file.isHidden()
 	            && file.exists()
 	            && file.canRead()
-	            && filter.accept(file)
+	            && pdfFilter.accept(file) || docFilter.accept(file)
 	         ){
+	        	 // also works for doc and HTM
 	 			String outputName = file.getName().toString().substring(0, file.getName().toString().length()-".pdf".length())+".xml";
 				String outputPath = "/home/tobias/mygits/Digital-Text-Forensics/xmlFiles/"+ outputName;
 				File f = new File(outputPath);
@@ -39,7 +36,8 @@ public class ConvertPdfXMLTester {
 	        	 String data = "\r" + anim.charAt(index % anim.length()) + " " + 100*(float)index/fileNumber;
 			    System.out.println(data);
 	            try {
-					converter.run(file,index);
+					//converter.run(file,index);
+	            	converter.runWithTika(file, index);
 				} catch (IOException e) {
 					e.printStackTrace();
 				} 
@@ -80,10 +78,10 @@ public class ConvertPdfXMLTester {
 	
 	public static void main(String argv[]) throws IOException {
 		//fixNames();
-		//runPreproccessing();
+		runPreproccessing();
 //		ConvertPdfXML converter = new ConvertPdfXML();
 //		File testFile = new File("/home/tobias/mygits/Digital-Text-Forensics/pdfDocs/meyer-2015.pdf");
 //		converter.run(testFile, 0);
-		System.out.println("ready");
+//		System.out.println("ready");
 	}
 }
