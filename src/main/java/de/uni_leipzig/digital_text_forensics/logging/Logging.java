@@ -102,7 +102,8 @@ public class Logging {
 	}
 
 	private LoggingDocument mapArgsToLoggingDoc(Object[] args, UserLog userLog) {
-		return new LoggingDocument(new Long(args[0].toString()), args[2].toString(), new Query(args[1].toString()),
+		return new LoggingDocument(new Long(args[0].toString()), args[2].toString(),
+				new Query(args[1].toString().toLowerCase()),
 				userLog);
 	}
 
