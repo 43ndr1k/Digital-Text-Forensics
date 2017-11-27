@@ -15,15 +15,25 @@ import java.util.ArrayList;
 
 public class TextFileIndexer {
   
-  public final static String indexLocation = "/Users/David/Desktop/LuceneIndexNeu";
-  public final static String filesForLucene = "/Users/David/Desktop/FilesForLucene";
+  public final static String indexLocation = "LuceneIndex";
+  public final static String filesForLucene = "FilesForLucene";
   private static StandardAnalyzer analyzer = new StandardAnalyzer();
 
   private IndexWriter writer;
   private ArrayList<File> queue = new ArrayList<File>();
 
+  public static void main(String[] args) {
+    
+    try {
+      start();
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    
+  }
   
-  public void start() throws IOException {
+  public static void start() throws IOException {
     TextFileIndexer indexer = null;
     try {
       indexer = new TextFileIndexer(indexLocation);
