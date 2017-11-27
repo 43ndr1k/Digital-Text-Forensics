@@ -59,7 +59,7 @@ public class Logging {
 	}
 
 	@Around("@annotation(org.springframework.web.bind.annotation.RequestMapping)"
-			+ "&& execution(* de.uni_leipzig.digital_text_forensics.controller.RedirectController..*(..))")
+			+ "&& execution(* de.uni_leipzig.digital_text_forensics.controller.RedirectController.redirect*(..))")
 	public Object logRedirects(ProceedingJoinPoint thisJointPoint) throws Throwable {
 		Object ret = thisJointPoint.proceed();
 
