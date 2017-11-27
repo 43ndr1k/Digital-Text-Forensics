@@ -40,19 +40,17 @@ public class RedirectController {
 
 		String url = searchResult.getDocUrl().getHref().substring(15, searchResult.getDocUrl().getHref().length() - 4);
 
-		RedirectView ret = new RedirectView("/pdf?file=" + url);
-		ret.setContentType("application/pdf");
-		return ret;
+		return new RedirectView("/pdf?file=" + url);
 	}
 
 	@RequestMapping(value = "/pdf", method = RequestMethod.GET, produces = "application/pdf")
-	public StreamingResponseBody getFile(
+	private StreamingResponseBody getFile(
 			@RequestParam("file")
 					String file, HttpServletResponse response) throws IOException {
 
 		String url = "pdfDocs/" + file + ".pdf";
 		response.setContentType("application/pdf");
-		response.setHeader("Content-disposition", "inline; filename=" + file);
+		response.setHeader("Content-disposition", "inline; filename=" + file + ".pdf");
 		//response.setHeader("Content-Disposition", "attachment; filename=" + file);
 		InputStream inputStream = new FileInputStream(new File(url));
 		return outputStream -> {
