@@ -5,7 +5,7 @@ import java.io.IOException;
 
 
 public class ConvertPdfXMLTester {
-	static String dataDirPath =  "authorship-material-stathis/";
+	static String dataDirPath =  "pdfDocs/";
 	static String xmlFilePath = "xmlFiles";
 	
 	/**
@@ -34,6 +34,7 @@ public class ConvertPdfXMLTester {
 				}
 	        	 String data = "\r" + anim.charAt(index % anim.length()) + " " + 100*(float)index/fileNumber;
 			    System.out.println(data);
+			    System.out.println(outputPath);
 	            try {
 					converter.run(file,index);
 				} catch (IOException e) {
@@ -62,21 +63,22 @@ public class ConvertPdfXMLTester {
 				if (article != null) {
 					String newFilePath = article.getFilePath().replace(
 							"/home/tobias/mygits/Digital-Text-Forensics/", "");
-					article.setFilePath(newFilePath);
+					//article.setFilePath(newFilePath);
+					System.out.println(article.getFilePath());
 				}
-				try {
-					// and write it back
-					myconverter.writeToXML(article, file.getCanonicalPath());
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+//				try {
+//					// and write it back
+//					myconverter.writeToXML(article, file.getCanonicalPath());
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
 			}
 		}
 	}// end of function
 	
 	public static void main(String argv[]) throws IOException {
 		//fixNames();
-		//runPreproccessing();
+		runPreproccessing();
 //		ConvertPdfXML converter = new ConvertPdfXML();
 //		File testFile = new File("/home/tobias/mygits/Digital-Text-Forensics/pdfDocs/meyer-2015.pdf");
 //		converter.run(testFile, 0);

@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MyNameGetter {
-	String ner_file = "res/en-ner-person.bin";
-	String token_file = "res/en-token.bin";
+	String ner_file = "src/main/resources/preprocessing/en-ner-person.bin";
+	String token_file = "src/main/resources/preprocessing/en-token.bin";
 
 	
 	/**
