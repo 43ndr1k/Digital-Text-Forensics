@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -21,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.servlet.ModelAndView;
 
 @Controller
 public class RedirectController {
@@ -45,6 +48,16 @@ public class RedirectController {
 
 	@Autowired
 	UserLoggingService userLoggingService;
+
+	@RequestMapping(method = RequestMethod.GET, path = "/not-found")
+	public ModelAndView notFound() {
+		String comesFrom = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest()
+				.getHeader("referer").trim();
+		ModelAndView modelAndView = new ModelAndView("notFound");
+		modelAndView.addObject("redirect", comesFrom);
+
+		return modelAndView;
+	}
 
 /*	@RequestMapping(method = RequestMethod.GET, path = "/url")
 	public RedirectView redirect(
@@ -64,8 +77,8 @@ public class RedirectController {
 		return new RedirectView("/pdf?file=" + url);
 	}*/
 
-	@RequestMapping(value = "/pdf", method = RequestMethod.GET, produces = "application/pdf")
-	public ResponseEntity getFile(
+	@RequestMapping(value = "/pdf", method = RequestMethod.GET)
+	public ResponseEntity<?> getFile(
 /*			@RequestParam("file")
 					String file, */
 			@RequestParam
@@ -74,13 +87,17 @@ public class RedirectController {
 					String query
 	) throws IOException {
 
+		HttpHeaders headers = new HttpHeaders();
 		SearchResult searchResult = searcher.getDocument(docId, query);
 		String url = searchResult.getDocUrl().getHref().substring(15, searchResult.getDocUrl().getHref().length() - 4);
 		url = "pdfDocs/" + url + ".pdf";
 
 		File file = new File(url);
 		if (!file.exists()) {
-			return new ResponseEntity("File not found", HttpStatus.NOT_FOUND);
+			return ResponseEntity.status(301).location(
+					URI.create(ControllerLinkBuilder.linkTo(
+							ControllerLinkBuilder.methodOn(RedirectController.class).notFound())
+							.withRel("targetUrl").getHref())).build();
 		}
 
 		ResponseEntity responseEntity = logging(docId, query, searchResult.getTitle(), url);
@@ -88,10 +105,6 @@ public class RedirectController {
 			return responseEntity;
 		}
 
-		HttpHeaders headers = new HttpHeaders();
-/*		response.setContentType("application/pdf");
-		response.setHeader("Content-disposition", "inline; filename=" + url);*/
-		//response.setHeader("Content-Disposition", "attachment; filename=" + file);
 		headers.setContentType(MediaType.parseMediaType("application/pdf"));
 		headers.add("Access-Control-Allow-Origin", "*");
 		headers.add("Access-Control-Allow-Methods", "GET, POST, PUT");
@@ -103,7 +116,6 @@ public class RedirectController {
 
 		headers.setContentLength(file.length());
 		InputStream inputStream = new FileInputStream(file);
-
 		return new ResponseEntity<InputStreamResource>(
 				new InputStreamResource(inputStream), headers, HttpStatus.OK);
 	}

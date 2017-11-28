@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.dto;
 
 import de.uni_leipzig.digital_text_forensics.controller.RedirectController;
+import java.io.IOException;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
@@ -23,7 +24,7 @@ public class SearchResult {
 		this.docId = docId;
 		this.title = title;
 		this.snippet = snippet;
-		this.webUrl = createLink(docId, query, title);
+		this.webUrl = createLink(docId, query);
 		this.docUrl = docUrl;
 
 	}
@@ -79,20 +80,26 @@ public class SearchResult {
 		this.query = query;
 	}
 
-	private static Link createLink(Long docID, String query, String title) {
+	private static Link createLink(Long docID, String query) {
 
-		Link link1 = (ControllerLinkBuilder.linkTo(RedirectController.class)
+/*		Link link1 = (ControllerLinkBuilder.linkTo(RedirectController.class)
 				.withRel("targetUrl"));
 
 		String a = String.format("/pdf/?docId=%s&query=%s", docID, query);
 		Link link = new Link(link1.getHref() + a)
 				.withRel("targetUrl");
-		return link;
+		return link;*/
 
+		try {
+			return ControllerLinkBuilder.linkTo(
+					ControllerLinkBuilder.methodOn(RedirectController.class).getFile(docID, query))
+					.withRel("targetUrl");
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
 
-				/*ControllerLinkBuilder.linkTo(
-						ControllerLinkBuilder.methodOn(RedirectController.class).redirect(docID, query, title))
-						.withRel("targetUrl");*/
+		return null;
 
 	}
 }

@@ -48,3 +48,7 @@ function __highlight(s, t) {
   content = content.replace('<strong>', '').replace('</strong>', '');
   $('#search').innerHTML = content;
 });*/
+
+$(window).on('load', function () {
+  $('#myModal').modal('show');
+});
