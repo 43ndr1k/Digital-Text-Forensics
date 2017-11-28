@@ -17,11 +17,13 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
-import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,7 +31,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 @Controller
 public class RedirectController {
@@ -64,40 +65,47 @@ public class RedirectController {
 	}*/
 
 	@RequestMapping(value = "/pdf", method = RequestMethod.GET, produces = "application/pdf")
-	public StreamingResponseBody getFile(
+	public ResponseEntity getFile(
 /*			@RequestParam("file")
 					String file, */
 			@RequestParam
 					Long docId,
 			@RequestParam
-					String query,
-			HttpServletResponse response) throws IOException {
+					String query
+	) throws IOException {
 
 		SearchResult searchResult = searcher.getDocument(docId, query);
 		String url = searchResult.getDocUrl().getHref().substring(15, searchResult.getDocUrl().getHref().length() - 4);
 		url = "pdfDocs/" + url + ".pdf";
 
-		ResponseEntity responseEntity = logging(docId, query, searchResult.getTitle(), url);
-		if (responseEntity.getStatusCode() != HttpStatus.OK) {
-			responseEntity.toString();
-		}
-
 		File file = new File(url);
 		if (!file.exists()) {
-			new ResponseEntity("File not found", HttpStatus.NOT_FOUND);
+			return new ResponseEntity("File not found", HttpStatus.NOT_FOUND);
 		}
-		response.setContentType("application/pdf");
-		response.setHeader("Content-disposition", "inline; filename=" + url);
-		//response.setHeader("Content-Disposition", "attachment; filename=" + file);
-		InputStream inputStream = new FileInputStream(new File(url));
-		return outputStream -> {
-			int nRead;
-			byte[] data = new byte[1024];
-			while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
-				outputStream.write(data, 0, nRead);
-			}
-		};
 
+		ResponseEntity responseEntity = logging(docId, query, searchResult.getTitle(), url);
+		if (responseEntity.getStatusCode() != HttpStatus.OK) {
+			return responseEntity;
+		}
+
+		HttpHeaders headers = new HttpHeaders();
+/*		response.setContentType("application/pdf");
+		response.setHeader("Content-disposition", "inline; filename=" + url);*/
+		//response.setHeader("Content-Disposition", "attachment; filename=" + file);
+		headers.setContentType(MediaType.parseMediaType("application/pdf"));
+		headers.add("Access-Control-Allow-Origin", "*");
+		headers.add("Access-Control-Allow-Methods", "GET, POST, PUT");
+		headers.add("Access-Control-Allow-Headers", "Content-Type");
+		headers.add("Content-Disposition", "inline; filename=" + url);
+		headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+		headers.add("Pragma", "no-cache");
+		headers.add("Expires", "0");
+
+		headers.setContentLength(file.length());
+		InputStream inputStream = new FileInputStream(file);
+
+		return new ResponseEntity<InputStreamResource>(
+				new InputStreamResource(inputStream), headers, HttpStatus.OK);
 	}
 
 	private ResponseEntity logging(Long docId, String query, String title, String goTo) {
@@ -110,7 +118,7 @@ public class RedirectController {
 				"A user identified by '{}' is redirected due to a call to '{}' with arguments {} to the url '{}'. The user comes from '{}'.",
 				clientId,
 				"ModelAndView de.uni_leipzig.digital_text_forensics.controller.RedirectController.getFile(String, String)",
-				"[{}, {}, {}]", docId, query, title,
+				String.format("[%s, %s, %s]", docId, query, title),
 				goTo,
 				comesFrom
 		);
