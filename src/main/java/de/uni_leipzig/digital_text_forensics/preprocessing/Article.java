@@ -3,7 +3,7 @@ package de.uni_leipzig.digital_text_forensics.preprocessing;
 import java.util.ArrayList;
 
 import java.util.List;
-
+import org.json.JSONArray;
 
 public class Article {
 
@@ -136,12 +136,12 @@ public String getAuthorsAsString(){
 	
 }
 
-//public void setAuthors(JSONArray authors) {
-//	for (int i=0; i<authors.length(); i++) {
-//		String author = (String) authors.get(i);
-//		this.authors.add(author);
-//	}
-//}
+public void setAuthors(JSONArray authors) {
+	for (int i=0; i<authors.length(); i++) {
+		String author = (String) authors.get(i);
+		this.authors.add(author);
+	}
+}
 public void setAuthors(String author) {
 	this.authors.add(author);
 }

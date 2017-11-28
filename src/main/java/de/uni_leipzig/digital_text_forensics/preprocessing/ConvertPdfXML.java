@@ -17,7 +17,7 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.xmlbeans.impl.soap.Node;
+//import org.apache.xmlbeans.impl.soap.Node;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
@@ -29,11 +29,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang.StringUtils;
-import org.docear.pdf.PdfDataExtractor;
+import org.apache.commons.lang3.StringEscapeUtils;
+//import org.docear.pdf.PdfDataExtractor;
+import org.apache.commons.lang3.StringUtils;
 
-import com.google.common.base.Objects;
+//import com.google.common.base.Objects;
 
 import de.uni_leipzig.digital_text_forensics.preprocessing.MyNameGetter;
 
@@ -202,77 +202,43 @@ public class ConvertPdfXML {
 	    //assertEquals(text, escapedXML);
 	    return escapedXML;
 	}
-	@Deprecated
-	public String escape_xml_with_straight_java (String XML_TO_ESCAPE) {
-		XML_TO_ESCAPE = XML_TO_ESCAPE.replaceAll("\\p{Cntrl}", "");
-		
-	    StringBuilder escapedXML = new StringBuilder();
-	    for (int i = 0; i < XML_TO_ESCAPE.length(); i++) {
-	        char c = XML_TO_ESCAPE.charAt(i);
-	        switch (c) {
-	        case '<':
-	            escapedXML.append("");
-	            break;
-	        case '>':
-	            escapedXML.append(" ");
-	            break;
-	        case '\"':
-	            escapedXML.append(" ");
-	            break;
-	        case '&':
-	            escapedXML.append(" ");
-	            break;
-	        //case ' ': escapedXML.append("&apos;");
-	        //break;
-	        default:
-	        	if (c > 0x7e){
-	        		escapedXML.append(" ");// + ((int) c) + ";"); 
-	        		}
-//	        	if (Character.isWhitespace(c)){
-//	        		escapedXML.append(" ");
-//	        	}
-	        	else escapedXML.append(c);
-	        	}
-	        } 
-	    	return escapedXML.toString(); 
-	    	}
 	
 	/**
 	 * 
 	 * @param file
 	 * @return
 	 */
-	private String getFieldDocearStyle(File file) {
-		boolean empty = true;
-		StringBuilder sb = new StringBuilder();
-		PdfDataExtractor extractor = new PdfDataExtractor(file);
-		try {
-			if (!empty) {
-				sb.append("|");
-			}
-			try {
-
-				String title = extractor.extractTitle();
-				// also possible here.
-				//System.out.println(extractor.extractPlainText());
-				if (title != null) {
-					sb.append(clean_field(title));
-					empty = false;
-				}
-			}
-			catch (IOException e) {
-				sb.append(NO_ENTRY);
-			}
-			catch (de.intarsys.pdf.cos.COSSwapException e){
-				sb.append(NO_ENTRY);
-			}
-		}
-		finally {
-			extractor.close();
-			extractor = null;
-		}
-		return sb.toString();
-	}
+//	private String getFieldDocearStyle(File file) {
+//		boolean empty = true;
+//		StringBuilder sb = new StringBuilder();
+//		PdfDataExtractor extractor = new PdfDataExtractor(file);
+//		try {
+//			if (!empty) {
+//				sb.append("|");
+//			}
+//			try {
+//
+//				String title = extractor.extractTitle();
+//				// also possible here.
+//				//System.out.println(extractor.extractPlainText());
+//				if (title != null) {
+//					sb.append(clean_field(title));
+//					empty = false;
+//				}
+//			}
+//			catch (IOException e) {
+//				sb.append(NO_ENTRY);
+//			}
+//			catch (de.intarsys.pdf.cos.COSSwapException e){
+//				sb.append(NO_ENTRY);
+//			}
+//		}
+//		finally {
+//			extractor.close();
+//			extractor = null;
+//		}
+//		return sb.toString();
+//	}
 	
 	/** Converts PDF file to XML-data
 	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
@@ -320,13 +286,13 @@ public class ConvertPdfXML {
 			String pdfbox_title = clean_field(myDoc.getDocumentInformation().getTitle());
 			Boolean success = false;
 
-			if (Objects.equal(pdfbox_title, NO_ENTRY) || (pdfbox_title.length()==0)) {
-				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
+			if ( pdfbox_title.equals(NO_ENTRY) || (pdfbox_title.length()==0)) {
+				//String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
 				
-				if (!Objects.equal(pdfbox_title, NO_ENTRY)) {
-					title = secondTryTitle;
-					success = true;
-				} // else is handled like discussed with "titleLike"
+				//if (!Objects.equal(secondTryTitle, NO_ENTRY)) {
+					//title = secondTryTitle;
+					success = false;//true;
+				//} // else is handled like discussed with "titleLike"
 			} else {
 				title = pdfbox_title;
 				success = true;
@@ -362,12 +328,12 @@ public class ConvertPdfXML {
 				 *----------------------------------------------*/
 				String first_try_author = clean_field(myDoc.getDocumentInformation()
 						.getAuthor());
-				if (Objects.equal(first_try_author, NO_ENTRY)
+				if (first_try_author.equals(NO_ENTRY)
 						|| (first_try_author.length()==0)) {
 					// try to extract name with NE in first section.
 					String second_try_author = clean_field(extractAuthors(stripper, myDoc));
 					
-					if (Objects.equal(second_try_author, NO_ENTRY) 
+					if (second_try_author.equals(NO_ENTRY)
 							|| (first_try_author.length()==0)) {
 						author = NO_ENTRY;
 					} else {

@@ -1,13 +1,8 @@
 package de.uni_leipzig.digital_text_forensics.preprocessing;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 
-// fuer string vergleich.
-import com.google.common.base.Objects;
 
 public class ConvertPdfXMLTester {
 	static String dataDirPath =  "authorship-material-stathis/";

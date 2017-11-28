@@ -1,40 +1,19 @@
-package de.uni_leipzig.digital_forensics.testpackage.preprocessing;
-import java.io.BufferedReader;
+package de.uni_leipzig.digital_text_forensics.preprocessing;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.docear.pdf.ocr.XMLReader;
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.io.File;
-import java.io.IOException;
-import java.util.List;
-
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.SAXException;
-import org.xml.sax.helpers.XMLReaderFactory;
-
-import de.uni_leipzig.digital_forensics.testpackage.preprocessing.Article;
-import de.uni_leipzig.digital_forensics.testpackage.preprocessing.ArticleHandler;
+import de.uni_leipzig.digital_text_forensics.preprocessing.Article;
+import de.uni_leipzig.digital_text_forensics.preprocessing.ArticleHandler;
 
 
 public class Main {
 
 	
 	public static void main(String[] args) {
-
-
 
 			
 		    SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
