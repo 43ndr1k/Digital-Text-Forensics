@@ -206,7 +206,6 @@ public class ConvertPdfXML {
 		}
 	} // end of function
 	
-
 	
 	/**
 	 * 
@@ -244,20 +243,6 @@ public class ConvertPdfXML {
 		}
 		return sb.toString();
 	}
-	
-//	/** only needed if multiple extensions are supported.
-//	 * 
-//	 * @param fileName
-//	 * @return<w
-//	 */
-//	private static String getExtension(String fileName) {
-//		String extension = "";
-//		int i = fileName.lastIndexOf('.');
-//		if (i > 0) {
-//		    extension = fileName.substring(i+1);
-//		}
-//		return extension.toLowerCase();
-//	}
 	
 
 	/**extracts first page and runs a NE-recognition. 
@@ -299,7 +284,7 @@ public class ConvertPdfXML {
 	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
 	 *  and similar methods.
 	 *  - writing in writeToXML
-	 *  TODO: also accept HTML
+	 *  
 	 *  TODO: take result with highest score. (DBLP)
 	 * 
 	 * @param file
@@ -331,24 +316,6 @@ public class ConvertPdfXML {
 		      ParseContext pcontext = new ParseContext();
 		      
 		      PDFParser pdfParser = new PDFParser(); 
-		      	/*
-		      	 * It's possible to parse DOCs and HTML-files with tika.
-		      	 * Comment out the following section if you want to parse DOCs,too.
-		      	 */
-		        // OfficeParser officeParser = new OfficeParser();
-				//		      if (getExtension(file.toString()).equals("doc")){
-				//		    	  // doesn't always work. 
-				//		    	  System.out.println(file.toString());
-				//
-				//			      try {
-				//					officeParser.parse(inputstream, handler, metadata, pcontext);
-				//			      } catch (SAXException e) {
-				//					e.printStackTrace();
-				//			      } catch (TikaException e) {
-				//					e.printStackTrace();
-				//				}
-				//		      } else 
-		    	// if (getExtension(file.toString()).equals("pdf")){
 			try {
 				pdfParser.parse(inputstream, handler, metadata, pcontext);
 			} catch (SAXException e) {
@@ -378,7 +345,6 @@ public class ConvertPdfXML {
 				title = tikaTitle;
 				success = true;
 			}
-
 			Article article = null;
 			if (success) {
 				/*----------------------------------------------
@@ -389,7 +355,6 @@ public class ConvertPdfXML {
 				} catch(java.net.UnknownHostException uhe){
 					System.out.println(file.getName());
 				}
-				
 			}
 			if (article != null) {
 				// wenn er was findet, dann nimm das auch: natuerlich fehleranfaellig.
@@ -469,7 +434,6 @@ public class ConvertPdfXML {
 	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
 	 *  and similar methods.
 	 *  - writing in writeToXML
-	 *  TODO: also accept HTML
 	 *  TODO: take result with highest score. (DBLP)
 	 *  
 	 * @param file
@@ -478,7 +442,6 @@ public class ConvertPdfXML {
 	public void run(File file, int id) throws IOException{
 		DBLPDataAccessor da = new DBLPDataAccessor();
 		try { 
-	        // could also be called by outer function
 			LocalDateTime now = LocalDateTime.now();	
 	        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

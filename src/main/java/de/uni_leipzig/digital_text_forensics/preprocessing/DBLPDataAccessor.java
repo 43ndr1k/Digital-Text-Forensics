@@ -52,7 +52,6 @@ public class DBLPDataAccessor {
 	 * @return Article
 	 */
 	public Article getArticleObj(String pubQuery) throws java.net.UnknownHostException {
-
 		String requestUrl = this.getRequestUrl(pubQuery);
 		URL url = null;
 		try {
@@ -83,7 +82,7 @@ public class DBLPDataAccessor {
 		try {
 			response = con.getInputStream();
 		} catch (IOException e) {
-			System.out.println("weird title:\t"+pubQuery);
+			System.out.println("weird title. probably different encoding.:\t"+pubQuery);
 		} 
 		try {
 			if (con.getResponseCode() == 200 || con.getResponseCode() ==201){
@@ -97,35 +96,47 @@ public class DBLPDataAccessor {
 		}
 
 		// @todo more than one article! as result -> list
-		JSONObject jsonObject = null;
+		JSONArray jsonResponseArray = null;
 		try {
-			jsonObject = new JSONObject(jsonStrigResponse).getJSONObject("result").getJSONObject("hits").getJSONArray("hit").getJSONObject(0);
+			//jsonObject = new JSONObject(jsonStrigResponse).getJSONObject("result").getJSONObject("hits").getJSONArray("hit").getJSONObject(0);
+			jsonResponseArray = new JSONObject(jsonStrigResponse).getJSONObject("result").getJSONObject("hits").getJSONArray("hit");
 		} catch (org.json.JSONException e) {
 			return null;
 		}
 		Article article = new Article();
-		article.setTitle((String) jsonObject.getJSONObject("info").get("title"));
-		article.setPublicationDate((String) jsonObject.getJSONObject("info").get("year"));
-		article.setKey((String) jsonObject.getJSONObject("info").get("key")); // we don't need this.
-		article.setScore((String) jsonObject.get("@score"));
-		try {
-			article.setAuthors(jsonObject.getJSONObject("info").getJSONObject("authors").getJSONArray("author"));
-		} catch (org.json.JSONException e) {
-			try{
-				article.setAuthors((String)jsonObject.getJSONObject("info").getJSONObject("authors").get("author"));
-			} catch(org.json.JSONException e2) {
-				article.setAuthors("");
+		int highestScore = 0, articleScore = 0;
+		for (int i=0; i<jsonResponseArray.length(); i++){
+			JSONObject jsonArticle = jsonResponseArray.getJSONObject(i);
+			articleScore = Integer.parseInt((String) jsonArticle.get("@score"));
+			System.out.println(articleScore);
+			if (articleScore > highestScore) {
+				highestScore = articleScore;
+				article.setTitle((String) jsonArticle.getJSONObject("info").get("title"));
+				article.setPublicationDate((String) jsonArticle.getJSONObject("info").get("year"));
+				//article.setKey((String) jsonArticle.getJSONObject("info").get("key")); // we don't need this.
+				article.setScore(Integer.toString(articleScore));
+				try {
+					article.setAuthors(jsonArticle.getJSONObject("info").getJSONObject("authors").getJSONArray("author"));
+				} catch (org.json.JSONException e) {
+					try{
+						article.setAuthors((String)jsonArticle.getJSONObject("info").getJSONObject("authors").get("author"));
+					} catch(org.json.JSONException e2) {
+						article.setAuthors("");
+					}
+				}
+				// not always given.
+				String doi = null;
+				try {
+					doi = (String) jsonArticle.getJSONObject("info").get("doi");
+				} catch (org.json.JSONException e){
+					doi = "";
+				}
+				article.setDoi(doi);
 			}
 		}
 		
-			// not always given.
-		String doi = null;
-		try {
-			doi = (String) jsonObject.getJSONObject("info").get("doi");
-		} catch (org.json.JSONException e){
-			doi = "";
-		}
-		article.setDoi(doi);
+
+
 		return article;		 
 	}
 	
