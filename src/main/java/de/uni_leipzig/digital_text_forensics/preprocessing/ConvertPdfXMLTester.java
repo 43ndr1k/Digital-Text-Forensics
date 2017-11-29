@@ -37,8 +37,8 @@ public class ConvertPdfXMLTester {
 			    System.out.println(data);
 			    //System.out.println(outputFilePath);
 	            try {
-					converter.run(file,index);
-					//converter.runWithTika(file, index);
+					//converter.run(file,index);
+					converter.runWithTika(file, index);
 				} catch (IOException e) {
 					e.printStackTrace();
 				} 

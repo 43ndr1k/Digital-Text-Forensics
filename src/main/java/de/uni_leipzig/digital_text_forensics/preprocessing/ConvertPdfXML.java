@@ -35,13 +35,18 @@ import org.xml.sax.SAXException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.lucene.analysis.en.PorterStemFilter;
 import org.docear.pdf.PdfDataExtractor;
 
 
 import de.uni_leipzig.digital_text_forensics.preprocessing.MyNameGetter;
+import opennlp.tools.stemmer.PorterStemmer;
+import opennlp.tools.tokenize.SimpleTokenizer;
 
 public class ConvertPdfXML {
 	
@@ -406,12 +411,19 @@ public class ConvertPdfXML {
 			//fullText = fullText.replaceAll("[^A-Za-z0-9] ","").replace("\\s+", "+");//p{Cntrl}
 			fullText = stripNonValidXMLCharacters(fullText);
 			fullText = fullText.replaceAll("\\p{C}", " ");
+			if (fullText.trim().length() == 0) {
+				fullText = "Incompatible Encoding";
+			}
+			/**
+			 * If we want to add stemmed words.
+			 */
+			//String stemmedWords = getDistinctStemmedWords(handler);
 
 			if (!success){
 				title = fullText.substring(0, Math.min(fullText.length(), 200));
 			}
 			article.setTitle(title);
-			article.setAuthors(author);
+			article.setAuthors(author.trim());
 			article.setPublicationDate(pubDateString);
 			article.setMyAbstract("Dummy. Please Implement.");
 			article.setFileName(originalFilename);
@@ -429,7 +441,24 @@ public class ConvertPdfXML {
 		}
 	} // end of run-tika-function
 	
-	
+	/** to add stemmed words to fulltext or seperate tag.
+	 * 
+	 * @param handler
+	 * @return
+	 */
+	private String getDistinctStemmedWords(BodyContentHandler handler) {
+		 SimpleTokenizer simpleTokenizer = SimpleTokenizer.INSTANCE;  
+	     String tokens[] = simpleTokenizer.tokenize(handler.toString());  
+		PorterStemmer pt = new PorterStemmer();
+		Set<String> stemmedTokens = new HashSet<String>();
+		for (String token : tokens) {
+			// only take the set of stemmed words 
+			// don't take numbers, signs etc.
+			stemmedTokens.add(pt.stem(token));
+		}
+		 
+		return  String.join(" ", stemmedTokens);
+	}
 	/** Converts PDF file to XML-data
 	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
 	 *  and similar methods.
