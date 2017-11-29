@@ -6,7 +6,7 @@ import java.io.IOException;
 
 public class ConvertPdfXMLTester {
 	static String dataDirPath =  "pdfDocs/";
-	static String xmlFilePath = "xmlFiles";
+	static String xmlFilePath = "xmlFiles/"; // possible error
 	
 	/**
 	 * 
@@ -14,7 +14,8 @@ public class ConvertPdfXMLTester {
 	public static void runPreproccessing() throws IOException {
 		File[] files = new File(dataDirPath).listFiles();
 		PdfFileFilter filter = new PdfFileFilter();
-		ConvertPdfXML converter = new ConvertPdfXML();
+		
+		ConvertPdfXML converter = new ConvertPdfXML(xmlFilePath);
 	      int index = 0;
 	      int fileNumber = files.length;
 	      String anim= "|/-\\";
@@ -25,18 +26,19 @@ public class ConvertPdfXMLTester {
 	            && file.canRead()
 	            && filter.accept(file)
 	         ){
-	 			String outputName = file.getName().toString().substring(0, file.getName().toString().length()-".pdf".length())+".xml";
-				String outputPath = "xmlFiles/"+ outputName;
-				File f = new File(outputPath);
+	 			String outputFileName = file.getName().toString().substring(0, file.getName().toString().length()-".pdf".length())+".xml";
+				String outputFilePath = xmlFilePath+ outputFileName;
+				File f = new File(outputFilePath);
 				index++;
 				if(f.exists() && !f.isDirectory()) { 
 				    continue;
 				}
 	        	 String data = "\r" + anim.charAt(index % anim.length()) + " " + 100*(float)index/fileNumber;
 			    System.out.println(data);
-			    System.out.println(outputPath);
+			    //System.out.println(outputFilePath);
 	            try {
 					converter.run(file,index);
+					//converter.runWithTika(file, index);
 				} catch (IOException e) {
 					e.printStackTrace();
 				} 
@@ -52,7 +54,7 @@ public class ConvertPdfXMLTester {
 
 		File[] files = new File(xmlFilePath).listFiles();
 		XMLFileFilter filter = new XMLFileFilter();
-		ConvertPdfXML myconverter = new ConvertPdfXML();
+		ConvertPdfXML myconverter = new ConvertPdfXML(xmlFilePath);
 		for (File file : files) {
 			if (!file.isDirectory() && !file.isHidden() && file.exists()
 					&& file.canRead() && filter.accept(file)) {

@@ -23,7 +23,7 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
-import org.apache.tika.parser.microsoft.OfficeParser;
+// import org.apache.tika.parser.microsoft.OfficeParser;
 import org.apache.tika.parser.pdf.PDFParser;
 import org.apache.tika.sax.BodyContentHandler;
 
@@ -33,13 +33,12 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
-import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.docear.pdf.PdfDataExtractor;
 
 
 import de.uni_leipzig.digital_text_forensics.preprocessing.MyNameGetter;
@@ -56,7 +55,11 @@ public class ConvertPdfXML {
 	static String NO_ENTRY = "No proper data found.";
 	// -> List!
 	static String BLOCK_WORDS[] = {".pdf",".doc",".dvi","title","Chapter","rights reserved","Article", "http"};
-
+	public String outputPath;
+	
+	public ConvertPdfXML(String outputPath) {
+		this.outputPath = outputPath;
+	}
 	/**
 	 * 
 	 * @param field_string
@@ -210,51 +213,51 @@ public class ConvertPdfXML {
 	 * @param file
 	 * @return
 	 */
-//	private String getFieldDocearStyle(File file) {
-//		boolean empty = true;
-//		StringBuilder sb = new StringBuilder();
-//		PdfDataExtractor extractor = new PdfDataExtractor(file);
-//		try {
-//			if (!empty) {
-//				sb.append("|");
-//			}
-//			try {
-//
-//				String title = extractor.extractTitle();
-//				// also possible here.
-//				//System.out.println(extractor.extractPlainText());
-//				if (title != null) {
-//					sb.append(clean_field(title));
-//					empty = false;
-//				}
-//			}
-//			catch (IOException e) {
-//				sb.append(NO_ENTRY);
-//			}
-//			catch (de.intarsys.pdf.cos.COSSwapException e){
-//				sb.append(NO_ENTRY);
-//			}
-//		}
-//		finally {
-//			extractor.close();
-//			extractor = null;
-//		}
-//		return sb.toString();
-//	}
-	
-	/**
-	 * 
-	 * @param fileName
-	 * @return
-	 */
-	private static String getExtension(String fileName) {
-		String extension = "";
-		int i = fileName.lastIndexOf('.');
-		if (i > 0) {
-		    extension = fileName.substring(i+1);
+	private String getFieldDocearStyle(File file) {
+		boolean empty = true;
+		StringBuilder sb = new StringBuilder();
+		PdfDataExtractor extractor = new PdfDataExtractor(file);
+		try {
+			if (!empty) {
+				sb.append("|");
+			}
+			try {
+
+				String title = extractor.extractTitle();
+				// also possible here.
+				//System.out.println(extractor.extractPlainText());
+				if (title != null) {
+					sb.append(clean_field(title));
+					empty = false;
+				}
+			}
+			catch (IOException e) {
+				sb.append(NO_ENTRY);
+			}
+			catch (de.intarsys.pdf.cos.COSSwapException e){
+				sb.append(NO_ENTRY);
+			}
 		}
-		return extension.toLowerCase();
+		finally {
+			extractor.close();
+			extractor = null;
+		}
+		return sb.toString();
 	}
+	
+//	/** only needed if multiple extensions are supported.
+//	 * 
+//	 * @param fileName
+//	 * @return<w
+//	 */
+//	private static String getExtension(String fileName) {
+//		String extension = "";
+//		int i = fileName.lastIndexOf('.');
+//		if (i > 0) {
+//		    extension = fileName.substring(i+1);
+//		}
+//		return extension.toLowerCase();
+//	}
 	
 
 	/**extracts first page and runs a NE-recognition. 
@@ -313,9 +316,8 @@ public class ConvertPdfXML {
 		try { 
 
 			String originalFilename = file.getName();
-			String outputName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
-			// because i run the function from outside. change if used 'dynamically'
-			String outputPath = "/home/tobias/mygits/Digital-Text-Forensics/xmlFiles/"+ outputName;			
+			String outputFileName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
+			String outputFilePath = this.outputPath+ outputFileName;			
 			String title = null;
 			String author = null;
 			String pubDateString = null;
@@ -323,36 +325,38 @@ public class ConvertPdfXML {
 			/*--------------------------------------------------------
 			 * get doc with tika
 			 *--------------------------------------------------------*/
-		      BodyContentHandler handler = new BodyContentHandler(-1);// disable limit
+		      BodyContentHandler handler = new BodyContentHandler(-1);  // -1 ~ disable limit
 		      Metadata metadata = new Metadata();
 		      FileInputStream inputstream = new FileInputStream(file);
 		      ParseContext pcontext = new ParseContext();
 		      
 		      PDFParser pdfParser = new PDFParser(); 
-		      OfficeParser officeParser = new OfficeParser();
+		      	/*
+		      	 * It's possible to parse DOCs and HTML-files with tika.
+		      	 * Comment out the following section if you want to parse DOCs,too.
+		      	 */
+		        // OfficeParser officeParser = new OfficeParser();
+				//		      if (getExtension(file.toString()).equals("doc")){
+				//		    	  // doesn't always work. 
+				//		    	  System.out.println(file.toString());
+				//
+				//			      try {
+				//					officeParser.parse(inputstream, handler, metadata, pcontext);
+				//			      } catch (SAXException e) {
+				//					e.printStackTrace();
+				//			      } catch (TikaException e) {
+				//					e.printStackTrace();
+				//				}
+				//		      } else 
+		    	// if (getExtension(file.toString()).equals("pdf")){
+			try {
+				pdfParser.parse(inputstream, handler, metadata, pcontext);
+			} catch (SAXException e) {
+				e.printStackTrace();
+			} catch (TikaException e) {
+				e.printStackTrace();
+			}
 
-		      if (getExtension(file.toString()).equals("doc")){
-		    	  // doesn't always work. 
-		    	  System.out.println(file.toString());
-
-			      try {
-					officeParser.parse(inputstream, handler, metadata, pcontext);
-			      } catch (SAXException e) {
-					e.printStackTrace();
-			      } catch (TikaException e) {
-					e.printStackTrace();
-				}
-		      } else if (getExtension(file.toString()).equals("pdf")){
-			      try {
-					pdfParser.parse(inputstream, handler, metadata, pcontext);
-			      } catch (SAXException e) {
-					e.printStackTrace();
-			      } catch (TikaException e) {
-					e.printStackTrace();
-				}
-		      } else {
-		    	  System.out.println(file.toString());
-		      }
 			
 			/*----------------------------------------------
 			 * get & set the title
@@ -361,11 +365,14 @@ public class ConvertPdfXML {
 			Boolean success = false;
 			if (tikaTitle.equals(NO_ENTRY) || (tikaTitle.length()==0)) {
 				success = false;
-				//String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
-				//				if (!secondTryTitle.equals(NO_ENTRX)) {
-				//					title = secondTryTitle;
-				//					success = true;
-				//				} // else is handled like discussed with "titleLike"
+				// try again with docear. if this fails success is left to false
+				// and we take the titleLike (first characters as defined in 
+				// TITLE_LIKE_LENGTH
+				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
+				if (!secondTryTitle.equals(NO_ENTRY)) {
+					title = secondTryTitle;
+					success = true;
+				} // else is handled like discussed with "titleLike"
 				
 			} else {
 				title = tikaTitle;
@@ -426,6 +433,8 @@ public class ConvertPdfXML {
 			}
 			
 			String fullText = handler.toString();
+			inputstream.close();
+			
 			//\"§$%&/()=\\ß{}[]€@]
 			// \\p{Punct}
 			//fullText = Normalizer.normalize(fullText, Normalizer.Form.NFD);
@@ -441,12 +450,12 @@ public class ConvertPdfXML {
 			article.setPublicationDate(pubDateString);
 			article.setMyAbstract("Dummy. Please Implement.");
 			article.setFileName(originalFilename);
-			article.setFilePath(outputPath);
+			article.setFilePath(outputFilePath);
 			article.setDoi(String.valueOf(docId));
 			article.setParseDate(parseTime.replace(" ", "T"));
 			article.setFullText(fullText);
 			
-			writeToXML(article,outputPath);
+			writeToXML(article,outputFilePath);
 
 		} catch (DOMException e1) {
 			e1.printStackTrace();
@@ -475,9 +484,8 @@ public class ConvertPdfXML {
 
 	        String parseTime = now.format(formatter);
 			String originalFilename = file.getName();
-			String outputName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
-			// because i run the function from outside. change if used 'dynamically'
-			String outputPath = "xmlFiles/"+ outputName;			
+			String outputFileName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
+			String outputFilePath = this.outputPath+ outputFileName;			
 			String title = null;
 			String author = null;
 			String pubDateString = null;
@@ -504,12 +512,12 @@ public class ConvertPdfXML {
 			Boolean success = false;
 
 			if (pdfbox_title.equals(NO_ENTRY) || (pdfbox_title.length()==0)) {
-				//String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
+				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
 				success = false;
-				//				if (!pdfbox_title.equals(NO_ENTRY)) {
-				//					title = secondTryTitle;
-				//					success = true;
-				//				} // else is handled like discussed with "titleLike"
+				if (!pdfbox_title.equals(NO_ENTRY)) {
+					title = secondTryTitle;
+					success = true;
+				} // else is handled like discussed with "titleLike"
 			
 			} else {
 				title = pdfbox_title;
@@ -601,13 +609,13 @@ public class ConvertPdfXML {
 			article.setPublicationDate(pubDateString);
 			article.setMyAbstract("Dummy. Please Implement.");
 			article.setFileName(originalFilename);
-			article.setFilePath(outputPath);
+			article.setFilePath(outputFilePath);
 			article.setDoi(String.valueOf(id));
 			article.setParseDate(parseTime.replace(" ", "T"));
 			article.setFullText(fullText);
 			
 			// finally write the article to xml.
-			writeToXML(article,outputPath);
+			writeToXML(article,outputFilePath);
 
 		} catch (DOMException e1) {
 			e1.printStackTrace();
