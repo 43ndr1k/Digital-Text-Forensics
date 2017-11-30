@@ -41,7 +41,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.analysis.en.PorterStemFilter;
-import org.docear.pdf.PdfDataExtractor;
+//import org.docear.pdf.PdfDataExtractor;
 
 
 import de.uni_leipzig.digital_text_forensics.preprocessing.MyNameGetter;
@@ -212,40 +212,40 @@ public class ConvertPdfXML {
 	} // end of function
 	
 	
-	/**
-	 * 
-	 * @param file
-	 * @return
-	 */
-	private String getFieldDocearStyle(File file)  {
-		boolean empty = true;
-		StringBuilder sb = new StringBuilder();
-		PdfDataExtractor extractor = new PdfDataExtractor(file);
-		try {
-			if (!empty) {
-				sb.append("|");
-			}
-			try {
-
-				String title = extractor.extractTitle();
-				// also possible here.
-				//System.out.println(extractor.extractPlainText());
-				if (title != null) {
-					sb.append(clean_field(title));
-					empty = false;
-				}
-			}
-			catch (IOException e) {
-				sb.append(NO_ENTRY);
-			}
-		}
-		finally {
-
-			extractor.close();
-			extractor = null;
-		}
-		return sb.toString();
-	}
+//	/**
+//	 * 
+//	 * @param file
+//	 * @return
+//	 */
+//	private String getFieldDocearStyle(File file)  {
+//		boolean empty = true;
+//		StringBuilder sb = new StringBuilder();
+//		PdfDataExtractor extractor = new PdfDataExtractor(file);
+//		try {
+//			if (!empty) {
+//				sb.append("|");
+//			}
+//			try {
+//
+//				String title = extractor.extractTitle();
+//				// also possible here.
+//				//System.out.println(extractor.extractPlainText());
+//				if (title != null) {
+//					sb.append(clean_field(title));
+//					empty = false;
+//				}
+//			}
+//			catch (IOException e) {
+//				sb.append(NO_ENTRY);
+//			}
+//		}
+//		finally {
+//
+//			extractor.close();
+//			extractor = null;
+//		}
+//		return sb.toString();
+//	}
 	
 
 	/**extracts first page and runs a NE-recognition. 
@@ -338,11 +338,11 @@ public class ConvertPdfXML {
 				// try again with docear. if this fails success is left to false
 				// and we take the titleLike (first characters as defined in 
 				// TITLE_LIKE_LENGTH
-				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
-				if (!secondTryTitle.equals(NO_ENTRY)) {
-					title = secondTryTitle;
-					success = true;
-				} // else is handled like discussed with "titleLike"
+//				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
+//				if (!secondTryTitle.equals(NO_ENTRY)) {
+//					title = secondTryTitle;
+//					success = true;
+//				} // else is handled like discussed with "titleLike"
 				
 			} else {
 				title = tikaTitle;
@@ -502,12 +502,12 @@ public class ConvertPdfXML {
 			Boolean success = false;
 
 			if (pdfbox_title.equals(NO_ENTRY) || (pdfbox_title.length()==0)) {
-				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
+				//String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
 				success = false;
-				if (!pdfbox_title.equals(NO_ENTRY)) {
-					title = secondTryTitle;
-					success = true;
-				} // else is handled like discussed with "titleLike"
+//				if (!pdfbox_title.equals(NO_ENTRY)) {
+//					title = secondTryTitle;
+//					success = true;
+//				} // else is handled like discussed with "titleLike"
 			
 			} else {
 				title = pdfbox_title;
