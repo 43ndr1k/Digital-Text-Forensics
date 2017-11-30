@@ -1,5 +1,6 @@
 package de.uni_leipzig.digital_text_forensics.preprocessing;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -27,7 +28,6 @@ import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.pdf.PDFParser;
 import org.apache.tika.sax.BodyContentHandler;
 
-import org.w3c.dom.CDATASection;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -217,7 +217,7 @@ public class ConvertPdfXML {
 	 * @param file
 	 * @return
 	 */
-	private String getFieldDocearStyle(File file) {
+	private String getFieldDocearStyle(File file)  {
 		boolean empty = true;
 		StringBuilder sb = new StringBuilder();
 		PdfDataExtractor extractor = new PdfDataExtractor(file);
@@ -238,11 +238,9 @@ public class ConvertPdfXML {
 			catch (IOException e) {
 				sb.append(NO_ENTRY);
 			}
-			catch (de.intarsys.pdf.cos.COSSwapException e){
-				sb.append(NO_ENTRY);
-			}
 		}
 		finally {
+
 			extractor.close();
 			extractor = null;
 		}

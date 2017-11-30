@@ -1,7 +1,5 @@
 package de.uni_leipzig.digital_text_forensics.dto;
 
-import java.io.File;
-import java.nio.file.Paths;
 import de.uni_leipzig.digital_text_forensics.controller.RedirectController;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
