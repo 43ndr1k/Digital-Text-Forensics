@@ -7,7 +7,13 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import de.uni_leipzig.digital_text_forensics.preprocessing.Article;
 
-
+/**
+* ArticleHandler
+* <p> Handler for Article XML-Files.
+*  
+* @author Tobias Wenzel
+* 
+*/
 public class ArticleHandler extends DefaultHandler {
 
     private Article article= null;

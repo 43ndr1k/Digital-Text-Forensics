@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.preprocessing;
 
 import java.io.BufferedReader;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -12,6 +13,13 @@ import java.net.URL;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+/**
+* DBLPDataAccessor
+* <p> Interface to DBLP-API
+*  
+* @author Tobias Wenzel
+* 
+*/
 public class DBLPDataAccessor {
 	private String basePubUrl = "http://dblp.org/search/publ/api?q=";
 	
@@ -47,7 +55,7 @@ public class DBLPDataAccessor {
 		return sb.toString();
 	}
 	
-	/** call dplb-api to get an article object
+	/** <p> Calls DBLP-API to get an article object with Information.
 	 * @param pubQuery
 	 * @return Article
 	 */

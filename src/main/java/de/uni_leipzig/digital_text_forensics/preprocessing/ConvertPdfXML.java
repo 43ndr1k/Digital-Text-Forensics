@@ -1,6 +1,6 @@
 package de.uni_leipzig.digital_text_forensics.preprocessing;
 
-import java.io.Closeable;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -40,14 +40,18 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.lucene.analysis.en.PorterStemFilter;
-//import org.docear.pdf.PdfDataExtractor;
-
-
 import de.uni_leipzig.digital_text_forensics.preprocessing.MyNameGetter;
 import opennlp.tools.stemmer.PorterStemmer;
 import opennlp.tools.tokenize.SimpleTokenizer;
 
+/**
+* ConvertPdfXML
+* <p> Converts Pdf-Files to XML-Files and provides an Interface
+* to load XML-Files into Article-Objects (see Article.java).
+*  
+* @author Tobias Wenzel
+* 
+*/
 public class ConvertPdfXML {
 	
 	private DocumentBuilderFactory docFactory;
@@ -62,13 +66,23 @@ public class ConvertPdfXML {
 	static String BLOCK_WORDS[] = {".pdf",".doc",".dvi","title","Chapter","rights reserved","Article", "http"};
 	public String outputPath;
 	
+	/** <b> Constructor </b>
+	 * 
+	 * <p> It shouldn't be necessary to set the Output-Path since it's always the same.
+	 * Never the less it's possible for testing purposes.
+	 * @param outputPath
+	 */
 	public ConvertPdfXML(String outputPath) {
+		if (outputPath==null)
+			this.outputPath = "xmlFiles";
 		this.outputPath = outputPath;
 	}
-	/**
+	
+	/** <p> Method to check if a given field field doesn't contain a set of tokens like
+	 * links and has minimum length.
 	 * 
 	 * @param field_string
-	 * @return
+	 * @return cleaned Field as String
 	 */
 	private String clean_field(String field_string){
 		String new_title = null;
@@ -97,11 +111,11 @@ public class ConvertPdfXML {
 		
 	}
 	
-	/** extracts first page and runs a NE-recognition. 
-	 *  with pdfbox
+	/** <p> Extracts the first page of a Doc and runs a NE-recognition. 
+	 *  with <b>pdfbox</b>
 	 * @param stripper to extract first page of doc
-	 * @param doc 
-	 * @return String authors
+	 * @param doc with actual data
+	 * @return String containing authors
 	 * @throws IOException 
 	 */
 	private String extractAuthors(PDFTextStripper stripper, PDDocument doc) throws IOException{
@@ -123,7 +137,6 @@ public class ConvertPdfXML {
 				} else {
 					return StringUtils.join(myNames, ", ");
 				}
-				
 			}
 
 		} catch (IOException e) {
@@ -135,9 +148,9 @@ public class ConvertPdfXML {
 
 }
 	
-	/**
+	/** <p> Writes Article Object to XML-File.
 	 * 
-	 * @param doc
+	 * @param article with Data
 	 * @param outputFile
 	 */
 	public void writeToXML(Article article, String outputFile) {
@@ -248,8 +261,8 @@ public class ConvertPdfXML {
 //	}
 	
 
-	/**extracts first page and runs a NE-recognition. 
-	 * => tika
+	/** Extracts first page and runs a NE-recognition. 
+	 * => <b>tika</b>
 	 * 
 	 * @param handler
 	 * @return
@@ -284,14 +297,12 @@ public class ConvertPdfXML {
 	}
 	
 	/** Converts PDF file to XML-data
-	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
+	 *  <li> First try to extract meta-data with <b>pdfbox</b>. If this fails use name-entity-recognition
 	 *  and similar methods.
-	 *  - writing in writeToXML
+	 *  <li> writing in writeToXML
 	 *  
-	 *  TODO: take result with highest score. (DBLP)
-	 * 
 	 * @param file
-	 * @param docId
+	 * @param docId as dummy-data. Can also be real docid. 
 	 * @throws IOException
 	 */
 	public void runWithTika(File file, int docId) throws IOException{
@@ -302,17 +313,13 @@ public class ConvertPdfXML {
         String parseTime = now.format(formatter);
         
 		try { 
-
 			String originalFilename = file.getName();
 			String outputFileName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
 			String outputFilePath = this.outputPath+ outputFileName;			
 			String title = null;
 			String author = null;
 			String pubDateString = null;
-			
-			/*--------------------------------------------------------
-			 * get doc with tika
-			 *--------------------------------------------------------*/
+
 		      BodyContentHandler handler = new BodyContentHandler(-1);  // -1 ~ disable limit
 		      Metadata metadata = new Metadata();
 		      FileInputStream inputstream = new FileInputStream(file);
@@ -327,7 +334,6 @@ public class ConvertPdfXML {
 				e.printStackTrace();
 			}
 
-			
 			/*----------------------------------------------
 			 * get & set the title
 			 *----------------------------------------------*/
@@ -375,7 +381,6 @@ public class ConvertPdfXML {
 				/*----------------------------------------------
 				 * if there aren't any results:
 				 *----------------------------------------------*/
-				 
 				String first_try_author = clean_field(metadata.get("Author"));
 				if (first_try_author.equals(NO_ENTRY)
 						|| (first_try_author.length()==0)) {
@@ -439,32 +444,34 @@ public class ConvertPdfXML {
 		}
 	} // end of run-tika-function
 	
-	/** to add stemmed words to fulltext or seperate tag.
+	/** This Method stems words of the fulltext of a given Document.
+	 * Probably better with List! Could also return List/Set.
 	 * 
 	 * @param handler
-	 * @return
+	 * @return joined String with stemmed words.
 	 */
 	private String getDistinctStemmedWords(BodyContentHandler handler) {
 		 SimpleTokenizer simpleTokenizer = SimpleTokenizer.INSTANCE;  
 	     String tokens[] = simpleTokenizer.tokenize(handler.toString());  
 		PorterStemmer pt = new PorterStemmer();
 		Set<String> stemmedTokens = new HashSet<String>();
+		//List<String> stemmedTokens = new List<Sting>;
 		for (String token : tokens) {
 			// only take the set of stemmed words 
 			// don't take numbers, signs etc.
 			stemmedTokens.add(pt.stem(token));
 		}
-		 
 		return  String.join(" ", stemmedTokens);
 	}
-	/** Converts PDF file to XML-data
-	 *  - First try to extract meta-data with pdfbox. If this fails use name-entity-recognition
+	
+	/** <p>Converts PDF file to XML-data
+	 *  <li> First try to extract meta-data with <b>pdfbox</b>. If this fails use name-entity-recognition
 	 *  and similar methods.
-	 *  - writing in writeToXML
-	 *  TODO: take result with highest score. (DBLP)
+	 *  <li> writing in writeToXML
+	 *  
 	 *  
 	 * @param file
-	 * @param id
+	 * @param id as dummy-data. Can also be real docid. 
 	 */
 	public void run(File file, int id) throws IOException{
 		DBLPDataAccessor da = new DBLPDataAccessor();
@@ -617,11 +624,12 @@ public class ConvertPdfXML {
 
 	} // end of function
 	
-	/** There are some characters which should not occur in a cdata section
+	/** <p>There are some characters which should not occur in a cdata section
 	 *  these are filtered out in this function. Probably there is a more efficient
-	 *  solution.
-	 *  http://blog.mark-mclaren.info/2007/02/invalid-xml-characters-when-valid-utf8_5873.html
-	 * @param in
+	 *  solution. <br> 
+	 *  Copied from {@link http://blog.mark-mclaren.info/2007/02/invalid-xml-characters-when-valid-utf8_5873.html}
+	 * 
+	 * @param in String with Text to be cleaned.
 	 * @return
 	 */
 	public String stripNonValidXMLCharacters(String in) {
@@ -643,12 +651,12 @@ public class ConvertPdfXML {
 	}  
 	
 	/**
-	 * gets the index created in the indexing process and corresponding file,
+	 * <p> Gets the index created in the indexing process and corresponding file,
 	 * i.e. xmlFiles/document.xml. then
-	 * 1) read xml with sax-parser -> maybe i can do this without building a
+	 * <li> read xml with sax-parser -> maybe i can do this without building a
 	 * new xml-file. 
-	 * 2) alter doi 
-	 * 3) write doc back.
+	 * <li> alter doi 
+	 * <li> write doc back.
 	 * 
 	 * 
 	 * @param docId
@@ -661,10 +669,10 @@ public class ConvertPdfXML {
 		
 	} // end of insertIndexerDOCID
 	
-	/**
+	/** Reads XML-Data with Sax-Parser.
 	 * 
 	 * @param file
-	 * @return
+	 * @return Article Object
 	 */
 	public Article getArticleFromXML (File file){
 		Article article = null;
