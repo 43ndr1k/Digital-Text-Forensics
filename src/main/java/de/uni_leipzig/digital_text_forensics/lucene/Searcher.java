@@ -134,7 +134,8 @@ public class Searcher {
 			String content = document.get("contents");
 			TokenStream tokenStream = TokenSources.getAnyTokenStream(indexReader,
 					docId, "contents", document, new StandardAnalyzer());
-			snippet = highlighter.getBestFragment(tokenStream, content);
+			//snippet = highlighter.getBestFragment(tokenStream, content); 
+			snippet = highlighter.getBestFragment(analyzer, "contents", content); 
 			//System.out.println(fragment);
 		}
 		catch (IOException e) {
