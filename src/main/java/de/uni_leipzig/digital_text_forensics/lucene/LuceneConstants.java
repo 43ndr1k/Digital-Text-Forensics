@@ -9,4 +9,9 @@ public class LuceneConstants {
 	   public static final String AUTHOR = "author";
 	   public static final String PUBLICATION_DATE = "date";
 	   public static final String ABSTRACT = "abstract";
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> develop
 	}

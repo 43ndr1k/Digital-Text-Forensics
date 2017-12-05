@@ -2,6 +2,12 @@ package de.uni_leipzig.digital_text_forensics;
 
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
+import java.io.IOException;
+import java.nio.file.Paths;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.search.spell.Dictionary;
+import org.apache.lucene.search.suggest.DocumentDictionary;
+import org.apache.lucene.store.FSDirectory;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,6 +44,12 @@ public class config {
 	@Bean
 	public static SessionRepository<?> sessionStore() {
 		return new MapSessionRepository();
+	}
+
+	@Bean
+	public static Dictionary dictionary() throws IOException {
+		return new DocumentDictionary(DirectoryReader.open(FSDirectory.open(Paths.get("LuceneIndex"))), "filename",
+				"filename");
 	}
 
 }

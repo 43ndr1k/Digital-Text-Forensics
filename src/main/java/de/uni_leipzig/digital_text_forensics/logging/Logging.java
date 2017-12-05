@@ -1,16 +1,8 @@
 package de.uni_leipzig.digital_text_forensics.logging;
 
-import de.uni_leipzig.digital_text_forensics.model.LoggingDocument;
-import de.uni_leipzig.digital_text_forensics.model.Query;
-import de.uni_leipzig.digital_text_forensics.model.UserLog;
 import de.uni_leipzig.digital_text_forensics.service.LoggingDoc.LoggingDocService;
 import de.uni_leipzig.digital_text_forensics.service.UserLogging.UserLoggingService;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -21,9 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.ModelAndView;
-import org.springframework.web.servlet.view.RedirectView;
 
 @Aspect
 @Component
@@ -58,12 +48,12 @@ public class Logging {
 		return ret;
 	}
 
-	@Around("@annotation(org.springframework.web.bind.annotation.RequestMapping)"
-			+ "&& execution(* de.uni_leipzig.digital_text_forensics.controller.RedirectController..*(..))")
+/*	@Around("@annotation(org.springframework.web.bind.annotation.RequestMapping)"
+			+ "&& execution(* de.uni_leipzig.digital_text_forensics.controller.RedirectController.getFile*(..))")
 	public Object logRedirects(ProceedingJoinPoint thisJointPoint) throws Throwable {
 		Object ret = thisJointPoint.proceed();
 
-		if (!(ret instanceof RedirectView)) {
+		if (!(ret instanceof StreamingResponseBody)) {
 			throw new RuntimeException(
 					"This aspect is expected to be woven around redirect methods which return instances of RedirectView.");
 		}
@@ -71,7 +61,7 @@ public class Logging {
 		String clientId = RequestContextHolder.currentRequestAttributes().getSessionId();
 		String comesFrom = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest()
 				.getHeader("referer").trim().toString();
-		String goTo = ((RedirectView) ret).getUrl();
+		String goTo = thisJointPoint.getArgs()[2].toString();
 
 		LOGGER.info(
 				"A user identified by '{}' is redirected due to a call to '{}' with arguments {} to the url '{}'. The user comes from '{}'.",
@@ -102,8 +92,9 @@ public class Logging {
 	}
 
 	private LoggingDocument mapArgsToLoggingDoc(Object[] args, UserLog userLog) {
-		return new LoggingDocument(new Long(args[0].toString()), args[2].toString(), new Query(args[1].toString()),
+		return new LoggingDocument(new Long(args[0].toString()), args[2].toString(),
+				new Query(args[1].toString().toLowerCase()),
 				userLog);
-	}
+	}*/
 
 }
