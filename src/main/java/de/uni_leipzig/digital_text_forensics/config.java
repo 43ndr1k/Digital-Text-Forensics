@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_text_forensics;
 
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
+import de.uni_leipzig.digital_text_forensics.lucene.LuceneConstants;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -48,8 +49,9 @@ public class config {
 
 	@Bean
 	public static Dictionary dictionary() throws IOException {
-		return new DocumentDictionary(DirectoryReader.open(FSDirectory.open(Paths.get("LuceneIndex"))), "title",
-				"title");
+		return new DocumentDictionary(DirectoryReader.open(FSDirectory.open(Paths.get("LuceneIndex"))),
+				LuceneConstants.TITLE,
+				LuceneConstants.TITLE);
 	}
 
 }
