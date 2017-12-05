@@ -42,8 +42,8 @@ public class Searcher {
 	private final int RESULT_COUNT = 30;
 
 	private IndexSearcher searcher = null;
-    public static final String[] PRE_TAGS = new String[]{""};
-    public static final String[] POST_TAGS = new String[]{""};
+	public static final String[] PRE_TAGS = new String[] { "" };
+	public static final String[] POST_TAGS = new String[] { "" };
 
 	public List<SearchResult> search(String query) throws IOException, ParseException {
 		IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths
@@ -72,9 +72,15 @@ public class Searcher {
 					SearchResult searchResult = null;
 
 					try {
-						searchResult = new SearchResult(query, new Long(topDoc.doc),
-								searcher.doc(topDoc.doc).get("filename"),
-								getSnippet(topDoc.doc, query), new Link(searcher.doc(topDoc.doc).get("path")));
+						searchResult = new SearchResult(
+								query,
+								new Long(topDoc.doc),
+								searcher.doc(topDoc.doc).get(LuceneConstants.TITLE),
+								searcher.doc(topDoc.doc).get(LuceneConstants.AUTHOR),
+								searcher.doc(topDoc.doc).get(LuceneConstants.FILE_NAME),
+								searcher.doc(topDoc.doc).get(LuceneConstants.PUBLICATION_DATE),
+								getSnippet(topDoc.doc, query),
+								new Link(searcher.doc(topDoc.doc).get(LuceneConstants.FILE_PATH)));
 					}
 					catch (IOException e) {
 						e.printStackTrace();
@@ -103,8 +109,8 @@ public class Searcher {
 
 	private String getSnippet(int docId, String queryString) {
 
-	    long startTime, stopTime;//TEST
-	    startTime = System.currentTimeMillis();//TEST
+		long startTime, stopTime;//TEST
+		startTime = System.currentTimeMillis();//TEST
 		Query query = null;
 		try {
 			query = new QueryParser("contents", analyzer).parse(queryString);
@@ -140,41 +146,42 @@ public class Searcher {
 			e.printStackTrace();
 		}
 		stopTime = System.currentTimeMillis(); //TEST
-		System.out.println(stopTime-startTime);//TEST
+		System.out.println(stopTime - startTime);//TEST
 		return snippet;
 	}
-	
-	private String getSnippet2(int docId, String queryString) { 
-	  
-	  long startTime, stopTime;//TEST
-	  startTime = System.currentTimeMillis();//TEST
-	  Query query = null;
-      try {
-          query = new QueryParser("contents", analyzer).parse(queryString);
-      }
-      catch (ParseException e1) {
-          // TODO Auto-generated catch block
-          e1.printStackTrace();
-      }
-	  FastVectorHighlighter highlighter = makeHighlighter();//new FastVectorHighlighter();
-      FieldQuery fieldQuery = highlighter.getFieldQuery(query);
-      
-      String snippet = null;
-      try {
-        snippet = highlighter.getBestFragment(fieldQuery, searcher.getIndexReader(), docId, "contents", 10000);
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-      stopTime = System.currentTimeMillis(); //TEST
-      System.out.println(stopTime-startTime);//TEST      
-	  return snippet;
-	  }
-	
-    private FastVectorHighlighter makeHighlighter() {
-      FragListBuilder fragListBuilder = new SimpleFragListBuilder(200);
-      FragmentsBuilder fragmentBuilder = new SimpleFragmentsBuilder(PRE_TAGS, POST_TAGS);
-      return new FastVectorHighlighter(true, true, fragListBuilder, fragmentBuilder);
-  }
+
+	private String getSnippet2(int docId, String queryString) {
+
+		long startTime, stopTime;//TEST
+		startTime = System.currentTimeMillis();//TEST
+		Query query = null;
+		try {
+			query = new QueryParser("contents", analyzer).parse(queryString);
+		}
+		catch (ParseException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		FastVectorHighlighter highlighter = makeHighlighter();//new FastVectorHighlighter();
+		FieldQuery fieldQuery = highlighter.getFieldQuery(query);
+
+		String snippet = null;
+		try {
+			snippet = highlighter.getBestFragment(fieldQuery, searcher.getIndexReader(), docId, "contents", 10000);
+		}
+		catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		stopTime = System.currentTimeMillis(); //TEST
+		System.out.println(stopTime - startTime);//TEST
+		return snippet;
+	}
+
+	private FastVectorHighlighter makeHighlighter() {
+		FragListBuilder fragListBuilder = new SimpleFragListBuilder(200);
+		FragmentsBuilder fragmentBuilder = new SimpleFragmentsBuilder(PRE_TAGS, POST_TAGS);
+		return new FastVectorHighlighter(true, true, fragListBuilder, fragmentBuilder);
+	}
 
 }

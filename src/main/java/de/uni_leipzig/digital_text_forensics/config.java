@@ -48,8 +48,8 @@ public class config {
 
 	@Bean
 	public static Dictionary dictionary() throws IOException {
-		return new DocumentDictionary(DirectoryReader.open(FSDirectory.open(Paths.get("LuceneIndex"))), "filename",
-				"filename");
+		return new DocumentDictionary(DirectoryReader.open(FSDirectory.open(Paths.get("LuceneIndex"))), "title",
+				"title");
 	}
 
 }

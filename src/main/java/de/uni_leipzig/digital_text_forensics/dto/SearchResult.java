@@ -8,8 +8,10 @@ import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 public class SearchResult {
 
 	private Long docId;
-
 	private String title;
+	private String author;
+	private String date;
+	private String fileName;
 
 	private String snippet;
 
@@ -26,10 +28,46 @@ public class SearchResult {
 		this.snippet = snippet;
 		this.webUrl = createLink(docId, query);
 		this.docUrl = docUrl;
+	}
 
+	public SearchResult(String query, Long docId, String title, String author, String fileName, String date,
+			String snippet, Link docUrl) {
+		this.query = query;
+		this.docId = docId;
+		this.title = title;
+		this.snippet = snippet;
+		this.webUrl = createLink(docId, query);
+		this.docUrl = docUrl;
+		this.author = author;
+		this.date = date;
+		this.fileName = fileName;
 	}
 
 	public SearchResult() {
+	}
+
+	public String getAuthor() {
+		return author;
+	}
+
+	public void setAuthor(String author) {
+		this.author = author;
+	}
+
+	public String getDate() {
+		return date;
+	}
+
+	public void setDate(String date) {
+		this.date = date;
+	}
+
+	public String getFileName() {
+		return fileName;
+	}
+
+	public void setFileName(String fileName) {
+		this.fileName = fileName;
 	}
 
 	public Long getDocId() {
