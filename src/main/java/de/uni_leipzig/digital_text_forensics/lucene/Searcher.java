@@ -51,7 +51,7 @@ public class Searcher {
 		searcher = new IndexSearcher(reader);
 		TopScoreDocCollector collector = TopScoreDocCollector.create(RESULT_COUNT);
 
-		Query q = new QueryParser("contents", analyzer).parse(query);
+		Query q = new QueryParser(LuceneConstants.CONTENTS, analyzer).parse(query);
 		searcher.search(q, collector);
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
