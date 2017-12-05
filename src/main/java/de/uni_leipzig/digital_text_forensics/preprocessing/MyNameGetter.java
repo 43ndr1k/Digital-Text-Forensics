@@ -12,11 +12,17 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+* MyNameGetter
+* <p> Uses NE-Recognition to extract Authors.
+*  
+* @author Tobias Wenzel
+* 
+*/
 public class MyNameGetter {
 	String ner_file = "src/main/resources/preprocessing/en-ner-person.bin";
 	String token_file = "src/main/resources/preprocessing/en-token.bin";
 
-	
 	/**
 	 * 
 	 * @param paragraph
@@ -38,11 +44,8 @@ public class MyNameGetter {
 			 } catch (java.lang.ArrayIndexOutOfBoundsException e) {
 		    	  myNames.add(tokens[s.getStart()]);
 			 }
-	    	  
 	      }
 	      return myNames;
-	      
-	      
 		}
 	/**
 	 * 
@@ -51,7 +54,6 @@ public class MyNameGetter {
 	 * @throws IOException
 	 */
 	 public String[] tokenize(String sentence) throws IOException{
-
 		 InputStream inputStreamTokenizer = new FileInputStream(token_file);
 		 TokenizerModel tokenModel = new TokenizerModel(inputStreamTokenizer);
 		 TokenizerME tokenizer = new TokenizerME(tokenModel);

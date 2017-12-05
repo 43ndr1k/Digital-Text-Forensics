@@ -74,7 +74,7 @@ public class Searcher {
 					try {
 						searchResult = new SearchResult(query, new Long(topDoc.doc),
 								searcher.doc(topDoc.doc).get("filename"),
-								getSnippet2(topDoc.doc, query), new Link(searcher.doc(topDoc.doc).get("path")));
+								getSnippet(topDoc.doc, query), new Link(searcher.doc(topDoc.doc).get("path")));
 					}
 					catch (IOException e) {
 						e.printStackTrace();

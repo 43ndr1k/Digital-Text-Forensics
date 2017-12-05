@@ -3,13 +3,23 @@ package de.uni_leipzig.digital_text_forensics.preprocessing;
 import java.io.File;
 import java.io.IOException;
 
-
+/**
+* ConvertPdfXMLTester Model
+* <p> To run preprocessing.
+*  
+* @author Tobias Wenzel
+* 
+*/
 public class ConvertPdfXMLTester {
 	static String dataDirPath =  "pdfDocs/";
 	static String xmlFilePath = "xmlFiles/"; // possible error
 	
 	/**
+	 * <p> Function can be called to walk through a given Directory and convert
+	 * Pdf-Files to XML-Files. If a File is already existing, skip it.
+	 * @todo check if parseDate is older then expected (?)
 	 * 
+	 * @throws IOException
 	 */
 	public static void runPreproccessing() throws IOException {
 		File[] files = new File(dataDirPath).listFiles();
@@ -49,7 +59,7 @@ public class ConvertPdfXMLTester {
 	}
 	
 	/**
-	 * Can be used to modify xml data
+	 * Can be used to modify XML data
 	 */
 	public static void fixNames() {
 

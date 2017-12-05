@@ -9,6 +9,9 @@ public class LuceneConstants {
 	   public static final String AUTHOR = "author";
 	   public static final String PUBLICATION_DATE = "date";
 	   public static final String ABSTRACT = "abstract";
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 3db8598b358bbc1580b4892cd3b812f68cfb35f9
 	}
