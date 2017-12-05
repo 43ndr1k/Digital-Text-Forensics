@@ -74,7 +74,7 @@ public class Searcher {
 					try {
 						searchResult = new SearchResult(
 								query,
-								new Long(topDoc.doc),
+								(long) topDoc.doc,
 								searcher.doc(topDoc.doc).get(LuceneConstants.TITLE),
 								searcher.doc(topDoc.doc).get(LuceneConstants.AUTHOR),
 								searcher.doc(topDoc.doc).get(LuceneConstants.FILE_NAME),
@@ -98,8 +98,9 @@ public class Searcher {
 
 	public SearchResult getDocument(Long docId, String query) {
 		try {
-			return new SearchResult(query, docId, searcher.doc(docId.intValue()).get("filename"),
-					getSnippet(docId.intValue(), query), new Link(searcher.doc(docId.intValue()).get("path")));
+			return new SearchResult(query, docId, searcher.doc(docId.intValue()).get(LuceneConstants.FILE_NAME),
+					getSnippet(docId.intValue(), query),
+					new Link(searcher.doc(docId.intValue()).get(LuceneConstants.FILE_PATH)));
 		}
 		catch (IOException e) {
 			e.printStackTrace();

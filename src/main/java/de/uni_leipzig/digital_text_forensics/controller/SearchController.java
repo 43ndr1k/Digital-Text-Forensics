@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -52,8 +53,20 @@ public class SearchController {
 		injectPaginationLinks(searchResultPage);*/
 
 		List<SearchResult> searchResultList;
+
 		try {
 			searchResultList = searcher.search(query.toLowerCase());
+
+/*			SearchResult searchResult = new SearchResult(
+					query,
+					1L,
+					"title",
+					"autor",
+					"flilename",
+					"date1",
+					"snipp",
+					new Link("link"));
+			searchResultList.add(searchResult);*/
 			List<SearchResult> split = pager.split(searchResultList, currentPage);
 			searchResultPage.setTotalResults(searchResultList.size());
 			searchResultPage.setResultsOnPage(split);
