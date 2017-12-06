@@ -13,7 +13,7 @@ public class DocQueryServiceImpl implements DocQueryService {
 	DocQueryDao docQueryDao;
 
 	@Override
-	public List<Query> findByQueryStartingWith(String query) {
-		return docQueryDao.findDistinctTop5ByQueryStartsWith(query);
+	public List<String> findByQueryStartingWith(String query) {
+		return docQueryDao.findQuerysStartsWith(query);
 	}
 }

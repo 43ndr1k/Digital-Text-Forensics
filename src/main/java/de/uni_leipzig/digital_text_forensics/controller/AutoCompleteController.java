@@ -32,11 +32,11 @@ public class AutoCompleteController {
 			@RequestParam(defaultValue = "")
 					String query) throws IOException {
 
-		List<Query> list1 = docQueryService.findByQueryStartingWith(query);
+		List<String> list = docQueryService.findByQueryStartingWith(query);
 
-		List<String> list = list1.stream().map(query1 -> {
+/*		List<String> list = list1.stream().map(query1 -> {
 			return query1.getQuery().trim();
-		}).collect(Collectors.toList());
+		}).collect(Collectors.toList());*/
 		List<LookupResult> ret = fuzzySuggester.lookup(query.toLowerCase(), Boolean.FALSE, 5);
 
 		list.addAll(ret.stream()

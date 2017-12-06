@@ -5,6 +5,6 @@ import java.util.List;
 
 public interface DocQueryService {
 
-	List<Query> findByQueryStartingWith(String query);
+	List<String> findByQueryStartingWith(String query);
 
 }
