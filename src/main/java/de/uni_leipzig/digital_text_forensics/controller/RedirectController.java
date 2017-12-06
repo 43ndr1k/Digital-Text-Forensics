@@ -89,9 +89,11 @@ public class RedirectController {
 
 		HttpHeaders headers = new HttpHeaders();
 		SearchResult searchResult = searcher.getDocument(docId, query);
-		String url = searchResult.getDocUrl().getHref().substring(15, searchResult.getDocUrl().getHref().length() - 4);
-		url = "pdfDocs/" + url + ".pdf";
+		
+		String url = "pdfDocs/" + searchResult.getDocUrl().getHref()
+				.substring(8, searchResult.getDocUrl().getHref().length() - 3) + "pdf";
 
+		
 		File file = new File(url);
 		if (!file.exists()) {
 			return ResponseEntity.status(301).location(
