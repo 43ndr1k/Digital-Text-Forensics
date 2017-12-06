@@ -64,7 +64,7 @@ public class SearchController {
 					"autor",
 					"flilename",
 					"date1",
-					"snipp",
+					"hhhhhhhhhhhhhhfhfhdfggdgdgdgdgrdgggggggggggggggggggggggggggggggggggggggggggggggggggggggggdgdgrrjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjh hhhhhhhhhhhhhfhfhdfggdgd gdgdgrdgggggggggggggggggggggggggggggggggggggggggggggggggggggg gggdgdgrrjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
 					new Link("link"));
 			searchResultList.add(searchResult);*/
 			List<SearchResult> split = pager.split(searchResultList, currentPage);
