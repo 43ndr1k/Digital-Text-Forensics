@@ -3,4 +3,4 @@
 ## Spring-Boot Config
 
 ##Perl 5 required
-##tested vor Perl v5.12.3
+##tested for Perl v5.12.3
