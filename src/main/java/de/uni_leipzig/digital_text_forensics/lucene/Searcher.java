@@ -14,6 +14,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -58,7 +59,11 @@ public class Searcher {
 		TopScoreDocCollector collector = TopScoreDocCollector.create(RESULT_COUNT);
 
 		directory = FSDirectory.open(indexFile.toPath());
-		q = new QueryParser(LuceneConstants.CONTENTS, analyzer).parse(query);
+		//q = new QueryParser(LuceneConstants.CONTENTS, analyzer).parse(query);
+		q  = new MultiFieldQueryParser(
+            new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE},
+            analyzer).parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer);
+		
 		searcher.search(q, collector);
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
