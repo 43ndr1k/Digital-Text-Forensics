@@ -18,10 +18,12 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.highlight.Fragmenter;
 import org.apache.lucene.search.highlight.Highlighter;
 import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
 import org.apache.lucene.search.highlight.QueryScorer;
 import org.apache.lucene.search.highlight.SimpleHTMLFormatter;
+import org.apache.lucene.search.highlight.SimpleSpanFragmenter;
 import org.apache.lucene.search.highlight.TokenSources;
 import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
 import org.apache.lucene.search.vectorhighlight.FieldQuery;
@@ -39,6 +41,10 @@ public class Searcher {
 
 	public final String indexLocation = "LuceneIndex";
 	private StandardAnalyzer analyzer = new StandardAnalyzer();
+	private File indexFile = new File(indexLocation);
+	private IndexReader indexReader;
+	private Query q;
+	private Directory directory;
 	private final int RESULT_COUNT = 30;
 
 	private IndexSearcher searcher = null;
@@ -46,12 +52,13 @@ public class Searcher {
 	public static final String[] POST_TAGS = new String[] { "" };
 
 	public List<SearchResult> search(String query) throws IOException, ParseException {
-		IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths
+		indexReader = DirectoryReader.open(FSDirectory.open(Paths
 				.get(indexLocation)));//IndexReader reader = DirectoryReader.open(FSDirectory.open(new File(indexLocation)));
-		searcher = new IndexSearcher(reader);
+		searcher = new IndexSearcher(indexReader);
 		TopScoreDocCollector collector = TopScoreDocCollector.create(RESULT_COUNT);
 
-		Query q = new QueryParser(LuceneConstants.CONTENTS, analyzer).parse(query);
+		directory = FSDirectory.open(indexFile.toPath());
+		q = new QueryParser(LuceneConstants.CONTENTS, analyzer).parse(query);
 		searcher.search(q, collector);
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
@@ -112,32 +119,23 @@ public class Searcher {
 
 		long startTime, stopTime;//TEST
 		startTime = System.currentTimeMillis();//TEST
-		Query query = null;
-		try {
-			query = new QueryParser("contents", analyzer).parse(queryString);
-		}
-		catch (ParseException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+
 		SimpleHTMLFormatter htmlFormatter = new SimpleHTMLFormatter();
-		QueryScorer queryScorer = new QueryScorer(query, "contents");
+		QueryScorer queryScorer = new QueryScorer(q, LuceneConstants.CONTENTS);
 		Highlighter highlighter = new Highlighter(htmlFormatter, queryScorer);
 
-		File indexFile = new File(indexLocation);
-		Directory directory;
-		IndexReader indexReader;
+		Fragmenter fragmenter = new SimpleSpanFragmenter(queryScorer, 400); // set snippet size
+		highlighter.setTextFragmenter(fragmenter);
+		
 		String snippet = null;
 		try {
-			directory = FSDirectory.open(indexFile.toPath());
-			indexReader = DirectoryReader.open(directory);
 			Document document = searcher.doc(docId);// getDocument(scoreDoc.doc);
-			String content = document.get("contents");
+			String content = document.get(LuceneConstants.CONTENTS);
 			TokenStream tokenStream = TokenSources.getAnyTokenStream(indexReader,
-					docId, "contents", document, new StandardAnalyzer());
+					docId, LuceneConstants.CONTENTS, document, new StandardAnalyzer());
 			//snippet = highlighter.getBestFragment(tokenStream, content); 
-			snippet = highlighter.getBestFragment(analyzer, "contents", content);
-			//System.out.println(fragment);
+			snippet = highlighter.getBestFragment(analyzer, LuceneConstants.CONTENTS, content);
+			//System.out.println("SNIPPET: " + snippet);
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -156,16 +154,16 @@ public class Searcher {
 
 		long startTime, stopTime;//TEST
 		startTime = System.currentTimeMillis();//TEST
-		Query query = null;
-		try {
-			query = new QueryParser("contents", analyzer).parse(queryString);
-		}
-		catch (ParseException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+//		Query query = null;
+//		try {
+//			query = new QueryParser("contents", analyzer).parse(queryString);
+//		}
+//		catch (ParseException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		}
 		FastVectorHighlighter highlighter = makeHighlighter();//new FastVectorHighlighter();
-		FieldQuery fieldQuery = highlighter.getFieldQuery(query);
+		FieldQuery fieldQuery = highlighter.getFieldQuery(q);
 
 		String snippet = null;
 		try {
