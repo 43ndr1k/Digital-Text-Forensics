@@ -13,6 +13,11 @@ public class DocQueryDaoImpl implements DocQueryDao {
 	@PersistenceContext
 	private EntityManager entityManager;
 
+	/**
+	 * find queries which starting with query qu.
+	 * @param qu Query String
+	 * @return List<String>
+	 */
 	@Override
 	public List<String> findQuerysStartsWith(String qu) {
 		final Query query = this.entityManager.createQuery(

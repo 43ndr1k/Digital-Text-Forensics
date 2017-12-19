@@ -30,6 +30,12 @@ public class Logging {
 	DateTimeFormatter formatter =
 			DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SS", Locale.GERMANY);
 
+	/**
+	 * Logging the activities from the system.
+	 * @param thisJointPoint
+	 * @return  Object
+	 * @throws Throwable
+	 */
 	@Around("@annotation(org.springframework.web.bind.annotation.RequestMapping) && execution(* *(..))")
 	public Object logExecutionTimeOfRequests(ProceedingJoinPoint thisJointPoint) throws Throwable {
 		long start = System.currentTimeMillis();

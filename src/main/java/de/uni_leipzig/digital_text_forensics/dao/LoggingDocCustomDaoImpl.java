@@ -11,6 +11,11 @@ public class LoggingDocCustomDaoImpl implements LoggingDocCustomDao {
 	@PersistenceContext
 	private EntityManager entityManager;
 
+	/**
+	 * get average time from document with docId x.
+	 * @param docId Long
+	 * @return Double
+	 */
 	@Override
 	public Double getClickTimeByDocId(Long docId) {
 		final Query query = this.entityManager.createQuery(

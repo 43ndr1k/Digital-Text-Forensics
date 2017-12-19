@@ -26,6 +26,12 @@ public class SearchController {
 	@Autowired
 	Pager pager;
 
+	/**
+	 * Searching method
+	 * @param query String
+	 * @param currentPage Long
+	 * @return ModelAndView
+	 */
 	@RequestMapping(method = RequestMethod.GET, path = "/")
 	public ModelAndView searchPage(
 			@RequestParam(defaultValue = "")
@@ -42,31 +48,10 @@ public class SearchController {
 		}
 
 		searchResultPage.setQuery(query);
-
-		//Suchen
-		//TopDocs queryTopDocs;// = searcherComponent.search(originalQuery, topNForSearchResult);
-
-/*		Pair<Integer, List<ScoreDoc>> lastPageNumberAndContent = determineLastPageNumberAndContent(queryTopDocs);
-		searchResultPage.setTotalResults(queryTopDocs.totalHits);
-		searchResultPage.setResultsOnPage(new Pager().mapScoreDocsToSearchResults(lastPageNumberAndContent.getRight()));
-		searchResultPage.setPage(lastPageNumberAndContent.getLeft());
-		injectPaginationLinks(searchResultPage);*/
-
 		List<SearchResult> searchResultList;
 
 		try {
 			searchResultList = searcher.search(query.toLowerCase());
-
-/*			SearchResult searchResult = new SearchResult(
-					query,
-					1L,
-					"title",
-					"autor",
-					"flilename",
-					"date1",
-					"hhhhhhhhhhhhhhfhfhdfggdgdgdgdgrdgggggggggggggggggggggggggggggggggggggggggggggggggggggggggdgdgrrjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjh hhhhhhhhhhhhhfhfhdfggdgd gdgdgrdgggggggggggggggggggggggggggggggggggggggggggggggggggggg gggdgdgrrjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
-					new Link("link"));
-			searchResultList.add(searchResult);*/
 			List<SearchResult> split = pager.split(searchResultList, currentPage);
 			searchResultPage.setTotalResults(searchResultList.size());
 			searchResultPage.setResultsOnPage(split);
@@ -77,17 +62,8 @@ public class SearchController {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-							
-/*		searchResultPage.setTotalResults(15);
-		searchResultPage.setResultsOnPage(searchResultList);
-		searchResultPage.setPage(currentPage);
-
-		injectPaginationLinks(searchResultPage);*/
 
 		modelAndView.addObject("searchResultPage", searchResultPage);
-
-
-
 
 		return modelAndView;
 	}

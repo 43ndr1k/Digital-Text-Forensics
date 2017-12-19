@@ -69,6 +69,11 @@ public class LoggingDocServiceImpl implements LoggingDocService {
 		}
 	}
 
+	/**
+	 * Uopdating the exiting LoggingDocument with click time from the docs.
+	 * @param loggingDocument LoggingDocument
+	 * @return LoggingDocument
+	 */
 	@Override
 	public LoggingDocument updateDocCount(LoggingDocument loggingDocument) {
 		emptyDoc(loggingDocument);

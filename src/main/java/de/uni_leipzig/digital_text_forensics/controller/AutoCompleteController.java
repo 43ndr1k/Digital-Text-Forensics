@@ -27,6 +27,12 @@ public class AutoCompleteController {
 
 	private final FuzzySuggester fuzzySuggester = new FuzzySuggester(new RAMDirectory(), "sadsa", new SimpleAnalyzer());
 
+	/**
+	 * Suggest searching words get method.
+	 * @param query
+	 * @return ResponseEntity
+	 * @throws IOException
+	 */
 	@RequestMapping(method = RequestMethod.GET, path = "/auto-complete", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<List<String>> autoComplete(
 			@RequestParam(defaultValue = "")

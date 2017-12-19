@@ -89,6 +89,12 @@ public class Searcher {
 		return mapDocumentListToSearchResults(Arrays.asList(hits), query);
 	}
 
+	/**
+	 * Mapping from ScoreDoc to SearchResult lists.
+	 * @param docs ScoreDoc List
+	 * @param query String
+	 * @return List of SearchResults
+	 */
 	private List<SearchResult> mapDocumentListToSearchResults(List<ScoreDoc> docs, String query) {
 
 		return docs.stream().map(topDoc -> {
@@ -119,6 +125,12 @@ public class Searcher {
 
 	}
 
+	/**
+	 * Get one search result document
+	 * @param docId Long
+	 * @param query String
+	 * @return SearchResult
+	 */
 	public SearchResult getDocument(Long docId, String query) {
 		try {
 			return new SearchResult(query, docId, searcher.doc(docId.intValue()).get(LuceneConstants.FILE_NAME),

@@ -49,6 +49,10 @@ public class RedirectController {
 	@Autowired
 	UserLoggingService userLoggingService;
 
+	/**
+	 * Not found page
+	 * @return ModelAndView
+	 */
 	@RequestMapping(method = RequestMethod.GET, path = "/not-found")
 	public ModelAndView notFound() {
 		String comesFrom = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest()
@@ -59,24 +63,13 @@ public class RedirectController {
 		return modelAndView;
 	}
 
-/*	@RequestMapping(method = RequestMethod.GET, path = "/url")
-	public RedirectView redirect(
-			@RequestParam
-					Long docId,
-			@RequestParam
-					String query,
-			@RequestParam
-					String title) {
-
-		SearchResult searchResult = searcher.getDocument(docId, query);
-
-		//response.setContentType("application/pdf");
-
-		String url = searchResult.getDocUrl().getHref().substring(15, searchResult.getDocUrl().getHref().length() - 4);
-
-		return new RedirectView("/pdf?file=" + url);
-	}*/
-
+	/**
+	 * Get Pdf file.
+	 * @param docId Long
+	 * @param query String
+	 * @return ResponseEntity with pdf Stream
+	 * @throws IOException
+	 */
 	@RequestMapping(value = "/pdf", method = RequestMethod.GET)
 	public ResponseEntity<?> getFile(
 /*			@RequestParam("file")
@@ -122,6 +115,14 @@ public class RedirectController {
 				new InputStreamResource(inputStream), headers, HttpStatus.OK);
 	}
 
+	/**
+	 * Logging the user activities.
+	 * @param docId Long
+	 * @param query String
+	 * @param title String
+	 * @param goTo String
+	 * @return ResponseEntity
+	 */
 	private ResponseEntity logging(Long docId, String query, String title, String goTo) {
 
 		String clientId = RequestContextHolder.currentRequestAttributes().getSessionId();

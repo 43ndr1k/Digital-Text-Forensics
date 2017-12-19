@@ -15,6 +15,12 @@ public class Pager {
 
 	public static final int RESULTS_PER_PAGE = 10;
 
+	/**
+	 * Split the ResultList to pages
+	 * @param searchDocList List<SearchResult>
+	 * @param currentPage int
+	 * @return List<SearchResult>
+	 */
 	public List<SearchResult> split(List<SearchResult> searchDocList, int currentPage) {
 		if (searchDocList == null || searchDocList.size() == 0) {
 			return new ArrayList<>();
@@ -41,6 +47,7 @@ public class Pager {
 	}
 
 	/**
+	 * Create PaginationLinks
 	 * @Autor Maik Fröbe
 	 */
 	public static void injectPaginationLinks(SearchResultPage searchResultPage) {
@@ -76,6 +83,13 @@ public class Pager {
 		}
 	}
 
+	/**
+	 * Creatig Links for namedPaginationLinks
+	 * @param startInclusive int
+	 * @param endExclusive int
+	 * @param searchResultPage SearchResultPage
+	 * @return List<Link>
+	 */
 	private static List<Link> namedPaginationLinksInRange(int startInclusive, int endExclusive,
 			SearchResultPage searchResultPage) {
 		return IntStream.range(startInclusive, endExclusive)
