@@ -1,5 +1,6 @@
 package de.uni_leipzig.digital_text_forensics.service.LoggingDoc;
 
+import de.uni_leipzig.digital_text_forensics.dao.LoggingDocCustomDao;
 import de.uni_leipzig.digital_text_forensics.dao.LoggingDocDao;
 import de.uni_leipzig.digital_text_forensics.model.LoggingDocument;
 import de.uni_leipzig.digital_text_forensics.model.Query;
@@ -12,6 +13,9 @@ public class LoggingDocServiceImpl implements LoggingDocService {
 
 	@Autowired
 	LoggingDocDao loggingDocDao;
+
+	@Autowired
+	LoggingDocCustomDao loggingDocCustomDao;
 
 	private void emptyId(Long id) {
 		if (id == null) {
@@ -88,6 +92,19 @@ public class LoggingDocServiceImpl implements LoggingDocService {
 			loggingDocument.setClickCount(1L);
 			return loggingDocDao.save(loggingDocument);
 		}
+	}
+
+	@Override
+	public Long getClickCountAndFindByDocId(Long id) {
+		emptyId(id);
+		return findByDocId(id).getClickCount();
+	}
+
+	@Override
+	public Double getClickTimeByDocId(Long id) {
+		emptyId(id);
+		return loggingDocCustomDao.getClickTimeByDocId(id);
+
 	}
 
 }

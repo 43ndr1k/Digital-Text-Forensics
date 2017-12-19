@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.lucene;
 
 import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
+import de.uni_leipzig.digital_text_forensics.service.LoggingDoc.LoggingDocService;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -34,11 +35,21 @@ import org.apache.lucene.search.vectorhighlight.SimpleFragListBuilder;
 import org.apache.lucene.search.vectorhighlight.SimpleFragmentsBuilder;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Component;
 
 @Component
 public class Searcher {
+
+	@Autowired
+	LoggingDocService loggingDocService;
+
+
+	/**
+	 * Long clicks = loggingDocService.getClickTimeByDocId(docId); -> Die durchnittliche Zeit in ms für ein Dokument, gesucht nach der docId
+	 * double time = loggingDocService.getClickCountAndFindByDocId(docId); -> Wie oft wurde insgesamt auf ein Document geklickt, gesucht nach der docId
+	 */
 
 	public final String indexLocation = "LuceneIndex";
 	private StandardAnalyzer analyzer = new StandardAnalyzer();

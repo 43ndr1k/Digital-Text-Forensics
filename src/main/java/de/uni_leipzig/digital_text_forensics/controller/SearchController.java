@@ -86,6 +86,9 @@ public class SearchController {
 
 		modelAndView.addObject("searchResultPage", searchResultPage);
 
+
+
+
 		return modelAndView;
 	}
 
