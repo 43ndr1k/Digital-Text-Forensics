@@ -47,8 +47,8 @@ public class Searcher {
 
 
 	/**
-	 * Long clicks = loggingDocService.getClickTimeByDocId(docId); -> Die durchnittliche Zeit in ms für ein Dokument, gesucht nach der docId
-	 * double time = loggingDocService.getClickCountAndFindByDocId(docId); -> Wie oft wurde insgesamt auf ein Document geklickt, gesucht nach der docId
+	 * double time = loggingDocService.getClickTimeByDocId(docId); -> Die durchnittliche Zeit in ms für ein Dokument, gesucht nach der docId
+	 * Long clicks = loggingDocService.getClickCountAndFindByDocId(docId); -> Wie oft wurde insgesamt auf ein Document geklickt, gesucht nach der docId
 	 */
 
 	public final String indexLocation = "LuceneIndex";
