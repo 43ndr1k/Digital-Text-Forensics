@@ -39,7 +39,7 @@ $(function () {
 
 function __highlight(s, t) {
   var matcher = new RegExp("(" + $.ui.autocomplete.escapeRegex(t) + ")", "ig");
-  return s.replace(matcher, "<strong>" + '$1' + "</strong>");
+  return s.replace(matcher, "<strong> " + '$1 ' + "</strong> ");
 }
 
 /*$('#search').on('change keyup paste mouseup', function () {
