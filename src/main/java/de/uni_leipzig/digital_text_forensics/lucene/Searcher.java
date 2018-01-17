@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.TokenStream;
@@ -56,6 +57,7 @@ public class Searcher {
 	private File indexFile = new File(indexLocation);
 	private IndexReader indexReader;
 	private Query q;
+	private MultiFieldQueryParser multiFieldQueryParser;
 	private Directory directory;
 	private final int RESULT_COUNT = 30;
 
@@ -70,12 +72,13 @@ public class Searcher {
 		TopScoreDocCollector collector = TopScoreDocCollector.create(RESULT_COUNT);
 
 		directory = FSDirectory.open(indexFile.toPath());
-		//q = new QueryParser(LuceneConstants.CONTENTS, analyzer).parse(query);
-		q  = new MultiFieldQueryParser(
-            new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE},
-            analyzer).parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer);
-		
-		searcher.search(q, collector);
+		HashMap<String, Float> boosts = new HashMap<String, Float>();
+        boosts.put(LuceneConstants.CONTENTS, 0.2f);
+        boosts.put(LuceneConstants.TITLE, 0.8f);
+        multiFieldQueryParser = new MultiFieldQueryParser(
+            new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer, boosts);
+        searcher.search(multiFieldQueryParser.parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer), collector);
+        
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
 		// display results
@@ -149,7 +152,13 @@ public class Searcher {
 		startTime = System.currentTimeMillis();//TEST
 
 		SimpleHTMLFormatter htmlFormatter = new SimpleHTMLFormatter();
-		QueryScorer queryScorer = new QueryScorer(q, LuceneConstants.CONTENTS);
+		QueryScorer queryScorer = null;
+		try {
+          queryScorer = new QueryScorer(multiFieldQueryParser.parse(new String[] {queryString, queryString}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer));
+        } catch (ParseException e1) {
+          // TODO Auto-generated catch block
+          e1.printStackTrace();
+        }
 		Highlighter highlighter = new Highlighter(htmlFormatter, queryScorer);
 
 		Fragmenter fragmenter = new SimpleSpanFragmenter(queryScorer, 400); // set snippet size
