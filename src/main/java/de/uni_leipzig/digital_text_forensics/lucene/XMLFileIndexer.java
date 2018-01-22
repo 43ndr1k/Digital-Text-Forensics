@@ -112,7 +112,8 @@ public class XMLFileIndexer {
 	        doc.add(new TextField(LuceneConstants.CONTENTS, article.getFullText() , Field.Store.YES));
 	        doc.add(new TextField(LuceneConstants.FILE_NAME, article.getFileName() , Field.Store.YES));
 	        doc.add(new TextField(LuceneConstants.FILE_PATH, article.getFilePath() , Field.Store.YES));
-
+	        doc.add(new TextField(LuceneConstants.REF_COUNT, article.getScore() , Field.Store.YES));
+	        
 	        writer.addDocument(doc);
 	        System.out.println("Added: " + file);
 	      } catch (Exception e) {
