@@ -83,15 +83,15 @@ public class Searcher {
         //scoring
         double time;
         Long clicks;
-        int refCount;
+        int refCount=0;
         Document d;
         for (int i = 0; i < hits.length; ++i) {
           time = loggingDocService.getClickTimeByDocId(new Long(hits[i].doc));
           d = searcher.doc(hits[1].doc);
           refCount = Integer.parseInt(d.getField(LuceneConstants.REF_COUNT).stringValue()); //numericValue().intValue();
-          //clicks = loggingDocService.getClickCountAndFindByDocId(new Long(hits[i].doc));
-          System.out.println(" Score: " + hits[i].score + " time: " + "refCount: " + refCount);
-          hits[i].score = hits[i].score + (float) time + refCount;
+          clicks = loggingDocService.getClickCountAndFindByDocId(new Long(hits[i].doc));
+          System.out.println(" Score: " + hits[i].score + " time: " + "refCount: " + refCount + "clicks: " + clicks);
+          hits[i].score = hits[i].score + (float) time + refCount + clicks;
           System.out.println("  New score: " + hits[i].score);
         }
 		// display results

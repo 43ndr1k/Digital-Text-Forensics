@@ -102,7 +102,12 @@ public class LoggingDocServiceImpl implements LoggingDocService {
 	@Override
 	public Long getClickCountAndFindByDocId(Long id) {
 		emptyId(id);
-		return findByDocId(id).getClickCount();
+		LoggingDocument loggingDocument = findByDocId(id);
+		long click = 0;
+		if (loggingDocument != null) {
+			click =  loggingDocument.getClickCount();
+		}
+		return click;
 	}
 
 	@Override
