@@ -59,7 +59,7 @@ public class Searcher {
 	private Query q;
 	private MultiFieldQueryParser multiFieldQueryParser;
 	private Directory directory;
-	private final int RESULT_COUNT = 30;
+	private final int RESULT_COUNT = 300;
 
 	private IndexSearcher searcher = null;
 	public static final String[] PRE_TAGS = new String[] { "" };
@@ -90,9 +90,9 @@ public class Searcher {
           d = searcher.doc(hits[1].doc);
           refCount = Integer.parseInt(d.getField(LuceneConstants.REF_COUNT).stringValue()); //numericValue().intValue();
           clicks = loggingDocService.getClickCountAndFindByDocId(new Long(hits[i].doc));
-          System.out.println(" Score: " + hits[i].score + " time: " + "refCount: " + refCount + "clicks: " + clicks);
+          //System.out.println(" Score: " + hits[i].score + " time: " + "refCount: " + refCount + "clicks: " + clicks);
           hits[i].score = hits[i].score + (float) time + refCount + clicks;
-          System.out.println("  New score: " + hits[i].score);
+          //System.out.println("  New score: " + hits[i].score);
         }
 		// display results
 		System.out.println("Found " + hits.length + " hits.");
@@ -196,7 +196,7 @@ public class Searcher {
 			e.printStackTrace();
 		}
 		stopTime = System.currentTimeMillis(); //TEST
-		System.out.println(stopTime - startTime);//TEST
+		//System.out.println(stopTime - startTime);//TEST
 		return snippet;
 	}
 
@@ -224,7 +224,7 @@ public class Searcher {
 			e.printStackTrace();
 		}
 		stopTime = System.currentTimeMillis(); //TEST
-		System.out.println(stopTime - startTime);//TEST
+		//System.out.println(stopTime - startTime);//TEST
 		return snippet;
 	}
 
