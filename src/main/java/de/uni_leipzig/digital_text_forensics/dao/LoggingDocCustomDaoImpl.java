@@ -16,11 +16,12 @@ public class LoggingDocCustomDaoImpl implements LoggingDocCustomDao {
 	 * @param docId Long
 	 * @return Double
 	 */
+	//coalesce(avg(ull.time), 0)
 	@Override
 	public Double getClickTimeByDocId(Long docId) {
 		final Query query = this.entityManager.createQuery(
 
-				"select coalesce(avg(ull.time), 0) "
+				"select avg(ull.time) "
 						+ "from "
 						+ "LoggingDocument ld "
 						+ "join ld.userLogList ull "
@@ -29,7 +30,12 @@ public class LoggingDocCustomDaoImpl implements LoggingDocCustomDao {
 		);
 		query.setParameter("docId", docId);
 
-		return (Double) query.getSingleResult();
+		Object o = query.getSingleResult();
+		double d = 0;
+		if (o != null) {
+			d = (Double) o;
+		}
+		return d;
 
 	}
 

@@ -138,6 +138,5 @@ public class SearchResult {
 		}
 
 		return null;
-
 	}
 }

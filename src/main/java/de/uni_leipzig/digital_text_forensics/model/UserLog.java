@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.model;
 
 import java.util.Date;
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -16,7 +17,7 @@ public class UserLog {
 	private Long id;
 	private String clientId;
 	private Date date;
-	private Long time;
+	private Long time = 0L;
 	private String comesFrom;
 	private String goTo;
 

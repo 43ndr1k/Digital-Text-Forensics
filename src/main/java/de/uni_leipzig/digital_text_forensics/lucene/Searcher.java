@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -66,6 +67,9 @@ public class Searcher {
 	public static final String[] POST_TAGS = new String[] { "" };
 
 	public List<SearchResult> search(String query) throws IOException, ParseException {
+
+
+
 		indexReader = DirectoryReader.open(FSDirectory.open(Paths
 				.get(indexLocation)));//IndexReader reader = DirectoryReader.open(FSDirectory.open(new File(indexLocation)));
 		searcher = new IndexSearcher(indexReader);
@@ -81,10 +85,11 @@ public class Searcher {
         ScoreDoc[] hits = collector.topDocs().scoreDocs; 
         
         //scoring
-        double time;
-        Long clicks;
+        double time =0;
+        Long clicks=0L;
         int refCount=0;
         Document d;
+
         for (int i = 0; i < hits.length; ++i) {
           time = loggingDocService.getClickTimeByDocId(new Long(hits[i].doc));
           d = searcher.doc(hits[1].doc);
@@ -94,15 +99,22 @@ public class Searcher {
           hits[i].score = hits[i].score + (float) time + refCount + clicks;
           //System.out.println("  New score: " + hits[i].score);
         }
+
 		// display results
-		System.out.println("Found " + hits.length + " hits.");
+
 /*		List<Document> d = new ArrayList<>();
 		for (int i = 0; i < hits.length; ++i) {
 			int docId = hits[i].doc;
 			d.add(searcher.doc(docId));
 		}*/
+		StopWatch stopwatch = new StopWatch();
+		stopwatch.start();
+		List<SearchResult> list = mapDocumentListToSearchResults(Arrays.asList(hits), query);
 
-		return mapDocumentListToSearchResults(Arrays.asList(hits), query);
+		stopwatch.stop();
+		long timeTaken = stopwatch.getTime();
+		System.out.println("Found " + hits.length + " hits. Time: " + timeTaken);
+		return list;
 	}
 
 	/**
@@ -125,7 +137,8 @@ public class Searcher {
 								searcher.doc(topDoc.doc).get(LuceneConstants.FILE_NAME),
 								searcher.doc(topDoc.doc).get(LuceneConstants.PUBLICATION_DATE),
 								getSnippet(topDoc.doc, query),
-								new Link(searcher.doc(topDoc.doc).get(LuceneConstants.FILE_PATH)));
+								new Link(searcher.doc(topDoc.doc).get(LuceneConstants.FILE_PATH))
+								);
 					}
 					catch (IOException e) {
 						e.printStackTrace();
