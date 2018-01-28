@@ -84,7 +84,7 @@ public class RedirectController {
 		SearchResult searchResult = searcher.getDocument(docId, query);
 		
 		String url = "pdfDocs/" + searchResult.getDocUrl().getHref()
-				.substring(8, searchResult.getDocUrl().getHref().length() - 3) + "pdf";
+				.substring(9, searchResult.getDocUrl().getHref().length() - 3) + "pdf";
 
 		
 		File file = new File(url);

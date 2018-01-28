@@ -1,10 +1,12 @@
 package de.uni_leipzig.digital_text_forensics.lucene;
 
+import de.uni_leipzig.digital_text_forensics.domain.CreateLink;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
 import de.uni_leipzig.digital_text_forensics.service.LoggingDoc.LoggingDocService;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -47,12 +49,6 @@ public class Searcher {
 	@Autowired
 	LoggingDocService loggingDocService;
 
-
-	/**
-	 * double time = loggingDocService.getClickTimeByDocId(docId); -> Die durchnittliche Zeit in ms für ein Dokument, gesucht nach der docId
-	 * Long clicks = loggingDocService.getClickCountAndFindByDocId(docId); -> Wie oft wurde insgesamt auf ein Document geklickt, gesucht nach der docId
-	 */
-
 	public final String indexLocation = "LuceneIndex";
 	private StandardAnalyzer analyzer = new StandardAnalyzer();
 	private File indexFile = new File(indexLocation);
@@ -67,8 +63,6 @@ public class Searcher {
 	public static final String[] POST_TAGS = new String[] { "" };
 
 	public List<SearchResult> search(String query) throws IOException, ParseException {
-
-
 
 		indexReader = DirectoryReader.open(FSDirectory.open(Paths
 				.get(indexLocation)));//IndexReader reader = DirectoryReader.open(FSDirectory.open(new File(indexLocation)));
@@ -95,26 +89,10 @@ public class Searcher {
           d = searcher.doc(hits[1].doc);
           refCount = Integer.parseInt(d.getField(LuceneConstants.REF_COUNT).stringValue()); //numericValue().intValue();
           clicks = loggingDocService.getClickCountAndFindByDocId(new Long(hits[i].doc));
-          //System.out.println(" Score: " + hits[i].score + " time: " + "refCount: " + refCount + "clicks: " + clicks);
           hits[i].score = hits[i].score + (float) time + refCount + clicks;
-          //System.out.println("  New score: " + hits[i].score);
         }
 
-		// display results
-
-/*		List<Document> d = new ArrayList<>();
-		for (int i = 0; i < hits.length; ++i) {
-			int docId = hits[i].doc;
-			d.add(searcher.doc(docId));
-		}*/
-		StopWatch stopwatch = new StopWatch();
-		stopwatch.start();
-		List<SearchResult> list = mapDocumentListToSearchResults(Arrays.asList(hits), query);
-
-		stopwatch.stop();
-		long timeTaken = stopwatch.getTime();
-		System.out.println("Found " + hits.length + " hits. Time: " + timeTaken);
-		return list;
+		return mapDocumentListToSearchResults(Arrays.asList(hits), query);
 	}
 
 	/**
@@ -125,7 +103,8 @@ public class Searcher {
 	 */
 	private List<SearchResult> mapDocumentListToSearchResults(List<ScoreDoc> docs, String query) {
 
-		return docs.stream().map(topDoc -> {
+		Link link1 = CreateLink.createDefaultLink();
+		return docs.parallelStream().map(topDoc -> {
 					SearchResult searchResult = null;
 
 					try {
@@ -137,7 +116,8 @@ public class Searcher {
 								searcher.doc(topDoc.doc).get(LuceneConstants.FILE_NAME),
 								searcher.doc(topDoc.doc).get(LuceneConstants.PUBLICATION_DATE),
 								getSnippet(topDoc.doc, query),
-								new Link(searcher.doc(topDoc.doc).get(LuceneConstants.FILE_PATH))
+								new Link(searcher.doc(topDoc.doc).get(LuceneConstants.FILE_PATH)),
+								CreateLink.createLink(link1, (long) topDoc.doc,query)
 								);
 					}
 					catch (IOException e) {
@@ -145,13 +125,7 @@ public class Searcher {
 					}
 					return searchResult;
 				}
-		).collect(Collectors.toList());
-
-/*		return null;
-		docs.stream()
-				.map(document -> new SearchResult(document.get("filename"), "sinppel", new Link(document.get("path"))))
-				.collect(Collectors.toList());*/
-
+		).parallel().collect(Collectors.toList());
 	}
 
 	/**
@@ -164,7 +138,8 @@ public class Searcher {
 		try {
 			return new SearchResult(query, docId, searcher.doc(docId.intValue()).get(LuceneConstants.FILE_NAME),
 					getSnippet(docId.intValue(), query),
-					new Link(searcher.doc(docId.intValue()).get(LuceneConstants.FILE_PATH)));
+					new Link(searcher.doc(docId.intValue()).get(LuceneConstants.FILE_PATH))
+			);
 		}
 		catch (IOException e) {
 			e.printStackTrace();
@@ -173,9 +148,6 @@ public class Searcher {
 	}
 
 	private String getSnippet(int docId, String queryString) {
-
-		long startTime, stopTime;//TEST
-		startTime = System.currentTimeMillis();//TEST
 
 		SimpleHTMLFormatter htmlFormatter = new SimpleHTMLFormatter();
 		QueryScorer queryScorer = null;
@@ -198,7 +170,6 @@ public class Searcher {
 					docId, LuceneConstants.CONTENTS, document, new StandardAnalyzer());
 			//snippet = highlighter.getBestFragment(tokenStream, content); 
 			snippet = highlighter.getBestFragment(analyzer, LuceneConstants.CONTENTS, content);
-			//System.out.println("SNIPPET: " + snippet);
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -208,26 +179,13 @@ public class Searcher {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		stopTime = System.currentTimeMillis(); //TEST
-		//System.out.println(stopTime - startTime);//TEST
 		return snippet;
 	}
 
 	private String getSnippet2(int docId, String queryString) {
 
-		long startTime, stopTime;//TEST
-		startTime = System.currentTimeMillis();//TEST
-//		Query query = null;
-//		try {
-//			query = new QueryParser("contents", analyzer).parse(queryString);
-//		}
-//		catch (ParseException e1) {
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		}
 		FastVectorHighlighter highlighter = makeHighlighter();//new FastVectorHighlighter();
 		FieldQuery fieldQuery = highlighter.getFieldQuery(q);
-
 		String snippet = null;
 		try {
 			snippet = highlighter.getBestFragment(fieldQuery, searcher.getIndexReader(), docId, "contents", 10000);
@@ -236,8 +194,6 @@ public class Searcher {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		stopTime = System.currentTimeMillis(); //TEST
-		//System.out.println(stopTime - startTime);//TEST
 		return snippet;
 	}
 

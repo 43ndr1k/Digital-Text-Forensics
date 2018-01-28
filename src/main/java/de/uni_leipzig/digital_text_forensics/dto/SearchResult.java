@@ -26,17 +26,16 @@ public class SearchResult {
 		this.docId = docId;
 		this.title = title;
 		this.snippet = snippet;
-		this.webUrl = createLink(docId, query);
 		this.docUrl = docUrl;
 	}
 
 	public SearchResult(String query, Long docId, String title, String author, String fileName, String date,
-			String snippet, Link docUrl) {
+			String snippet, Link docUrl, Link webUrl) {
 		this.query = query;
 		this.docId = docId;
 		this.title = title;
 		this.snippet = snippet;
-		this.webUrl = createLink(docId, query);
+		this.webUrl = webUrl;
 		this.docUrl = docUrl;
 		this.author = author;
 		this.date = date;
@@ -118,25 +117,4 @@ public class SearchResult {
 		this.query = query;
 	}
 
-	private static Link createLink(Long docID, String query) {
-
-/*		Link link1 = (ControllerLinkBuilder.linkTo(RedirectController.class)
-				.withRel("targetUrl"));
-
-		String a = String.format("/pdf/?docId=%s&query=%s", docID, query);
-		Link link = new Link(link1.getHref() + a)
-				.withRel("targetUrl");
-		return link;*/
-
-		try {
-			return ControllerLinkBuilder.linkTo(
-					ControllerLinkBuilder.methodOn(RedirectController.class).getFile(docID, query))
-					.withRel("targetUrl");
-		}
-		catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		return null;
-	}
 }
