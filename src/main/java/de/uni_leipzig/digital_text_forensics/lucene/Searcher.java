@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.time.StopWatch;
+
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -32,16 +33,15 @@ import org.apache.lucene.search.highlight.SimpleHTMLFormatter;
 import org.apache.lucene.search.highlight.SimpleSpanFragmenter;
 import org.apache.lucene.search.highlight.TokenSources;
 import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
-import org.apache.lucene.search.vectorhighlight.FieldQuery;
 import org.apache.lucene.search.vectorhighlight.FragListBuilder;
 import org.apache.lucene.search.vectorhighlight.FragmentsBuilder;
 import org.apache.lucene.search.vectorhighlight.SimpleFragListBuilder;
 import org.apache.lucene.search.vectorhighlight.SimpleFragmentsBuilder;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 @Component
 public class Searcher {
@@ -49,50 +49,68 @@ public class Searcher {
 	@Autowired
 	LoggingDocService loggingDocService;
 
-	public final String indexLocation = "LuceneIndex";
-	private StandardAnalyzer analyzer = new StandardAnalyzer();
-	private File indexFile = new File(indexLocation);
+	//public final String indexLocation = "LuceneIndex";
+	@Autowired
+	private StandardAnalyzer analyzer;
+	//private File indexFile = new File(indexLocation);
+	@Autowired
 	private IndexReader indexReader;
-	private Query q;
+
+	@Autowired
+	private TopScoreDocCollector collector;
+	//private Query q;
 	private MultiFieldQueryParser multiFieldQueryParser;
 	private Directory directory;
-	private final int RESULT_COUNT = 300;
+	//private final int RESULT_COUNT = 300;
 
-	private IndexSearcher searcher = null;
+	@Autowired
+	private IndexSearcher searcher;
+
 	public static final String[] PRE_TAGS = new String[] { "" };
 	public static final String[] POST_TAGS = new String[] { "" };
 
-	public List<SearchResult> search(String query) throws IOException, ParseException {
-
-		indexReader = DirectoryReader.open(FSDirectory.open(Paths
-				.get(indexLocation)));//IndexReader reader = DirectoryReader.open(FSDirectory.open(new File(indexLocation)));
-		searcher = new IndexSearcher(indexReader);
-		TopScoreDocCollector collector = TopScoreDocCollector.create(RESULT_COUNT);
-
-		directory = FSDirectory.open(indexFile.toPath());
+	public Searcher() {
 		HashMap<String, Float> boosts = new HashMap<String, Float>();
-        boosts.put(LuceneConstants.CONTENTS, 0.2f);
-        boosts.put(LuceneConstants.TITLE, 0.8f);
-        multiFieldQueryParser = new MultiFieldQueryParser(
-            new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer, boosts);
-        searcher.search(multiFieldQueryParser.parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer), collector);
-        ScoreDoc[] hits = collector.topDocs().scoreDocs; 
-        
-        //scoring
-        double time =0;
-        Long clicks=0L;
-        int refCount=0;
-        Document d;
+		boosts.put(LuceneConstants.CONTENTS, 0.2f);
+		boosts.put(LuceneConstants.TITLE, 0.8f);
+		multiFieldQueryParser = new MultiFieldQueryParser(
+				new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer, boosts);
+	}
 
-        for (int i = 0; i < hits.length; ++i) {
-          time = loggingDocService.getClickTimeByDocId(new Long(hits[i].doc));
-          d = searcher.doc(hits[1].doc);
-          refCount = Integer.parseInt(d.getField(LuceneConstants.REF_COUNT).stringValue()); //numericValue().intValue();
-          clicks = loggingDocService.getClickCountAndFindByDocId(new Long(hits[i].doc));
-          hits[i].score = hits[i].score + (float) time + refCount + clicks;
-        }
+	public List<ScoreDoc> search(String query) throws IOException, ParseException {
 
-		return mapDocumentListToSearchResults(Arrays.asList(hits), query);
+/*		indexReader = DirectoryReader.open(FSDirectory.open(Paths
+				.get(indexLocation)));//IndexReader reader = DirectoryReader.open(FSDirectory.open(new File(indexLocation)));
+		searcher = new IndexSearcher(indexReader);*/
+		//TopScoreDocCollector collector = TopScoreDocCollector.create(RESULT_COUNT);
+
+/*		directory = FSDirectory.open(indexFile.toPath());
+		HashMap<String, Float> boosts = new HashMap<String, Float>();
+		boosts.put(LuceneConstants.CONTENTS, 0.2f);
+		boosts.put(LuceneConstants.TITLE, 0.8f);
+		multiFieldQueryParser = new MultiFieldQueryParser(
+				new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer, boosts);
+				*/
+		searcher.search(multiFieldQueryParser.parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer), collector);
+
+		ScoreDoc[] hits = collector.topDocs().scoreDocs;
+
+		//scoring
+		double time =0;
+		Long clicks=0L;
+		int refCount=0;
+		Document d;
+
+		for (int i = 0; i < hits.length; ++i) {
+			time = loggingDocService.getClickTimeByDocId(new Long(hits[i].doc));
+			d = searcher.doc(hits[1].doc);
+			refCount = Integer.parseInt(d.getField(LuceneConstants.REF_COUNT).stringValue()); //numericValue().intValue();
+			clicks = loggingDocService.getClickCountAndFindByDocId(new Long(hits[i].doc));
+			hits[i].score = hits[i].score + (float) time + refCount + clicks;
+		}
+
+		return Arrays.asList(hits);
+		//return mapDocumentListToSearchResults(Arrays.asList(hits), query);
 	}
 
 	/**
@@ -101,7 +119,7 @@ public class Searcher {
 	 * @param query String
 	 * @return List of SearchResults
 	 */
-	private List<SearchResult> mapDocumentListToSearchResults(List<ScoreDoc> docs, String query) {
+	public List<SearchResult> mapDocumentListToSearchResults(List<ScoreDoc> docs, String query) {
 
 		Link link1 = CreateLink.createDefaultLink();
 		return docs.parallelStream().map(topDoc -> {
@@ -118,7 +136,7 @@ public class Searcher {
 								getSnippet(topDoc.doc, query),
 								new Link(searcher.doc(topDoc.doc).get(LuceneConstants.FILE_PATH)),
 								CreateLink.createLink(link1, (long) topDoc.doc,query)
-								);
+						);
 					}
 					catch (IOException e) {
 						e.printStackTrace();
@@ -152,16 +170,16 @@ public class Searcher {
 		SimpleHTMLFormatter htmlFormatter = new SimpleHTMLFormatter();
 		QueryScorer queryScorer = null;
 		try {
-          queryScorer = new QueryScorer(multiFieldQueryParser.parse(new String[] {queryString, queryString}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer));
-        } catch (ParseException e1) {
-          // TODO Auto-generated catch block
-          e1.printStackTrace();
-        }
+			queryScorer = new QueryScorer(multiFieldQueryParser.parse(new String[] {queryString, queryString}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer));
+		} catch (ParseException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		Highlighter highlighter = new Highlighter(htmlFormatter, queryScorer);
 
 		Fragmenter fragmenter = new SimpleSpanFragmenter(queryScorer, 400); // set snippet size
 		highlighter.setTextFragmenter(fragmenter);
-		
+
 		String snippet = null;
 		try {
 			Document document = searcher.doc(docId);// getDocument(scoreDoc.doc);
@@ -182,7 +200,7 @@ public class Searcher {
 		return snippet;
 	}
 
-	private String getSnippet2(int docId, String queryString) {
+	/*private String getSnippet2(int docId, String queryString) {
 
 		FastVectorHighlighter highlighter = makeHighlighter();//new FastVectorHighlighter();
 		FieldQuery fieldQuery = highlighter.getFieldQuery(q);
@@ -195,7 +213,7 @@ public class Searcher {
 			e.printStackTrace();
 		}
 		return snippet;
-	}
+	}*/
 
 	private FastVectorHighlighter makeHighlighter() {
 		FragListBuilder fragListBuilder = new SimpleFragListBuilder(200);

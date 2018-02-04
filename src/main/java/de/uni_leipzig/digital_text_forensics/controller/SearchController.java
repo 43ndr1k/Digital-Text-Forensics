@@ -9,6 +9,7 @@ import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.search.ScoreDoc;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Controller;
@@ -21,7 +22,7 @@ import org.springframework.web.servlet.ModelAndView;
 public class SearchController {
 
 	@Autowired
-	Searcher searcher;
+	Searcher querySearcher;
 
 	@Autowired
 	Pager pager;
@@ -51,8 +52,10 @@ public class SearchController {
 		List<SearchResult> searchResultList;
 
 		try {
-			searchResultList = searcher.search(query.toLowerCase());
-			List<SearchResult> split = pager.split(searchResultList, currentPage);
+			List<ScoreDoc> list = querySearcher.search(query.toLowerCase());
+			List<SearchResult> split = pager.split(list, currentPage);
+			searchResultList =
+
 			searchResultPage.setTotalResults(searchResultList.size());
 			searchResultPage.setResultsOnPage(split);
 			searchResultPage.setPage(currentPage);

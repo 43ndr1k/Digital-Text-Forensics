@@ -39,7 +39,7 @@ import org.springframework.web.servlet.ModelAndView;
 public class RedirectController {
 
 	@Autowired
-	Searcher searcher;
+	Searcher querySearcher;
 
 	@Autowired
 	LoggingDocService loggingDocService;
@@ -81,7 +81,7 @@ public class RedirectController {
 	) throws IOException {
 
 		HttpHeaders headers = new HttpHeaders();
-		SearchResult searchResult = searcher.getDocument(docId, query);
+		SearchResult searchResult = querySearcher.getDocument(docId, query);
 		
 		String url = "pdfDocs/" + searchResult.getDocUrl().getHref()
 				.substring(9, searchResult.getDocUrl().getHref().length() - 3) + "pdf";
