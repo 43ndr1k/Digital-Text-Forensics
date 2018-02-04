@@ -38,6 +38,7 @@ import org.apache.lucene.search.vectorhighlight.FragmentsBuilder;
 import org.apache.lucene.search.vectorhighlight.SimpleFragListBuilder;
 import org.apache.lucene.search.vectorhighlight.SimpleFragmentsBuilder;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Component;
@@ -49,27 +50,21 @@ public class Searcher {
 	@Autowired
 	LoggingDocService loggingDocService;
 
-	//public final String indexLocation = "LuceneIndex";
 	@Autowired
 	private StandardAnalyzer analyzer;
-	//private File indexFile = new File(indexLocation);
+
 	@Autowired
 	private IndexReader indexReader;
 
 	@Autowired
-	private TopScoreDocCollector collector;
-	//private Query q;
-	private MultiFieldQueryParser multiFieldQueryParser;
-	private Directory directory;
-	//private final int RESULT_COUNT = 300;
-
-	@Autowired
 	private IndexSearcher searcher;
 
-	public static final String[] PRE_TAGS = new String[] { "" };
-	public static final String[] POST_TAGS = new String[] { "" };
+	private MultiFieldQueryParser multiFieldQueryParser;
 
-	public Searcher() {
+	private static final String[] PRE_TAGS = new String[] { "" };
+	private static final String[] POST_TAGS = new String[] { "" };
+
+	public Searcher() throws IOException {
 		HashMap<String, Float> boosts = new HashMap<String, Float>();
 		boosts.put(LuceneConstants.CONTENTS, 0.2f);
 		boosts.put(LuceneConstants.TITLE, 0.8f);
@@ -79,20 +74,8 @@ public class Searcher {
 
 	public List<ScoreDoc> search(String query) throws IOException, ParseException {
 
-/*		indexReader = DirectoryReader.open(FSDirectory.open(Paths
-				.get(indexLocation)));//IndexReader reader = DirectoryReader.open(FSDirectory.open(new File(indexLocation)));
-		searcher = new IndexSearcher(indexReader);*/
-		//TopScoreDocCollector collector = TopScoreDocCollector.create(RESULT_COUNT);
-
-/*		directory = FSDirectory.open(indexFile.toPath());
-		HashMap<String, Float> boosts = new HashMap<String, Float>();
-		boosts.put(LuceneConstants.CONTENTS, 0.2f);
-		boosts.put(LuceneConstants.TITLE, 0.8f);
-		multiFieldQueryParser = new MultiFieldQueryParser(
-				new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer, boosts);
-				*/
+		TopScoreDocCollector collector = TopScoreDocCollector.create(LuceneConstants.MAX_SEARCH);
 		searcher.search(multiFieldQueryParser.parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer), collector);
-
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
 		//scoring
@@ -110,7 +93,6 @@ public class Searcher {
 		}
 
 		return Arrays.asList(hits);
-		//return mapDocumentListToSearchResults(Arrays.asList(hits), query);
 	}
 
 	/**

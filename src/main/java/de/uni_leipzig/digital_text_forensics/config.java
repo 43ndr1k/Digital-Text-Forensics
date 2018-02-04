@@ -28,7 +28,7 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 public class config {
 
 	@Bean
-	public Searcher querySearcher() {
+	public Searcher querySearcher() throws IOException {
 		return new Searcher();
 	}
 

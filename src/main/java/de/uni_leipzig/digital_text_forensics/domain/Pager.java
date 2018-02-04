@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.lucene.search.ScoreDoc;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.LinkBuilder;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
@@ -17,11 +18,11 @@ public class Pager {
 
 	/**
 	 * Split the ResultList to pages
-	 * @param searchDocList List<SearchResult>
+	 * @param searchDocList List<ScoreDoc>
 	 * @param currentPage int
-	 * @return List<SearchResult>
+	 * @return List<ScoreDoc>
 	 */
-	public List<SearchResult> split(List<SearchResult> searchDocList, int currentPage) {
+	public List<ScoreDoc> split(List<ScoreDoc> searchDocList, int currentPage) {
 		if (searchDocList == null || searchDocList.size() == 0) {
 			return new ArrayList<>();
 		}
@@ -36,7 +37,7 @@ public class Pager {
 		if (searchDocList.size() < 10) {
 			to = searchDocList.size();
 		}
-		List<SearchResult> ret = searchDocList.subList(from, to);
+		List<ScoreDoc> ret = searchDocList.subList(from, to);
 
 		return ret;
 	}

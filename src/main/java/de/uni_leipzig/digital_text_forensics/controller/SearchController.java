@@ -53,11 +53,10 @@ public class SearchController {
 
 		try {
 			List<ScoreDoc> list = querySearcher.search(query.toLowerCase());
-			List<SearchResult> split = pager.split(list, currentPage);
-			searchResultList =
-
-			searchResultPage.setTotalResults(searchResultList.size());
-			searchResultPage.setResultsOnPage(split);
+			List<ScoreDoc> split = pager.split(list, currentPage);
+			searchResultList = querySearcher.mapDocumentListToSearchResults(split,query);
+			searchResultPage.setTotalResults(list.size());
+			searchResultPage.setResultsOnPage(searchResultList);
 			searchResultPage.setPage(currentPage);
 			injectPaginationLinks(searchResultPage);
 		}
