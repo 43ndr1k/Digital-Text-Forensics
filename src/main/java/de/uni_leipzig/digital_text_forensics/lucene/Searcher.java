@@ -105,7 +105,7 @@ public class Searcher {
 	public List<SearchResult> mapDocumentListToSearchResults(List<ScoreDoc> docs, String query) {
 
 		Link link1 = CreateLink.createDefaultLink();
-		return docs.stream().map(topDoc -> {
+		return docs.parallelStream().map(topDoc -> {
 					SearchResult searchResult = null;
 
 					try {
@@ -126,7 +126,7 @@ public class Searcher {
 					}
 					return searchResult;
 				}
-		).collect(Collectors.toList());
+		).parallel().collect(Collectors.toList());
 	}
 
 	/**
