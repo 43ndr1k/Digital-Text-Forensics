@@ -75,7 +75,8 @@ public class Searcher {
 	public List<ScoreDoc> search(String query) throws IOException, ParseException {
 
 		TopScoreDocCollector collector = TopScoreDocCollector.create(LuceneConstants.MAX_SEARCH);
-		searcher.search(multiFieldQueryParser.parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer), collector);
+		searcher.search(MultiFieldQueryParser
+				.parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer), collector);
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
 		//scoring
@@ -85,10 +86,10 @@ public class Searcher {
 		Document d;
 
 		for (int i = 0; i < hits.length; ++i) {
-			time = loggingDocService.getClickTimeByDocId(new Long(hits[i].doc));
+			time = loggingDocService.getClickTimeByDocId((long) hits[i].doc);
 			d = searcher.doc(hits[1].doc);
 			refCount = Integer.parseInt(d.getField(LuceneConstants.REF_COUNT).stringValue()); //numericValue().intValue();
-			clicks = loggingDocService.getClickCountAndFindByDocId(new Long(hits[i].doc));
+			clicks = loggingDocService.getClickCountAndFindByDocId((long) hits[i].doc);
 			hits[i].score = hits[i].score + (float) time + refCount + clicks;
 		}
 
@@ -104,7 +105,7 @@ public class Searcher {
 	public List<SearchResult> mapDocumentListToSearchResults(List<ScoreDoc> docs, String query) {
 
 		Link link1 = CreateLink.createDefaultLink();
-		return docs.parallelStream().map(topDoc -> {
+		return docs.stream().map(topDoc -> {
 					SearchResult searchResult = null;
 
 					try {
@@ -125,7 +126,7 @@ public class Searcher {
 					}
 					return searchResult;
 				}
-		).parallel().collect(Collectors.toList());
+		).collect(Collectors.toList());
 	}
 
 	/**
