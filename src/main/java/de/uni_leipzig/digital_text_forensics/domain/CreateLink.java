@@ -5,6 +5,9 @@ import java.io.IOException;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
+/**
+ * Creating the public web url for one document.
+ */
 public class CreateLink {
 
 	public static Link createDefaultLink() {
