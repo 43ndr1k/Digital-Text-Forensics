@@ -17,8 +17,8 @@ import org.xml.sax.SAXException;
 * 
 */
 public class ConvertPdfXMLTester {
-	static String dataDirPath =  "/home/tobias/mygits/Digital-Text-Forensics/pdfDocs/";
-	static String xmlFilePath = "/home/tobias/Dokumente/Information Retrieval/xmlFiles-Versions/xmlNewTrial/"; // possible error
+	static String dataDirPath =  "pdfDocs/";
+	static String xmlFilePath = "xmlFiles/";
 	static int my_counter;
 	private static ConvertPdfXML converter;
 	

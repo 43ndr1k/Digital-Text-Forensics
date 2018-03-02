@@ -21,8 +21,8 @@ import java.util.List;
 import org.apache.commons.lang.WordUtils;
 
 public class WordOperationClass {
-	String ner_file = "res/en-ner-person.bin";
-	String token_file = "res/en-token.bin";
+	String ner_file = "src/main/resources/preprocessing/en-ner-person.bin";
+	String token_file = "src/main/resources/preprocessing/en-token.bin";
 
 	private InputStream inputStreamTokenizer;
 	private TokenizerModel tokenModel;;
@@ -53,7 +53,7 @@ public class WordOperationClass {
 		tokenizer = new TokenizerME(tokenModel);
 
 		readStopWords(new File(
-				"/home/tobias/workspace/tobiastestproject/res/stopwords.txt"));
+				"src/main/resources/preprocessing/stopwords.txt"));
 	}
 
 	/**
