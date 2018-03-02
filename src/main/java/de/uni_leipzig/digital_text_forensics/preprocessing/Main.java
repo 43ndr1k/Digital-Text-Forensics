@@ -1,12 +1,35 @@
 package de.uni_leipzig.digital_text_forensics.preprocessing;
 
+import java.io.File;
+import java.io.IOException;
+
 public class Main {
 
 	
 		public static void main(String[] args) {
 			
-			HeuristicTitleSearch ms = new HeuristicTitleSearch();
-			ms.run();
+			ConvertPdfXMLController xmlController = new ConvertPdfXMLController(); 
+			
+			try {
+				xmlController.runPreproccessing(false); // param: skip existing
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			//			try {
+			//				Runtime.getRuntime().exec("perl D:\\PerlProgrammierung\\6UnitedComparer.pl");
+			//			} catch (IOException e) {
+			//				e.printStackTrace();
+			//			} 
+			
+			//			xmlController.mergeRefCountsToXMLFiles(new File("src/main/resources/preprocessing/refCount.xml"));
+			//			xmlController.repairXML();
+			//		HeuristicTitleSearch hts = new HeuristicTitleSearch();
+			//		hts.run();
+
+			
+			System.out.println("ready");
+
 		}
 
 	

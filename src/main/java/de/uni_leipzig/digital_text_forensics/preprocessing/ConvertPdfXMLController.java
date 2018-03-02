@@ -16,11 +16,13 @@ import org.xml.sax.SAXException;
 * @author Tobias Wenzel
 * 
 */
-public class ConvertPdfXMLTester {
+public class ConvertPdfXMLController {
 	static String dataDirPath =  "pdfDocs/";
 	static String xmlFilePath = "xmlFiles/";
 	static int my_counter;
 	private static ConvertPdfXML converter;
+	
+	
 	
 	/**
 	 * <p> Function can be called to walk through a given Directory and convert
@@ -29,7 +31,7 @@ public class ConvertPdfXMLTester {
 	 * 
 	 * @throws IOException
 	 */
-	public static void runPreproccessing(Boolean skipExisting) throws IOException {
+	public void runPreproccessing(Boolean skipExisting) throws IOException {
         		
 		File[] files = new File(dataDirPath).listFiles();
 		PdfFileFilter filter = new PdfFileFilter();
@@ -80,7 +82,7 @@ public class ConvertPdfXMLTester {
 	/**
 	 * Can be used to modify or experiment on XML data. 
 	 */
-	public static void repairXML() {
+	public void repairXML() {
 		File[] files = new File(xmlFilePath).listFiles();
 		XMLFileFilter filter = new XMLFileFilter();
 		ConvertPdfXML myconverter = new ConvertPdfXML();
@@ -217,7 +219,7 @@ public class ConvertPdfXMLTester {
 	 * 
 	 * @param file
 	 */
-	public static void mergeRefCountsToXMLFiles (File file){
+	public void mergeRefCountsToXMLFiles (File file){
 		List<RefCountObj> refCounts = null;
 		SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
 	    try {
@@ -247,15 +249,14 @@ public class ConvertPdfXMLTester {
 	
 	public static void main(String argv[]) throws IOException {
 
-		//mergeRefCountsToXMLFiles(new File("/home/tobias/Dokumente/Information Retrieval/final.xml"));
 		System.out.println(xmlFilePath);
-		my_counter = 0;
-		
-		repairXML();
-		System.out.println(my_counter);
-		//runPreproccessing(false); // param: skip existing
 		
 		
-		System.out.println("ready");
+		//mergeRefCountsToXMLFiles(new File("/home/tobias/Dokumente/Information Retrieval/final.xml"));
+		//repairXML();
+		//		HeuristicTitleSearch hts = new HeuristicTitleSearch();
+		//		hts.run();
+
+		
 	}
 }

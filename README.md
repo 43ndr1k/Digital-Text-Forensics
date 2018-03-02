@@ -11,23 +11,38 @@ Download and unzip the source repository for this guide, or clone it using Git:
 git clone https://github.com/43ndr1k/crypto-news-docs.git
 ```
 
+
 ### Import the Project
 - Create a Project from existing sources:
   - As Maven Project from the **Digital-Text-Forensics** directory.
   
 ### Database
-The Database is created on the first start and is stored in the userhome directory under directory **H2**.
+The database is created on the first start and is stored in the user's home directory under directory **H2**.
 
 ### Create a new Lucene index
-Run the **TextFileIndexer** Class in the package de.uni_leipzig.digital_text_forensics.lucene 
+#### Preprocessing
 
-**But** in the **xmlFile** folder the xml data must be included and in the pdfDocs folder the pdf files.
+**Mind:** The PDF-files are not included.
+
+
+Run the **ConvertPdfXMLController** class in  package de.uni_leipzig.digital_text_forensics.preprocessing to extract the PDF content and create corresponding XML-files.  To count how many times articles are quoted, run
+the _6UnitedComparer.pl_ script and merge the results using the _mergeRefCountsToXMLFiles_ method. Finally run **HeuristicTitleSearch** to correct meta-data whilst comparing the fullText-Element against a precompiled dataset. 
+For more information on this read the documentation. 
+
+This can be easily achieved running the **Main** class.
+
+#### Indexing 
+Run the **XMLFileIndexer** class in the package de.uni_leipzig.digital_text_forensics.lucene.  
+
+**Precondition:** Both the XML-files (&rightarrow; **xmlFiles**) and the original PDFs (&rightarrow; **pdfDocs**)  have to be present in the corresponding folders.
+
+_Proposal_  just move everything concerning preprocessing into one main-method.
 
 ### Start the Application
-Run the **Apllication** Class in the package de.uni_leipzig.digital_text_forensics
+Run the **Apllication** class in the package de.uni_leipzig.digital_text_forensics
 
 ### Open the search engine
-The Search Engine is ander following URL reachable:
+The search engine can be accessed under following URL:
 ```
 http://localhost:8080/
 ```
