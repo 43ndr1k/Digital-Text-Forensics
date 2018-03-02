@@ -80,7 +80,7 @@ public class XMLFileIndexer {
 	    // potentially overwriting any existing files there.
 	    FSDirectory dir = FSDirectory.open(Paths.get(indexDir));
 	    IndexWriterConfig config = new IndexWriterConfig(analyzer);
-	    converter = new ConvertPdfXML(null); // outputPath not needed here.
+	    converter = new ConvertPdfXML(); // outputPath not needed here.
 	    writer = new IndexWriter(dir, config);
 	  }
 

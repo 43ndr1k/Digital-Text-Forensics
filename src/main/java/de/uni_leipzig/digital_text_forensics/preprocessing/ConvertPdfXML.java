@@ -2,8 +2,9 @@ package de.uni_leipzig.digital_text_forensics.preprocessing;
 
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -21,13 +22,6 @@ import javax.xml.transform.stream.StreamResult;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
-import org.apache.tika.exception.TikaException;
-import org.apache.tika.metadata.Metadata;
-import org.apache.tika.parser.ParseContext;
-// import org.apache.tika.parser.microsoft.OfficeParser;
-import org.apache.tika.parser.pdf.PDFParser;
-import org.apache.tika.sax.BodyContentHandler;
-
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -35,14 +29,11 @@ import org.xml.sax.SAXException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
-import java.util.Set;
-
+import java.util.Locale;
 import org.apache.commons.lang3.StringUtils;
-import de.uni_leipzig.digital_text_forensics.preprocessing.MyNameGetter;
-import opennlp.tools.stemmer.PorterStemmer;
-import opennlp.tools.tokenize.SimpleTokenizer;
 
 /**
 * ConvertPdfXML
@@ -56,63 +47,44 @@ public class ConvertPdfXML {
 	
 	private DocumentBuilderFactory docFactory;
 	private DocumentBuilder docBuilder;
+	private WordOperationClass wordOps;
+	private DateFormat formatter, snd_formatter;
 	
-	static int MIN_TITLE_LENGTH = 3;
-	static int MAX_TITLE_LENGTH = 500;
-	static int TITLE_LIKE_LENGTH = 200;
-	static int AUTHOUR_SEARCH_LENGTH = 500;
+	
 	static String NO_ENTRY = "No proper data found.";
-	// -> List!
-	static String BLOCK_WORDS[] = {".pdf",".doc",".dvi","title","Chapter","rights reserved","Article", "http"};
+
 	public String outputPath;
+	private int titleLikeLength;
+
+	public int docear_i,pdfbox_i,titleLike_i, dblpTitle_i;
 	
 	/** <b> Constructor </b>
 	 * 
 	 * <p> It shouldn't be necessary to set the Output-Path since it's always the same.
 	 * Never the less it's possible for testing purposes.
-	 * @param outputPath
+	 * 
 	 */
-	public ConvertPdfXML(String outputPath) {
-		if (outputPath==null)
-			this.outputPath = "xmlFiles";
-		this.outputPath = outputPath;
+	public ConvertPdfXML() {		
+		setOutputPath("xmlFiles/");
+		this.wordOps = new WordOperationClass();
+		
+		this.formatter = new SimpleDateFormat("E MMM dd HH:mm:ss 'CEST' yyyy",Locale.ENGLISH);
+		this.snd_formatter = new SimpleDateFormat("E MMM dd HH:mm:ss 'CET' yyyy",Locale.ENGLISH);
+		
+		titleLikeLength = 50;
+		docear_i = 0;
+		pdfbox_i = 0;
+		titleLike_i = 0;
+		dblpTitle_i = 0;
 	}
 	
-	/** <p> Method to check if a given field field doesn't contain a set of tokens like
-	 * links and has minimum length.
-	 * 
-	 * @param field_string
-	 * @return cleaned Field as String
-	 */
-	private String clean_field(String field_string){
-		String new_title = null;
-		if (field_string == null) {
-			return NO_ENTRY;
-		}
-		if(!field_string.matches("[A-Za-z0-9]+") && field_string.trim().length() > MIN_TITLE_LENGTH) {
-		    new_title = field_string;
-		} else {
-			return NO_ENTRY;
-		}
-		if (field_string.length()==0){
-			return NO_ENTRY;
-		}
-		for (String word : BLOCK_WORDS) {
-			if (field_string.contains(word)) {
-				return NO_ENTRY;
-			}
-		}
-		String trimmed_new_title = new_title.replaceAll("[^\\p{L}\\p{Z}]","").trim();
-		if (trimmed_new_title.length()==0){
-			return NO_ENTRY;
-		} else {
-			return trimmed_new_title.replaceAll("\\s+", " ");
-		}
-		
+	private void setOutputPath(String outputPath){
+		this.outputPath = outputPath;
 	}
 	
 	/** <p> Extracts the first page of a Doc and runs a NE-recognition. 
 	 *  with <b>pdfbox</b>
+	 *  
 	 * @param stripper to extract first page of doc
 	 * @param doc with actual data
 	 * @return String containing authors
@@ -124,8 +96,10 @@ public class ConvertPdfXML {
 		stripper.setEndPage(1);
 		
 		String firstPage= stripper.getText(doc);
-		String pdfbeginning = firstPage.substring(0, Math.min(firstPage.length(), 500));
-		MyNameGetter nameFinder = new MyNameGetter();
+		String pdfbeginning = wordOps.getNWords(firstPage, 300);
+		
+		
+		WordOperationClass nameFinder = new WordOperationClass();
 		try {
 			List<String> myNames = nameFinder.findName(pdfbeginning);
 			if (myNames.isEmpty()){
@@ -187,6 +161,10 @@ public class ConvertPdfXML {
 		Element authorElement = doc.createElement("authors");
 		authorElement.appendChild(doc.createTextNode(article.getAuthorsAsString()));
 		metaDataElement.appendChild(authorElement);
+		
+		Element refCountElement = doc.createElement("refCount");
+		refCountElement.appendChild(doc.createTextNode(article.getRefCount()));
+		metaDataElement.appendChild(refCountElement);
 
 		Element pubDate = doc.createElement("publicationDate");
 		pubDate.appendChild(doc.createTextNode(article.getPublicationDate()));
@@ -195,7 +173,7 @@ public class ConvertPdfXML {
 		Element textElements = doc.createElement("textElements");
 		rootElement.appendChild(textElements);
 		Element articleAbstract = doc.createElement("abstract");
-		articleAbstract.appendChild(doc.createTextNode("Dummy. Please Implement."));
+		articleAbstract.appendChild(doc.createCDATASection(article.getMyAbstract()));
 		textElements.appendChild(articleAbstract);
 		
 		Element fullTextElement = doc.createElement("fullText");
@@ -214,7 +192,7 @@ public class ConvertPdfXML {
 			try{
 			transformer.transform(source, result);
 			}	catch (javax.xml.transform.TransformerException npr) {
-				System.out.println(outputFile);
+				npr.printStackTrace();
 			}
 		}
 		catch (TransformerException tfe) {
@@ -224,246 +202,7 @@ public class ConvertPdfXML {
 		}
 	} // end of function
 	
-	
-//	/**
-//	 * 
-//	 * @param file
-//	 * @return
-//	 */
-//	private String getFieldDocearStyle(File file)  {
-//		boolean empty = true;
-//		StringBuilder sb = new StringBuilder();
-//		PdfDataExtractor extractor = new PdfDataExtractor(file);
-//		try {
-//			if (!empty) {
-//				sb.append("|");
-//			}
-//			try {
-//
-//				String title = extractor.extractTitle();
-//				// also possible here.
-//				//System.out.println(extractor.extractPlainText());
-//				if (title != null) {
-//					sb.append(clean_field(title));
-//					empty = false;
-//				}
-//			}
-//			catch (IOException e) {
-//				sb.append(NO_ENTRY);
-//			}
-//		}
-//		finally {
-//
-//			extractor.close();
-//			extractor = null;
-//		}
-//		return sb.toString();
-//	}
-	
 
-	/** Extracts first page and runs a NE-recognition. 
-	 * => <b>tika</b>
-	 * 
-	 * @param handler
-	 * @return
-	 * @throws IOException
-	 */
-	private String extractAuthors(BodyContentHandler handler) throws IOException{
-
-		String pdftext = handler.toString();
-	    String pdfbeginning = pdftext.substring(0, Math.min(pdftext.length(), AUTHOUR_SEARCH_LENGTH));
-
-		MyNameGetter nameFinder = new MyNameGetter();
-		try {
-			List<String> myNames = nameFinder.findName(pdfbeginning);
-			if (myNames.isEmpty()){
-				return NO_ENTRY;
-			}
-			else{
-				if (myNames.size() == 1){
-					return myNames.get(0);
-				} else {
-					return StringUtils.join(myNames, ", ");
-				}
-				
-			}
-
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (java.lang.NullPointerException e){
-			return NO_ENTRY;
-		}
-		return NO_ENTRY;
-	}
-	
-	/** Converts PDF file to XML-data
-	 *  <li> First try to extract meta-data with <b>pdfbox</b>. If this fails use name-entity-recognition
-	 *  and similar methods.
-	 *  <li> writing in writeToXML
-	 *  
-	 * @param file
-	 * @param docId as dummy-data. Can also be real docid. 
-	 * @throws IOException
-	 */
-	public void runWithTika(File file, int docId) throws IOException{
-		DBLPDataAccessor da = new DBLPDataAccessor();
-		
-        LocalDateTime now = LocalDateTime.now();	
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String parseTime = now.format(formatter);
-        
-		try { 
-			String originalFilename = file.getName();
-			String outputFileName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
-			String outputFilePath = this.outputPath+ outputFileName;			
-			String title = null;
-			String author = null;
-			String pubDateString = null;
-
-		      BodyContentHandler handler = new BodyContentHandler(-1);  // -1 ~ disable limit
-		      Metadata metadata = new Metadata();
-		      FileInputStream inputstream = new FileInputStream(file);
-		      ParseContext pcontext = new ParseContext();
-		      
-		      PDFParser pdfParser = new PDFParser(); 
-			try {
-				pdfParser.parse(inputstream, handler, metadata, pcontext);
-			} catch (SAXException e) {
-				e.printStackTrace();
-			} catch (TikaException e) {
-				e.printStackTrace();
-			}
-
-			/*----------------------------------------------
-			 * get & set the title
-			 *----------------------------------------------*/
-			String tikaTitle = clean_field(metadata.get("title"));
-			Boolean success = false;
-			if (tikaTitle.equals(NO_ENTRY) || (tikaTitle.length()==0)) {
-				success = false;
-				// try again with docear. if this fails success is left to false
-				// and we take the titleLike (first characters as defined in 
-				// TITLE_LIKE_LENGTH
-//				String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
-//				if (!secondTryTitle.equals(NO_ENTRY)) {
-//					title = secondTryTitle;
-//					success = true;
-//				} // else is handled like discussed with "titleLike"
-				
-			} else {
-				title = tikaTitle;
-				success = true;
-			}
-			Article article = null;
-			if (success) {
-				/*----------------------------------------------
-				 * only use DBLP if we have an OK title
-				 *----------------------------------------------*/
-				try{
-					article = da.getArticleObj(title);
-				} catch(java.net.UnknownHostException uhe){
-					System.out.println(file.getName());
-				}
-			}
-			if (article != null) {
-				// wenn er was findet, dann nimm das auch: natuerlich fehleranfaellig.
-				// idee: nimm das mit dem hoechsten score. TODO
-				List<String> authors = article.getAuthors();
-				StringBuilder sb = new StringBuilder();
-				for (int i=0;i<authors.size();i++){
-					sb.append(authors.get(i));
-				}
-				author = sb.toString();
-				pubDateString = article.getPublicationDate();
-				
-			} else {
-				article = new Article();
-				/*----------------------------------------------
-				 * if there aren't any results:
-				 *----------------------------------------------*/
-				String first_try_author = clean_field(metadata.get("Author"));
-				if (first_try_author.equals(NO_ENTRY)
-						|| (first_try_author.length()==0)) {
-					// try to extract name with NE in first section.
-					String second_try_author = clean_field(extractAuthors(handler));
-					
-					if (second_try_author.equals(NO_ENTRY) 
-							|| (first_try_author.length()==0)) {
-						author = NO_ENTRY;
-					} else {
-						author = second_try_author;
-					}
-				} else {
-					author = first_try_author;
-				}
-				
-				try{
-					pubDateString = metadata.get("created");
-				}
-				catch (java.lang.NullPointerException npe) {
-					pubDateString = NO_ENTRY;
-				}
-			}
-			
-			String fullText = handler.toString();
-			inputstream.close();
-			
-			//\"§$%&/()=\\ß{}[]€@]
-			// \\p{Punct}
-			//fullText = Normalizer.normalize(fullText, Normalizer.Form.NFD);
-			//fullText = fullText.replaceAll("[^A-Za-z0-9] ","").replace("\\s+", "+");//p{Cntrl}
-			fullText = stripNonValidXMLCharacters(fullText);
-			fullText = fullText.replaceAll("\\p{C}", " ");
-			if (fullText.trim().length() == 0) {
-				fullText = "Incompatible Encoding";
-			}
-			/**
-			 * If we want to add stemmed words.
-			 */
-			//String stemmedWords = getDistinctStemmedWords(handler);
-
-			if (!success){
-				title = fullText.substring(0, Math.min(fullText.length(), 200));
-			}
-			article.setTitle(title);
-			article.setAuthors(author.trim());
-			article.setPublicationDate(pubDateString);
-			article.setMyAbstract("Dummy. Please Implement.");
-			article.setFileName(originalFilename);
-			article.setFilePath(outputFilePath);
-			article.setDoi(String.valueOf(docId));
-			article.setParseDate(parseTime.replace(" ", "T"));
-			article.setFullText(fullText);
-			
-			writeToXML(article,outputFilePath);
-
-		} catch (DOMException e1) {
-			e1.printStackTrace();
-		} catch (java.lang.NullPointerException npe){
-			System.out.println(file.getName());
-		}
-	} // end of run-tika-function
-	
-	/** This Method stems words of the fulltext of a given Document.
-	 * Probably better with List! Could also return List/Set.
-	 * 
-	 * @param handler
-	 * @return joined String with stemmed words.
-	 */
-	private String getDistinctStemmedWords(BodyContentHandler handler) {
-		 SimpleTokenizer simpleTokenizer = SimpleTokenizer.INSTANCE;  
-	     String tokens[] = simpleTokenizer.tokenize(handler.toString());  
-		PorterStemmer pt = new PorterStemmer();
-		Set<String> stemmedTokens = new HashSet<String>();
-		//List<String> stemmedTokens = new List<Sting>;
-		for (String token : tokens) {
-			// only take the set of stemmed words 
-			// don't take numbers, signs etc.
-			stemmedTokens.add(pt.stem(token));
-		}
-		return  String.join(" ", stemmedTokens);
-	}
-	
 	/** <p>Converts PDF file to XML-data
 	 *  <li> First try to extract meta-data with <b>pdfbox</b>. If this fails use name-entity-recognition
 	 *  and similar methods.
@@ -474,54 +213,77 @@ public class ConvertPdfXML {
 	 * @param id as dummy-data. Can also be real docid. 
 	 */
 	public void run(File file, int id) throws IOException{
-		DBLPDataAccessor da = new DBLPDataAccessor();
-		try { 
-			LocalDateTime now = LocalDateTime.now();	
-	        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-	        String parseTime = now.format(formatter);
-			String originalFilename = file.getName();
-			String outputFileName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
-			String outputFilePath = this.outputPath+ outputFileName;			
+		DBLPDataAccessor da = new DBLPDataAccessor();
+		Article article = null;
+		LocalDateTime now = LocalDateTime.now();	
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        String parseTime = now.format(formatter);
+		String originalFilename = file.getName();
+		String outputFileName = originalFilename.substring(0, originalFilename.length()-".pdf".length())+".xml";
+		String outputFilePath = this.outputPath+ outputFileName;	
+		
+		
+		try { 
+			
 			String title = null;
 			String author = null;
 			String pubDateString = null;
-			
-			/*--------------------------------------------------------
-			 * get doc with pdfbox
-			 *--------------------------------------------------------*/
-			PDDocument myDoc = null;
-			try {
-				myDoc = PDDocument.load(file);
-			} catch(Exception e){
-				e.printStackTrace();
-			}  
-			PDFTextStripper stripper = null;
-			try {
-				stripper = new PDFTextStripper();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			/*----------------------------------------------
-			 * get & set the title
-			 *----------------------------------------------*/
-			String pdfbox_title = clean_field(myDoc.getDocumentInformation().getTitle());
-			Boolean success = false;
+			String pdfbox_title = null;
+			String pdfbox_author = null;
+			String namedEntityRecAuthor = null;
+			String fullText = null;
 
-			if (pdfbox_title.equals(NO_ENTRY) || (pdfbox_title.length()==0)) {
-				//String secondTryTitle = clean_field(getFieldDocearStyle(file).trim());
-				success = false;
-//				if (!pdfbox_title.equals(NO_ENTRY)) {
-//					title = secondTryTitle;
-//					success = true;
-//				} // else is handled like discussed with "titleLike"
+			Boolean success = false;
 			
+			PDDocument myDoc = null;
+			PDFTextStripper stripper = null;
+			try { 
+				/*--------------------------------------------------------
+				 * get doc with pdfbox
+				 *--------------------------------------------------------*/
+				myDoc = PDDocument.load(file);
+				stripper = new PDFTextStripper();
+
+				pdfbox_title = wordOps.clean_field(myDoc.getDocumentInformation().getTitle(), true);
+
+				pdfbox_author = wordOps.clean_field(myDoc.getDocumentInformation()
+						.getAuthor(),false);
+				pubDateString = myDoc.getDocumentInformation()
+						.getCreationDate().getTime().toString();
+				stripper.setStartPage(0);
+				stripper.setEndPage(Integer.MAX_VALUE);
+				fullText =  stripper.getText(myDoc);
+				fullText = stripNonValidXMLCharacters(fullText);
+				
+				namedEntityRecAuthor = wordOps.clean_field(extractAuthors(stripper, myDoc),false);
+			}
+				catch (IOException ioe) {
+				ioe.printStackTrace();
+			} catch (java.lang.NullPointerException npe) {
+				pubDateString = NO_ENTRY;
+			} finally {
+				if( myDoc != null )
+				   myDoc.close();
+			}
+
+			if ((pdfbox_title.length()==0)) {
+				/*----------------------------------------------
+				 * CHECK TITLE
+				 *----------------------------------------------*/
+				title = NO_ENTRY;
+				//					String docearTitle = wordOps.clean_field(getFieldDocearStyle(file).trim(), true);
+				//					if (!docearTitle.equals(NO_ENTRY)) {
+				//						title = docearTitle;
+				//						success = true;
+				//						docear_i++;
+				//					}
 			} else {
 				title = pdfbox_title;
+				pdfbox_i++;
 				success = true;
 			}
-
-			Article article = null;
 			if (success) {
 				/*----------------------------------------------
 				 * only use dblp if we have an ok title
@@ -529,13 +291,13 @@ public class ConvertPdfXML {
 				try{
 					article = da.getArticleObj(title);
 				} catch(java.net.UnknownHostException uhe){
-					System.out.println(file.getName());
 				}
-				
+			} else {
+				title = wordOps.clean_field(wordOps.getNWords(fullText, titleLikeLength),true);
+				titleLike_i++;
 			}
+			
 			if (article != null) {
-				// wenn er was findet, dann nimm das auch: natuerlich fehleranfaellig.
-				// idee: nimm das mit dem hoechsten score. TODO
 				List<String> authors = article.getAuthors();
 				StringBuilder sb = new StringBuilder();
 				for (int i=0;i<authors.size();i++){
@@ -543,86 +305,102 @@ public class ConvertPdfXML {
 				}
 				author = sb.toString();
 				pubDateString = article.getPublicationDate();
+				dblpTitle_i++;
 				
 			} else {
 				article = new Article();
 				/*----------------------------------------------
-				 * if there aren't any results:
+				 * CHECK AUTHORS
 				 *----------------------------------------------*/
-				String first_try_author = clean_field(myDoc.getDocumentInformation()
-						.getAuthor());
-				if (first_try_author.equals(NO_ENTRY)
-						|| (first_try_author.length()==0)) {
-					// try to extract name with NE in first section.
-					String second_try_author = clean_field(extractAuthors(stripper, myDoc));
+				if ((pdfbox_author.length()==0)) {
 					
-					if (second_try_author.equals(NO_ENTRY) 
-							|| (first_try_author.length()==0)) {
+					if ((namedEntityRecAuthor.length()==0)) {
 						author = NO_ENTRY;
 					} else {
-						author = second_try_author;
+						author = namedEntityRecAuthor;
 					}
 				} else {
-					author = first_try_author;
+					author = pdfbox_author;
 				}
-				
-				try{
-					pubDateString = myDoc.getDocumentInformation()
-							.getCreationDate().getTime().toString();
-				}
-				catch (java.lang.NullPointerException npe) {
-					pubDateString = NO_ENTRY;
-				}
+			}
+			
+			if (!(title.length()==0)) {
+				article.setTitle(title);
+			} else {
+				article.setTitle(wordOps.clean_field(wordOps.getNWords(fullText, titleLikeLength),true));
+				titleLike_i++;
 			}
 
 			
-			String fullText = null;
-			try {
-				/*----------------------------------------------
-				 * get & set the main text
-				 *----------------------------------------------*/
-				stripper.setStartPage(0);
-				stripper.setEndPage(Integer.MAX_VALUE);
-				fullText =  stripper.getText(myDoc);
-			} catch (IOException e) {
-				System.out.println(file.getName());
-			} catch (java.lang.NullPointerException npe){
-				System.out.println(file.getName());
-			}
-			myDoc.close(); // close doc
+			pubDateString = this.changeDataFormat(pubDateString);
+			String firstLowerCaseWords = wordOps.getNWords(fullText,500).toLowerCase();
 			
-			//\"§$%&/()=\\ß{}[]€@]
-			// \\p{Punct}
-			// This is where I try to remove/fix special characters
-			//fullText = Normalizer.normalize(fullText, Normalizer.Form.NFD);
-			//fullText = fullText.replaceAll("\\p{C}", " ");
-			//fullText = fullText.replaceAll("[^A-Za-z0-9] ","").replace("\\s+", "+");//p{Cntrl}
-			fullText = stripNonValidXMLCharacters(fullText);
-			if (!success){
-				title = fullText.substring(0, Math.min(fullText.length(), 200));
+			String result = null;
+			try {
+				result = firstLowerCaseWords.substring(firstLowerCaseWords.indexOf("abstract") + 9,
+						firstLowerCaseWords.indexOf("introduction"));
+			} catch(java.lang.StringIndexOutOfBoundsException e){
+				
 			}
-			article.setTitle(title);
-			article.setAuthors(author);
+			if (result != null){
+				article.setMyAbstract(wordOps.getNWords(result,150));
+			} 
+			
+			
+			article.setAuthorsString(author);
 			article.setPublicationDate(pubDateString);
-			article.setMyAbstract("Dummy. Please Implement.");
 			article.setFileName(originalFilename);
 			article.setFilePath(outputFilePath);
 			article.setDoi(String.valueOf(id));
 			article.setParseDate(parseTime.replace(" ", "T"));
 			article.setFullText(fullText);
+
 			
-			// finally write the article to xml.
-			writeToXML(article,outputFilePath);
 
 		} catch (DOMException e1) {
 			e1.printStackTrace();
 		} catch (java.lang.NullPointerException npe){
-			System.out.println(file.getName());
+			//npe.printStackTrace();
+			//System.out.println(file.getName());
+		} 
+		
+		if (article != null) {
+			// finally write the article to xml.
+			//System.out.println("not writing");
+			writeToXML(article,outputFilePath);
 		}
 
 
-
 	} // end of function
+	
+	/** Simplify date string to year or month and year. 
+	 * 
+	 * @param dateString
+	 * @return
+	 */
+	public String changeDataFormat(String dateString){
+		Date date = null;
+		try {
+			date = (Date)formatter.parse(dateString);
+		} catch (java.lang.NullPointerException npe){
+
+		} catch (java.text.ParseException e) {
+			try {
+				date = (Date)snd_formatter.parse(dateString);
+			} catch (java.text.ParseException e1) {
+				return dateString;
+			}
+			
+		}
+		if (date != null){
+			Calendar cal = Calendar.getInstance();
+			cal.setTime(date);
+			String month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.ENGLISH);
+			return month+ " " + cal.get(Calendar.YEAR);
+		} else {
+			return null;
+		}
+	}
 	
 	/** <p>There are some characters which should not occur in a cdata section
 	 *  these are filtered out in this function. Probably there is a more efficient
@@ -688,8 +466,45 @@ public class ConvertPdfXML {
 	    	sae.printStackTrace();
 	    }catch ( IOException ioe) {
 	    	ioe.printStackTrace();
-	    }
+	    } 
 		return article;
 	} // end of getArticleFromXML
+	
+	
+//	/**
+//	 * 
+//	 * @param file
+//	 * @return
+//	 */
+//	private String getFieldDocearStyle(File file)  {
+//		boolean empty = true;
+//		StringBuilder sb = new StringBuilder();
+//		PdfDataExtractor extractor = new PdfDataExtractor(file);
+//		try {
+//			if (!empty) {
+//				sb.append("|");
+//			}
+//			try {
+//
+//				String title = extractor.extractTitle();
+//				if (title != null) {
+//					sb.append(wordOps.clean_field(title,true));
+//					empty = false;
+//				}
+//			}
+//			catch (IOException e) {
+//				sb.append(NO_ENTRY);
+//			} 
+//			catch (de.intarsys.pdf.cos.COSSwapException cose) {
+//				System.out.println("cos ex"+ file.toString());
+//			}
+//		}
+//		finally {
+//
+//			extractor.close();
+//			extractor = null;
+//		}
+//		return sb.toString();
+//	}
 	
 } // end of class
