@@ -86,7 +86,7 @@ public class ArticleHandler extends DefaultHandler {
             article.setTitle(new String(ch, start, length));
             bTitle = false;
         } else if (bAuthors) {
-            article.setAuthors(new String(ch, start, length));
+            article.setAuthorsString(new String(ch, start, length));
             bAuthors = false;
         } else if (bAbstract) {
             article.setMyAbstract(new String(ch, start, length));

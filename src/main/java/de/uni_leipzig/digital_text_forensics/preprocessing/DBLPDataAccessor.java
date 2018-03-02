@@ -127,9 +127,9 @@ public class DBLPDataAccessor {
 					article.setAuthors(jsonArticle.getJSONObject("info").getJSONObject("authors").getJSONArray("author"));
 				} catch (org.json.JSONException e) {
 					try{
-						article.setAuthors((String)jsonArticle.getJSONObject("info").getJSONObject("authors").get("author"));
+						article.setAuthorsString((String)jsonArticle.getJSONObject("info").getJSONObject("authors").get("author"));
 					} catch(org.json.JSONException e2) {
-						article.setAuthors("");
+						article.setAuthorsString("");
 					}
 				}
 				// not always given.
