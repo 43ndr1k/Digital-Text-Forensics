@@ -108,11 +108,11 @@ public class LoggingDocServiceImpl implements LoggingDocService {
 \end{lstlisting}
 
 In der Implantation des Interfaces wird nun das DAO aufgerufen.
-Wie hier im Beispiel zu sehen die Methode findbyId.
+Wie hier im Beispiel zu sehen die Methode \texttt{findbyId}.
 
 \subsection{Controller}
 Die nächste Schritt ist es sogenannte Controller zu erstellen.
-Diese bilden eine wichtige Schnittstelle für die Kommunikation mit dem Frontend und dem Backend.
+Diese bilden eine wichtige Schnittstelle für die Kommunikation mit dem Frontend und Backend.
 Controller reagieren auf HTTP-Requests, welche von dem Frontend oder anderen Clients gesendet werden.
 Die Aufgabe ist es für die bestimmten Ressource-URLs bestimmte Ereignisse auszuführen.
 Ein Beispiel hierfür ist die Suchanfrage der Search Zeile im Frontend auszuwerten und die Suchergebnisse zurück zu senden.
@@ -130,14 +130,52 @@ return modelAndView;}
 \end{lstlisting}
 
 In diesem Code Beispielabschnitt sieht man, dass wenn ein Request bei der Path-URL \glqq/\grqq~ ausgelöst wird, wird die Funktion SearchPage aufgerufen und eine Suche ausgeführt.
-Hierfür wird der RequestParameter query ausgewertet, gesucht und anschließend die Suchergebnisse in einem modelAndView Objekt dem Frontend übergeben. 
+Hierfür wird der Request Parameter query ausgewertet.
+Die Suche wird mithilfe der Komponente Lucene durchgeführt, welches in Abschnitt \ref{ch:indexing} näher erläutert wird und anschließend die Suchergebnisse in einem modelAndView Objekt dem Frontend übergeben. 
 
 \subsection{Frontendkomponenten}
+Im nächsten Schritt wurden die Komponenten, welche für das Frontend benötigt werden konzipiert und im Anschluss implementiert. 
 
-- CreateLink
-- Pager
-- DTO
-- search.html
+Nach dem die Suche durchgeführt wurde und die Lucene Komponente die Suchergebnisse zurückgegeben hat, wird die gesamte Ergebnisliste gesplittet.
+Hierbei wird für die angeforderte Seite eine Subliste erstellt, in welcher nur die erforderten Suchergebnisse enthalten sind und die restlichen Ergebnisse werden verworfen.
+Hierdurch ist es nicht erforderlich alle Ergebnisse zu transformieren, wodurch die Anwendung wesentlich schneller arbeitet.
+
+Als nächstes wurde ein data transfer object (DTO) erstellt, um die relevanten Suchergebnisse, die in der Subliste enthalten sind, in das gewünschte Ausgabeformat überführt und in einer separaten  Liste gesammelt.
+Das DTO hat dabei unter anderem die Variablen Autor, Titel, Snippet oder der Redirect Link, welcher auf die zugehörige PDF zeigt.   
+Der Link hierfür wird in einer separaten Methode \texttt{createLink} erzeugt.
+zu diesem Zweck werden aus der docId, Query und dem Host ein Link erstellt. 
+Zum Beispiel wird der folgende Link generiert: \textit{http://localhost:8080/pdf/?docId=1\&query=xyz}.
+Der Parameter \texttt{docId} ist dabei eine Id, welche die PDF zu dem Suchergebnis angibt und der Parameter \texttt{query} dient für das User-Feedback.
+Bei dem späteren klicken auf das Suchergebnis, wird in der Datenbank das Dokument, welches mit dem einer bestimmten Query gefunden wurde gespeichert.
+Damit ist es möglich Rückschlüsse auf die Wichtigkeit des Dokuments zu erkennen.
+Der eben beschrieben Vorgang wird in der Methode \texttt{mapDocumentListToSearchResults} vorgenommen.
+Nach dem die Liste der transformierten Suchergebnisse erstellt wurde, wird diese zu dem \texttt{searchResultPage} Objekt hinzugefügt und das Objekt mit weiteren Angaben ergänzt, welche im folgenden Code Abschnitt Ausschnittsweise zu erkennen ist.
+\begin{lstlisting}
+List<ScoreDoc> split = pager.split(list, currentPage);
+searchResultList = querySearcher.mapDocumentListToSearchResults(split,query);
+searchResultPage.setTotalResults(list.size());
+searchResultPage.setResultsOnPage(searchResultList);
+searchResultPage.setPage(currentPage);
+\end{lstlisting}
+Dabei werden noch zum Beispiel die gesamt Anzahl an Suchergebnissen oder auf welcher Page man sich befindet gesetzt.
+
+Die \texttt{searchResultPage} wird nun der Spring Thymeleaf Komponente übergeben und die \texttt{search.html} Page erstellt.
+Hierfür wurde ein \texttt{search.html} Template erstellt, in welchem Anweisungen stehen, wie mit den übergebenden Daten umgegangen werden soll.
+Thymeleaf befolgt dabei diese Anweisungen und wandelt diese in entsprechende HTML Komponenten um, damit im Anschluss nach der Umwandlung ein Webbrowser die Page anzeigen kann.
+Ein Beispiel der Anweisungen für Thymeleaf werden im folgenden Codeabschnitt aufgezeigt.
+\begin{lstlisting}
+<div th:each="result : ${searchResultPage.resultsOnPage}">
+	<h3 class="card-title">
+		<a th:href="${result.webUrl.href}"
+			th:text="${result.title}">
+		</a>
+	</h3>
+</div>
+\end{lstlisting}
+In dem Codeabschnitt wird das \texttt{searchResultPage}-Objekt aufgerufen und in einer Schleife jedes DTO-Objekt mit Titel und der webURL in ein HTML h3-Tag, welches ein Link darstellt erstellt.
+Durch die Schleife wird also für jedes Element ein eigenes HTM-Element generiert.
+Nach der Erstellung der \texttt{search.html} Page wird die fertige Page über den Request zurückgegeben und der Webbrowser zeigt die Page an.
+
 
 
 
