@@ -18,12 +18,16 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.highlight.Fragmenter;
 import org.apache.lucene.search.highlight.Highlighter;
@@ -32,6 +36,9 @@ import org.apache.lucene.search.highlight.QueryScorer;
 import org.apache.lucene.search.highlight.SimpleHTMLFormatter;
 import org.apache.lucene.search.highlight.SimpleSpanFragmenter;
 import org.apache.lucene.search.highlight.TokenSources;
+import org.apache.lucene.search.spans.SpanFirstQuery;
+import org.apache.lucene.search.spans.SpanMultiTermQueryWrapper;
+import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
 import org.apache.lucene.search.vectorhighlight.FragListBuilder;
 import org.apache.lucene.search.vectorhighlight.FragmentsBuilder;
@@ -73,12 +80,22 @@ public class Searcher {
 	}
 
 	public List<ScoreDoc> search(String query) throws IOException, ParseException {
-
+	  
+	    Term term = new Term(LuceneConstants.CONTENTS, query);
+	    TermQuery termQuery = new TermQuery(term);
+  	    SpanFirstQuery spanFirstQuery = new SpanFirstQuery(new SpanTermQuery(term), 1); // Weight Terms more if they occure at the beginning of the Document
+	  
 		TopScoreDocCollector collector = TopScoreDocCollector.create(LuceneConstants.MAX_SEARCH);
-		searcher.search(MultiFieldQueryParser
-				.parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer), collector);
+		Query q = MultiFieldQueryParser
+            .parse(new String[] {query, query}, new String[] {LuceneConstants.CONTENTS, LuceneConstants.TITLE}, analyzer);
+		//searcher.search(q, collector);
+		BooleanQuery booleanQuery = new BooleanQuery.Builder()
+		     .add(new BooleanClause(q, BooleanClause.Occur.MUST))
+		     .add(new BooleanClause(spanFirstQuery, BooleanClause.Occur.SHOULD))
+		     .build();
+		searcher.search(booleanQuery, collector);
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
-
+		
 		//scoring
 		double time = 0;
 		Long clicks= 0L;
@@ -97,7 +114,7 @@ public class Searcher {
 			hits[i].score = hits[i].score + (float) timeFactor + (float) refCountFactor 
 			                + (float) clicksFactor;
 		}
-
+		
 		return Arrays.asList(hits);
 	}
 
