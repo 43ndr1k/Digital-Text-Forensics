@@ -4,6 +4,8 @@
 - Java 1.8.0_161
 - Maven  3.3.9
 - Database: H2
+- Spring-Boot 1.5.8.RELEASE
+- Apache Lucene 7.1.0
 
 ### Initial
 Download and unzip the source repository for this guide, or clone it using Git: 

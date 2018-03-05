@@ -37,6 +37,10 @@ public class Pager {
 		if (searchDocList.size() < 10) {
 			to = searchDocList.size();
 		}
+
+		if ((searchDocList.size() - from) < 10) {
+			to = searchDocList.size();
+		}
 		List<ScoreDoc> ret = searchDocList.subList(from, to);
 
 		return ret;
