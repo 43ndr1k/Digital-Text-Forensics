@@ -47,7 +47,7 @@ versucht, im Text einen validen Titel zu finden. Valide Titel
 werden an eine Schnittstelle der Digital Bibliography \& Library
 Project (DBLP)\footnote{Link zu DBLP: \url{http://dblp.uni-trier.de/}}
 gesendet und mit der dort vorliegenden Datenbank verglichen. Die Attribute des Artikels mit
-der höchsten Übereinstimmung (Score) werden für den aktuellen
+der höchsten Übereinstimmung bzw. dem höchsten Score werden für den aktuellen
 Artikel übernommen. Es besteht die Möglichkeit, den Datensatz als
 XML-Datei lokal zu durchsuchen und mit weiteren Daten anzureichern.
 In \autoref{sec:heuristic-title-search} soll weiter darauf
@@ -99,10 +99,38 @@ Länge der Attribute berechnet werden\footnote{Titel: 50, Autoren:
 nicht garantiert werden kann, dass die korrekte Artikel Daten gefunden
 werden, muss der Score einen Schwellwert überschreiten.
 
-\subsection{Referenz-Analyse}\label{sec:reference-analysis}
+\subsection{Ranking der Dokumente}\label{sec:ranking}
+
+%\subsubsection{Paperrank}\label{sec:paperrank}
+
+Die gegebenen Paper können auch zur Indizierungszeit gerankt werden. Hierbei spielt die Relevanz zu einer Query noch keine Rolle. Es geht darum, welches Paper generell wichtiger ist, als ein anderes. Diese Gewichtung wird in das finale Ranking einberechnet.
+Es existieren diverse Faktoren nach denen die Relevanz von Papers im Bezug auf andere Papers festgemacht werden kann. Im Zuge der Bearbeitung wurden zum Einen die Anzahl der Klicks und die Verweildauer auf einem Paper einbezogen und zum Anderen die Zahl der Zitierungen in anderen Papers. Weitere Faktoren, wie bspw. Autoren, Sprache oder Form wurden für das Ranking nicht hinzugezogen, könnten jedoch in weiteren Arbeiten zu dem Thema betrachtet werden.  \\
+
+In diesem Abschnitt wird auf die Anzahl der Zitierungen für jedes Paper eingegangen. In Anlehnung an den Begriff Pagerank wird dies hier als Paperrank bezeichnet.
+Webseiten nehmen Bezug auf andere Webseiten. Es ist möglich daran die Wichtigkeit einer Webseite festzumachen. Wird eine oft auf anderen Seiten erwähnt ist davon auszugehen, dass sie wichtiger ist, als eine weniger erwähnte. Bei Papers ist das ähnlich: Wird ein Paper oft zitiert so ist davon auszugehen, dass es für die Autoren von Papers eine höhere Relevanz hat, als Papers die weniger zitiert werden. Daher wurde dieser Aspekt für das Ranking der Dokumente für die Suchmaschine betrachtet. Außerdem kann als Nebeneffekt anhand des Paperranks die komplette Verteilung der Zitierungen dargestellt werden.
+Die Umsetzung erfolgte über ein Perlskript, es gab Probleme bei der Umsetzung mit Java. Das Skript kann Offline zur Indexing-Zeit ausgeführt werden. Es wird vom Hauptprogramm über die Javaklasse \lstinline{RunScript.class} aufgerufen. Das Skript wurde für die Perl Version 5 getestet\footnote{Hier bitte die Readme beachten.}. Das Skript wurde zur besseren Nachvollziehbarkeit in einzelne Schritte unterteilt auf die im Folgenden eingegangen wird.
+Zunächst wurden zur Feststellung einige Grunddaten aus den gegebenen wissenschaftlichen Texten benötigt. Daraus wurden im speziellen die Titel und die Quellen genutzt. Die Paper liegen dank der Vorverarbeitung in Form von Textdateien vor. Die Titel sind durch die XML-Tag <title> markiert. Es erfolgte eine Extraktion durch reguläre Ausdrücke auf den <title>-Tag und zur Sicherheit, da nicht alle Paper einen ordentlich befüllten Tag hatten auf den <Filename>-Tag. 
+Die erste Herausforderung stellte die Extraktion der Quellen für jedes Paper dar. Diese sind nicht gesondert markiert, sondern sind im Text eingebettet. Dies wurde mit Hilfe einer Heuristik gelöst. Quellen sind typischer Weise nummeriert. Diese Nummerierung wird oftmals eingeschlossen durch eckige [] oder runde () Klammern. Daher wurde mit Hilfe regulärer Ausdrücke nach Klammern gesucht, welche ein- oder zweistellige Zahlen enthalten. War diese Bedingung erfüllt, wurde die entsprechende Zeile als Quelle extrahiert. Mit diesen Daten für Titel und Quellen wurde nun weitergearbeitet.
+Im nächsten Schritt werden die so entstandenen Quellen in Zeichenketten zerlegt. Für eine Länge von 30 Zeichen haben sich gute Ergebnisse eingestellt. Dies geschieht, da die Quellen nicht nur den Titel der zitierten Quelle enthalten, sondern auch Dinge wie bspw. Erscheinungsdatum, Author, Verlag, ISBN. 
+Danach können die Zeichenketten mit den Titeln abgeglichen werden. Wenn der Titel die Zeichenkette beinhaltet, dann wird der Titel in den nächsten Bearbeitungsschritt übernommen. Hierbei werden beim Abgleich Sonderzeichen und Zahlen ausgenommen\footnote{escaped}.
+Daraufhin werden die Titel gezählt und sortiert. Es entsteht eine Liste mit den Papers zusammen mit der Anzahl mit der sie in den Quellen der anderen Paper vorkommen. Daraus kann nun entnommen werden, welche Paper die wichtigsten sind. Die Datei wurde in ein XML-File umgewandelt um eine reibungslose Weiterverarbeitung zu gewährleisten. Außerdem wurde die Datei, durch entfernen von unnötigen Leerzeichen etc., etwas bereinigt, um Speicherplatz einzusparen und eine höhere Effizienz zu gewährleisten. Das Ergebnis ist in \autoref{fig:paperrank} dargestellt:
+
+
+%%%
+
+
+\begin{figure}[ht]
+
+    \includegraphics[width=\linewidth]{anzahl_zitierungen}
+  \caption[]{Anzahl der Zitierungen für die Top 20 Paper}
+\label{fig:paperrank}
+\end{figure}
 
 
 
+Zum Abschluss wurden die entsprechenden gezählten Zitierungen in die Ausgangsdateien geschrieben. Sie wurden in <entry>- und <counter>-Tags verpackt, damit im Scoring Schritt ein reibungsloser Zugriff möglich wird.
+Nun soll noch ein kurzer Ausblick gegeben werden, was nicht in das Resultat des Paperranks eingeflossen ist, aber die Ergebnisse noch verbessern könnte. Bei der Extraktion der Quellen ist sicher noch einiges an Optimierungspotenzial. Es könnten weitere Kriterien in die Auswahl einfließen, um zum einen mehr Quellen zu finden und zum anderen \emph{Nichtquellen} zu eliminieren. Außerdem wurde nicht beachtet, welche Quelle die Zitierungen vornimmt. Generell hat sich das Vorgehen an keinem Algorithmus, wie bspw. dem Random Surfer Modell orientiert. Dies wäre auch ein interessanter Ansatz für weitere Nachforschungen. 
+Nichtsdestotrotz entstand mit dieser Arbeit eine weitere Möglichkeit die gegebenen wissenschaftlichen Texte zu bewerten bzw. zu \emph{ranken}. Des Weiteren ist nun eine Aussage darüber möglich, wie oft einzelne Paper in anderen Papern als Quellen herangezogen werden und wie die  Verteilung über alle Texte ist.
 
 
 
