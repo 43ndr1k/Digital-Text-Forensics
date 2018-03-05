@@ -80,9 +80,10 @@ public class Searcher {
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
 
 		//scoring
-		double time =0;
-		Long clicks=0L;
-		int refCount=0;
+		double time = 0;
+		Long clicks= 0L;
+		int refCount = 0;
+		double  timeFactor = 0, refCountFactor = 0, clicksFactor = 0;
 		Document d;
 
 		for (int i = 0; i < hits.length; ++i) {
@@ -90,7 +91,11 @@ public class Searcher {
 			d = searcher.doc(hits[1].doc);
 			refCount = Integer.parseInt(d.getField(LuceneConstants.REF_COUNT).stringValue()); //numericValue().intValue();
 			clicks = loggingDocService.getClickCountAndFindByDocId((long) hits[i].doc);
-			hits[i].score = hits[i].score + (float) time + refCount + clicks;
+			timeFactor = time < 0 ? time = 0 : Math.tanh(0.001 * time) * 2; // Get values between 0 and 1 with tanh(x) for x > 0
+			clicksFactor = clicks < 0L ? clicks = 0L : Math.tanh(0.1 * clicks) * 3;
+			refCountFactor = refCountFactor < 0 ? refCountFactor = 0 : Math.tanh(0.1 * refCountFactor) * 2;
+			hits[i].score = hits[i].score + (float) timeFactor + (float) refCountFactor 
+			                + (float) clicksFactor;
 		}
 
 		return Arrays.asList(hits);
