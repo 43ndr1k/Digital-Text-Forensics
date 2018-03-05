@@ -6,6 +6,7 @@
 - Database: H2
 - Spring-Boot 1.5.8.RELEASE
 - Apache Lucene 7.1.0
+- Apache Pdfbox 2.0.7
 
 ### Initial
 Download and unzip the source repository for this guide, or clone it using Git: 
@@ -29,7 +30,7 @@ The database is created on the first start and is stored in the user's home dire
 
 Run the **ConvertPdfXMLController** class in  package de.uni_leipzig.digital_text_forensics.preprocessing to extract the PDF content and create corresponding XML-files.  To count how many times articles are quoted, run
 the _6UnitedComparer.pl_ script and merge the results using the _mergeRefCountsToXMLFiles_ method. Finally run **HeuristicTitleSearch** to correct meta-data whilst comparing the fullText-Element against a precompiled dataset. 
-For more information on this read the documentation. 
+For more information on this read the [documentation](./Dokumentation/arbeit.pdf). 
 
 This can be easily achieved running the **Main** class.
 
