@@ -1,0 +1,54 @@
+
+Nach dem Controller wurden die Komponenten, welche für das Frontend benötigt werden, konzipiert und im Anschluss implementiert. 
+
+Wurden die Suchen durchgeführt und die Lucene-Komponente die Suchergebnisse zurückgegeben, wird die gesamte Ergebnisliste gesplittet.
+Hierbei wird für die angeforderte Seite eine Subliste erstellt, in welcher nur die geforderten Suchergebnisse enthalten sind und die restlichen Ergebnisse verworfen werden.
+Hierdurch ist es nicht erforderlich, alle Ergebnisse zu transformieren.
+Dadurch arbeitet die Anwendung wesentlich schneller.
+
+Als nächstes wurde ein Data Transfer Object (DTO) erstellt, um die relevanten Suchergebnisse, die in der Subliste enthalten sind, in das gewünschte Ausgabeformat zu überführen und in einer separaten  Liste zu sammeln.
+Das DTO hat dabei unter anderem die Variablen Autor, Titel, Snippet oder den Redirect-Link, welcher auf die zugehörige PDF zeigt.   
+Der Link hierfür wird mit der Methode \texttt{createLink} erzeugt.
+Zu diesem Zweck werden aus der docId, Query und dem Host ein Link erstellt. 
+Als Beispiel wird folgender Link generiert:
+
+\textit{http://localhost:8080/pdf/?docId=1\&query=xyz}.
+
+Der Parameter \texttt{docId} ist dabei eine Id, welche die PDF zu dem Suchergebnis angibt und der Parameter \texttt{query} dient dem User-Feedback.
+Beim späteren Klick auf das Suchergebnis wird zum einen die dazugehörige PDF angezeigt und zum anderen gleichzeitig in der Datenbank das Dokument, welches mit dem einer bestimmten Query gefunden wurde, gespeichert.
+Damit ist es möglich, Rückschlüsse auf die Wichtigkeit des Dokuments zu ziehen.
+Der eben beschriebene Vorgang erfolgt mit der Methode \texttt{mapDocumentListToSearchResults}.
+Nach dem Erstellen der Liste der transformierten Suchergebnisse, wird sie zum Objekt \texttt{searchResultPage} hinzugefügt und um weitere Angaben ergänzt.
+Das ist im folgenden Code-Abschnitt ausschnittsweise zu sehen.
+\pagebreak
+
+\begin{lstlisting}
+List<ScoreDoc> split = pager.split(list, currentPage);
+searchResultList = querySearcher.mapDocumentListToSearchResults(split,query);
+searchResultPage.setTotalResults(list.size());
+searchResultPage.setResultsOnPage(searchResultList);
+searchResultPage.setPage(currentPage);
+\end{lstlisting}
+
+Hinzu zum Beispiel kommt die Gesamtanzahl an Suchergebnissen oder auf welcher Page man sich befindet.
+
+Die \texttt{searchResultPage} wird nun der Spring Boot Thymeleaf-Komponente übergeben und die \texttt{search.html}-Page erstellt.
+Hierfür wurde ein \texttt{search.html}-Template erstellt, in welchem Anweisungen zum Umgang mit den übergebenden Daten gegeben werden.
+Thymeleaf befolgt diese Anweisungen und wandelt sie in entsprechende HTML-Komponenten um, damit im Anschluss der der Umwandlung ein Webbrowser die Page anzeigen kann.
+Ein Beispiel der Anweisungen für Thymeleaf wird im folgenden Code-Abschnitt aufgezeigt.
+
+\begin{lstlisting}
+<div th:each="result : ${searchResultPage.resultsOnPage}">
+	<h3 class="card-title">
+		<a th:href="${result.webUrl.href}"
+			th:text="${result.title}">
+		</a>
+	</h3>
+</div>
+\end{lstlisting}
+
+Das \texttt{searchResultPage}-Objekt wird aufgerufen.
+Daraufhin wird in einer Schleife die Liste der DTO-Objekte, die im \texttt{searchResultPage}-Objekt enthalten sind, mit Titel und \texttt{webURL} als HTML h3-Tag, welche einen Link darstellt, erstellt.
+Durch die Schleife wird somit für jedes Element ein eigenes HTML-Element generiert.
+Die Gestaltung der Oberfläche und deren Elemente wurde in separaten CSS- und Javascript-Dateien vorgenommen.
+Nach der Erstellung der \texttt{search.html}-Page wird die fertige Page über den Request zurückgegeben und der Webbrowser zeigt sie an.
