@@ -152,13 +152,9 @@ public class WordOperationClass {
 				lowerCaseWord.replaceAll("[\\W]|_", "");
 			}
 			for (String blockWord : blockWords) {
-				// @todo equals
 				if (lowerCaseWord.equals(blockWord)) {
 					block = true;
 				}
-				// if (lowerCaseWord.contains(blockWord)){
-				// block = true;
-				// }
 			}
 			if (!block) {
 				sb.append(WordUtils.capitalize(lowerCaseWord) + " ");
