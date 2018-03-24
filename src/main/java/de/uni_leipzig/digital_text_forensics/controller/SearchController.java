@@ -2,6 +2,7 @@ package de.uni_leipzig.digital_text_forensics.controller;
 
 import static de.uni_leipzig.digital_text_forensics.domain.Pager.injectPaginationLinks;
 
+import de.uni_leipzig.digital_text_forensics.domain.EmailService;
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResultPage;
@@ -27,6 +28,9 @@ public class SearchController {
 	@Autowired
 	Pager pager;
 
+	@Autowired
+	EmailService emailService;
+
 	/**
 	 * Searching method
 	 * @param query String
@@ -39,6 +43,10 @@ public class SearchController {
 					String query,
 			@RequestParam(defaultValue = "1")
 					Integer currentPage) {
+
+
+
+		emailService.sendEmail("test", "test");
 
 		ModelAndView modelAndView = new ModelAndView("search");
 		SearchResultPage searchResultPage = new SearchResultPage();
