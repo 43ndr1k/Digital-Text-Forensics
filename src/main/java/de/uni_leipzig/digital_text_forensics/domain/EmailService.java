@@ -2,14 +2,10 @@ package de.uni_leipzig.digital_text_forensics.domain;
 
 import it.ozimov.springboot.mail.model.defaultimpl.DefaultEmail;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.Charset;
-import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
-import org.hibernate.validator.constraints.Email;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.thymeleaf.expression.Lists;
 import static com.google.common.collect.Lists.newArrayList;
 
 @Service

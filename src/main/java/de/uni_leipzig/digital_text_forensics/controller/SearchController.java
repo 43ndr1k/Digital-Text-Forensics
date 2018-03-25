@@ -44,10 +44,6 @@ public class SearchController {
 			@RequestParam(defaultValue = "1")
 					Integer currentPage) {
 
-
-
-		emailService.sendEmail("test", "test");
-
 		ModelAndView modelAndView = new ModelAndView("search");
 		SearchResultPage searchResultPage = new SearchResultPage();
 
