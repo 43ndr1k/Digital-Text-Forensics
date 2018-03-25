@@ -1,8 +1,16 @@
 package de.uni_leipzig.digital_text_forensics.controller;
 
+import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.model.MetaData;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageService;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageFileNotFoundException;
+import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
+import java.util.List;
+import javax.mail.MessagingException;
+import javax.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import java.io.IOException;
 import java.util.stream.Collectors;
@@ -27,10 +35,18 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class FileUploadController {
 
 	private final StorageService storageService;
+	private final MailService mailService;
+
+	@Value("${spring.mail.send.text1}")
+	private String mailUploadText;
+
+	@Value("${spring.mail.subject1}")
+	private String subject;
 
 	@Autowired
-	public FileUploadController(StorageService storageService) {
+	public FileUploadController(StorageService storageService, MailService mailService) {
 		this.storageService = storageService;
+		this.mailService = mailService;
 	}
 
 	@GetMapping("/upload")
@@ -44,6 +60,11 @@ public class FileUploadController {
 		return "uploadForm";
 	}
 
+	/**
+	 * Get upload files.
+	 * @param filename
+	 * @return
+	 */
 	@GetMapping("/files/{filename:.+}")
 	@ResponseBody
 	public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
@@ -53,17 +74,32 @@ public class FileUploadController {
 				"attachment; filename=\"" + file.getFilename() + "\"").body(file);
 	}
 
+	/**
+	 * Post a new file.
+	 */
 	@PostMapping("/upload")
 	public String handleFileUpload(@RequestParam("file") MultipartFile file,
-			RedirectAttributes redirectAttributes, @ModelAttribute MetaData metaData) {
+			RedirectAttributes redirectAttributes, @ModelAttribute MetaData metaData, HttpServletResponse resp)
+			throws URISyntaxException, IOException, MessagingException {
 
+		if (file.isEmpty()) {
+			resp.sendError(HttpServletResponse.SC_NO_CONTENT,
+					"File not uploaded " ); // explicitely put error message in request
+			return null;  // return null to in
+
+		}
 		storageService.store(file);
 		redirectAttributes.addFlashAttribute("message",
 				"You successfully uploaded " + file.getOriginalFilename() + "!");
 
-		return "redirect:/upload";
+		mailService.send(subject, mailUploadText, file.getOriginalFilename());
+
+		return  "redirect:/upload";
 	}
 
+	/**
+	 * Exception Handling for File not found.
+	 */
 	@ExceptionHandler(StorageFileNotFoundException.class)
 	public ResponseEntity<?> handleStorageFileNotFound(StorageFileNotFoundException exc) {
 		return ResponseEntity.notFound().build();

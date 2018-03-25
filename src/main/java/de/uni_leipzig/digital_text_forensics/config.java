@@ -1,6 +1,6 @@
 package de.uni_leipzig.digital_text_forensics;
 
-import de.uni_leipzig.digital_text_forensics.domain.EmailService;
+import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.lucene.LuceneConstants;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
@@ -87,11 +87,9 @@ public class config {
 	}
 
 	@Bean
-	public EmailService emailService() {
-		return new EmailService();
+	public MailService mailService() {
+		return new MailService();
 	}
-
-
 
 
 
