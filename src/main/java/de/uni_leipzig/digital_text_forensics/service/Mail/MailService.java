@@ -59,9 +59,10 @@ public class MailService {
 	 * @param subject
 	 * @param text
 	 * @param files
+	 * @param localAddr
 	 * @throws MessagingException
 	 */
-	public void send(String subject, String text, String files) throws
+	public void send(String subject, String text, String files, String localAddr) throws
 			MessagingException {
 
 		final Context ctx = new Context();
@@ -74,6 +75,7 @@ public class MailService {
 		ctx.setVariable("files", files);
 		ctx.setVariable("user", user);
 		ctx.setVariable("personal", personal);
+		ctx.setVariable("baseUrl", localAddr);
 
 		try {
 			message.setFrom(new InternetAddress(username, personal));

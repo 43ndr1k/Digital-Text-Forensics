@@ -22,6 +22,6 @@ public interface StorageService {
 
 	void deleteAll();
 
-	void moveFile(List<String> files);
+	boolean moveFile(List<String> files);
 
 }

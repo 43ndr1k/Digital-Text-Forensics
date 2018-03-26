@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.net.URISyntaxException;
 import java.util.List;
 import javax.mail.MessagingException;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -81,7 +82,7 @@ public class FileController {
 	 */
 	@PostMapping("/upload")
 	public String handleFileUpload(@RequestParam("file") MultipartFile file,
-			RedirectAttributes redirectAttributes, @ModelAttribute MetaData metaData, HttpServletResponse resp)
+			RedirectAttributes redirectAttributes, @ModelAttribute MetaData metaData, HttpServletResponse resp, HttpServletRequest request)
 			throws URISyntaxException, IOException, MessagingException {
 
 		if (file.isEmpty()) {
@@ -90,11 +91,19 @@ public class FileController {
 			return null;  // return null to in
 
 		}
+
 		storageService.store(file);
+
+		/* todo:
+		 * save metata. create xml template
+		 */
+
 		redirectAttributes.addFlashAttribute("message",
 				"You successfully uploaded " + file.getOriginalFilename() + "!");
 
-		//mailService.send(subject, mailUploadText, file.getOriginalFilename());
+		String a = "http://" + request.getLocalAddr() + ":" + request.getLocalPort();
+
+		mailService.send(subject, mailUploadText, file.getOriginalFilename(), a);
 
 		return  "redirect:/upload";
 	}
@@ -164,11 +173,16 @@ public class FileController {
 			 * Idexing aufruf
 			 */
 
-		storageService.moveFile(files);
+		boolean test = storageService.moveFile(files);
 
-		redirectAttributes.addFlashAttribute("refiles", files);
-		redirectAttributes.addFlashAttribute("message",
-				"Index updaded");
+		if (test) {
+			redirectAttributes.addFlashAttribute("refiles", files);
+			redirectAttributes.addFlashAttribute("message",
+					"Index updaded");
+		} else {
+			redirectAttributes.addFlashAttribute("message",
+					"Index not updaded");
+		}
 
 		return "redirect:uploaded-files";
 	}

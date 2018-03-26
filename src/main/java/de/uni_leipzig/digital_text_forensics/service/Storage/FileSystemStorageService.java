@@ -1,16 +1,9 @@
 package de.uni_leipzig.digital_text_forensics.service.Storage;
 
-import static java.nio.file.StandardOpenOption.APPEND;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-
-import com.sun.org.apache.bcel.internal.generic.NEW;
 import de.uni_leipzig.digital_text_forensics.model.File;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -20,9 +13,10 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.support.ReplaceOverride;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -32,6 +26,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class FileSystemStorageService implements StorageService {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(FileSystemStorageService.class);
 
 	private final Path rootLocation;
 
@@ -136,7 +132,8 @@ public class FileSystemStorageService implements StorageService {
 	}
 
 	@Override
-	public void moveFile(List<String> files) {
+	public boolean moveFile(List<String> files) {
+		final boolean[] test = { true };
 		files.forEach(s -> {
 			String t = s.substring(0, s.length()-3);
 			t += "pdf";
@@ -148,15 +145,21 @@ public class FileSystemStorageService implements StorageService {
 
 			try {
 
-				Files.move(pdfPath, pdfPath1,
-						StandardCopyOption.REPLACE_EXISTING);
-				Files.move(xmlPath, xmlPath1,
-						StandardCopyOption.REPLACE_EXISTING);
+				if (Files.exists(pdfPath) && Files.exists(xmlPath)) {
+					Files.move(pdfPath, pdfPath1,
+							StandardCopyOption.REPLACE_EXISTING);
+					Files.move(xmlPath, xmlPath1,
+							StandardCopyOption.REPLACE_EXISTING);
+				} else {
+					LOGGER.error("File {} or file {} not exists", pdfPath.getFileName(), xmlPath.getFileName());
+					test[0] = false;
+				}
 			}
 			catch (IOException e) {
 				e.printStackTrace();
 			}
 		});
+		return test[0];
 	}
 
 	@Override
