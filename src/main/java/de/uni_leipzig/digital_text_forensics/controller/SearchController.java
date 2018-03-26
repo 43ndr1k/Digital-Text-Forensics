@@ -64,7 +64,6 @@ public class SearchController {
 			injectPaginationLinks(searchResultPage);
 		}
 		catch (IOException | ParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 

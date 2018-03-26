@@ -21,6 +21,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 import org.springframework.http.HttpHeaders;
@@ -43,6 +44,9 @@ public class RedirectController {
 
 	@Autowired
 	LoggingDocService loggingDocService;
+
+	@Value("${pdfDocDir}")
+	private String pdfDocs;
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Logging.class);
 
@@ -83,7 +87,7 @@ public class RedirectController {
 		HttpHeaders headers = new HttpHeaders();
 		SearchResult searchResult = querySearcher.getDocument(docId, query);
 		
-		String url = "pdfDocs/" + searchResult.getDocUrl().getHref()
+		String url = pdfDocs + "/" + searchResult.getDocUrl().getHref()
 				.substring(9, searchResult.getDocUrl().getHref().length() - 3) + "pdf";
 
 		

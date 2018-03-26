@@ -52,3 +52,26 @@ function __highlight(s, t) {
 $(window).on('load', function () {
   $('#myModal').modal('show');
 });
+
+function toggle(source) {
+  checkboxes = document.getElementsByName('files');
+  for(var i=0, n=checkboxes.length;i<n;i++) {
+    checkboxes[i].checked = source.checked;
+  }
+}
+
+$('#indexing').submit(function() {
+  checkboxes = document.getElementsByName('files');
+  var j = 0;
+  for(var i=0, n=checkboxes.length;i<n;i++) {
+    var t = checkboxes[i].checked;
+    if (t === true) {
+      j++;
+    }
+  }
+  if (j === 0) {
+    alert('You must one Checked it');
+    return false;
+  }
+  return true; // return false to cancel form action
+});

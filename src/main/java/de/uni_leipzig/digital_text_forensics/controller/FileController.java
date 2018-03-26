@@ -1,16 +1,18 @@
 package de.uni_leipzig.digital_text_forensics.controller;
 
+import de.uni_leipzig.digital_text_forensics.model.File;
 import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.model.MetaData;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageService;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageFileNotFoundException;
-import java.io.UnsupportedEncodingException;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URISyntaxException;
 import java.util.List;
 import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import java.io.IOException;
 import java.util.stream.Collectors;
@@ -32,7 +34,7 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-public class FileUploadController {
+public class FileController {
 
 	private final StorageService storageService;
 	private final MailService mailService;
@@ -44,7 +46,7 @@ public class FileUploadController {
 	private String subject;
 
 	@Autowired
-	public FileUploadController(StorageService storageService, MailService mailService) {
+	public FileController(StorageService storageService, MailService mailService) {
 		this.storageService = storageService;
 		this.mailService = mailService;
 	}
@@ -53,7 +55,7 @@ public class FileUploadController {
 	public String listUploadedFiles(Model model) throws IOException {
 
 		model.addAttribute("files", storageService.loadAll().map(
-				path -> MvcUriComponentsBuilder.fromMethodName(FileUploadController.class,
+				path -> MvcUriComponentsBuilder.fromMethodName(FileController.class,
 						"serveFile", path.getFileName().toString()).build().toString())
 				.collect(Collectors.toList()));
 		model.addAttribute("metaData", new MetaData());
@@ -92,9 +94,83 @@ public class FileUploadController {
 		redirectAttributes.addFlashAttribute("message",
 				"You successfully uploaded " + file.getOriginalFilename() + "!");
 
-		mailService.send(subject, mailUploadText, file.getOriginalFilename());
+		//mailService.send(subject, mailUploadText, file.getOriginalFilename());
 
 		return  "redirect:/upload";
+	}
+
+	@GetMapping("/uploaded-files")
+	public String uploadedFiles(Model model) {
+
+		model.addAttribute("files", storageService.loadAll().map(
+				path -> path.getFileName().toString()).filter(path -> path.endsWith(".xml"))
+				.collect(Collectors.toList()));
+
+		return "uploadedFiles";
+	}
+
+	/**
+	 * Show File.
+	 * @param filename
+	 * @return
+	 */
+	@GetMapping("/show-file/{filename:.+}")
+	public String showFile(@PathVariable String filename, Model model) throws IOException {
+
+		Resource file = storageService.loadAsResource(filename);
+
+		String text = "";
+		try{
+			InputStream is = file.getInputStream();
+			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+			String line = "";
+			while ((line = br.readLine()) != null) {
+				text += line + "\n";
+			}
+			br.close();
+
+		}catch(IOException e){
+			e.printStackTrace();
+		}
+
+		model.addAttribute("file", new File(text));
+		model.addAttribute("filename", file.getFilename());
+		return "file";
+	}
+
+	/**
+	 * Post a new file.
+	 */
+	@PostMapping("/update-file/{filename:.+}")
+	public String updateFile(@PathVariable String filename, RedirectAttributes redirectAttributes, @ModelAttribute
+			File file)
+			throws URISyntaxException, IOException, MessagingException {
+
+		file.setFilename(filename);
+		storageService.updateFile(file);
+
+		redirectAttributes.addFlashAttribute("message2",
+				"You successfully updated file " + file.getFilename() + "!");
+
+
+		return  "redirect:/uploaded-files";
+	}
+
+	@PostMapping("/indexing")
+	public String indexing(Model model, RedirectAttributes redirectAttributes, @RequestParam
+			List<String> files) {
+
+			/*Todo:
+			 * Idexing aufruf
+			 */
+
+		storageService.moveFile(files);
+
+		redirectAttributes.addFlashAttribute("refiles", files);
+		redirectAttributes.addFlashAttribute("message",
+				"Index updaded");
+
+		return "redirect:uploaded-files";
 	}
 
 	/**

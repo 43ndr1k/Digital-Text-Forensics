@@ -15,10 +15,10 @@ import de.uni_leipzig.digital_text_forensics.preprocessing.ConvertPdfXML;
 import java.io.*;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import org.springframework.beans.factory.annotation.Value;
 
 public class XMLFileIndexer {
 
-	  
 	  public final static String indexLocation = "LuceneIndex";
 	  public final static String filesForLucene = "xmlFiles";
 	  private static StandardAnalyzer analyzer = new StandardAnalyzer();
@@ -27,10 +27,10 @@ public class XMLFileIndexer {
 	  private ConvertPdfXML converter;
 	  private ArrayList<File> queue = new ArrayList<File>();
 
-	  
+
 	  public void start() throws IOException {
 	    XMLFileIndexer indexer = null;
-	    
+
 	    try {
 	      indexer = new XMLFileIndexer(indexLocation);
 	    } catch (Exception ex) {
@@ -48,14 +48,14 @@ public class XMLFileIndexer {
 	      }
 	    //===================================================
 	    //after adding, we always have to call the
-	    //closeIndex, otherwise the index is not created    
+	    //closeIndex, otherwise the index is not created
 	    //===================================================
 	    indexer.closeIndex();
 	  }
 
 	  public void run() throws IOException {
 		    XMLFileIndexer indexer = null;
-		    
+
 		    //===================================================
 		    //read input from user until he enters q for quit
 		    //===================================================
@@ -66,11 +66,11 @@ public class XMLFileIndexer {
 		      }
 		    //===================================================
 		    //after adding, we always have to call the
-		    //closeIndex, otherwise the index is not created    
+		    //closeIndex, otherwise the index is not created
 		    //===================================================
 		    closeIndex();
 		  }
-	  
+
 	  /**
 	   * Constructor
 	   * @param indexDir the name of the folder in which the index should be created
@@ -93,10 +93,10 @@ public class XMLFileIndexer {
 	    //===================================================
 	    //gets the list of files in a folder (if user has submitted
 	    //the name of a folder) or gets a single file name (is user
-	    //has submitted only the file name) 
+	    //has submitted only the file name)
 	    //===================================================
 	    addXMLFiles(new File(fileName));
-	    
+
 	    int originalNumDocs = writer.numDocs();
 	    for (File file : queue) {
 	      try {
@@ -113,14 +113,14 @@ public class XMLFileIndexer {
 	        doc.add(new TextField(LuceneConstants.FILE_NAME, article.getFileName() , Field.Store.YES));
 	        doc.add(new TextField(LuceneConstants.FILE_PATH, article.getFilePath() , Field.Store.YES));
 	        doc.add(new TextField(LuceneConstants.REF_COUNT, article.getScore() , Field.Store.YES));
-	        
+
 	        writer.addDocument(doc);
 	        System.out.println("Added: " + file);
 	      } catch (Exception e) {
 	        System.out.println("Could not add: " + file);
-	      } 
+	      }
 	    }
-	    
+
 	    int newNumDocs = writer.numDocs();
 	    System.out.println("");
 	    System.out.println("************************");
@@ -146,7 +146,7 @@ public class XMLFileIndexer {
 	      //===================================================
 	      if (filename.endsWith(".xml") ) {
 	        queue.add(file);
-	      } 
+	      }
 	    }
 	  }
 
@@ -157,6 +157,6 @@ public class XMLFileIndexer {
 	  public void closeIndex() throws IOException {
 	    writer.close();
 	  }
-	
+
 
 }

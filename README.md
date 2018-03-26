@@ -1,6 +1,9 @@
 # Digital-Text-Forensics
 ## Author
 - Hendrik Sawade
+- Tobis Wenzel
+- David Drost
+- Edward Kupfer
 - created 03.2018
 
 ## Components
@@ -64,4 +67,10 @@ Run the **Apllication** class in the package de.uni_leipzig.digital_text_forensi
 The search engine can be accessed under following URL:
 ```
 http://localhost:8080/
+```
+### File Upload paths
+The search engine upload can be accessed under following URL:
+```
+http://localhost:8080/upload
+http://localhost:8080/uploaded-files
 ```
