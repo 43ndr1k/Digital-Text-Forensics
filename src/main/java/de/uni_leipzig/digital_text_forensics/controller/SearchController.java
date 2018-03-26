@@ -2,6 +2,7 @@ package de.uni_leipzig.digital_text_forensics.controller;
 
 import static de.uni_leipzig.digital_text_forensics.domain.Pager.injectPaginationLinks;
 
+import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResult;
 import de.uni_leipzig.digital_text_forensics.dto.SearchResultPage;
@@ -11,7 +12,6 @@ import java.util.List;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.ScoreDoc;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.Link;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -26,6 +26,9 @@ public class SearchController {
 
 	@Autowired
 	Pager pager;
+
+	@Autowired
+	MailService mailService;
 
 	/**
 	 * Searching method

@@ -1,11 +1,13 @@
 package de.uni_leipzig.digital_text_forensics;
 
+import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.lucene.LuceneConstants;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
+import de.uni_leipzig.digital_text_forensics.service.Storage.StorageService;
+import de.uni_leipzig.digital_text_forensics.service.Storage.StorageProperties;
 import java.io.IOException;
 import java.nio.file.Paths;
-import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -15,7 +17,9 @@ import org.apache.lucene.search.spell.Dictionary;
 import org.apache.lucene.search.suggest.DocumentDictionary;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.session.MapSessionRepository;
@@ -25,6 +29,7 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 
 @Configuration
 @EnableAutoConfiguration
+@EnableConfigurationProperties(StorageProperties.class)
 public class config {
 
 	@Bean
@@ -79,6 +84,21 @@ public class config {
 	@Bean
 	public static TopScoreDocCollector collector () {
 		return TopScoreDocCollector.create(LuceneConstants.MAX_SEARCH);
+	}
+
+	@Bean
+	public MailService mailService() {
+		return new MailService();
+	}
+
+
+
+	@Bean
+	CommandLineRunner init(StorageService storageService) {
+		return (args) -> {
+			storageService.deleteAll();
+			storageService.init();
+		};
 	}
 
 }

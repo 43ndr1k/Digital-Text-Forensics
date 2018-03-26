@@ -1,4 +1,7 @@
 # Digital-Text-Forensics
+## Author
+- Hendrik Sawade
+- created 03.2018
 
 ## Components
 - Java 1.8.0_161
@@ -40,6 +43,19 @@ Run the **XMLFileIndexer** class in the package de.uni_leipzig.digital_text_fore
 **Precondition:** Both the XML-files (&rightarrow; **xmlFiles**) and the original PDFs (&rightarrow; **pdfDocs**)  have to be present in the corresponding folders.
 
 _Proposal_  just move everything concerning preprocessing into one main-method.
+
+
+### Email configuration
+Setup the email configuration in the **resources/application.properties** file.
+Set the 
+* Host, 
+* Port, 
+* Username, 
+* Passwort, 
+* email from 
+* email to 
+
+from a Email Provider.
 
 ### Start the Application
 Run the **Apllication** class in the package de.uni_leipzig.digital_text_forensics
