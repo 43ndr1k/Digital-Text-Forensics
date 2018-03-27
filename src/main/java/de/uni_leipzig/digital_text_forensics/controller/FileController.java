@@ -8,15 +8,20 @@ import de.uni_leipzig.digital_text_forensics.model.MetaData;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageService;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageFileNotFoundException;
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.List;
 import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.hateoas.mvc.ControllerLinkBuilder;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import java.io.IOException;
 import java.util.stream.Collectors;
@@ -128,9 +133,11 @@ public class FileController {
 	@GetMapping("/uploaded-files")
 	public String uploadedFiles(Model model) {
 
-		model.addAttribute("files", storageService.loadAll().map(
+		List<String> list1 = storageService.loadAll().map(
 				path -> path.getFileName().toString()).filter(path -> path.endsWith(".pdf"))
-				.collect(Collectors.toList()));
+				.collect(Collectors.toList());
+
+		model.addAttribute("files", list1);
 
 		return "uploadedFiles";
 	}
@@ -170,6 +177,40 @@ public class FileController {
 		model.addAttribute("file", new File(text));
 		model.addAttribute("filename", file.getFilename());
 		return "file";
+	}
+
+	/**
+	 * Show a Pdf.
+	 * @param filename
+	 * @return
+	 */
+	@GetMapping("/show-pdf/{filename:.+}")
+	public Object showPdf(@PathVariable String filename, RedirectAttributes redirectAttributes) throws IOException {
+
+
+		if (!Files.exists(storageService.load(filename))) {
+			redirectAttributes.addFlashAttribute("message2",
+					"Pdf file not found");
+			return  "redirect:/uploaded-files";
+		}
+
+		Resource file = storageService.loadAsResource(filename);
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.parseMediaType("application/pdf"));
+		headers.add("Access-Control-Allow-Origin", "*");
+		headers.add("Access-Control-Allow-Methods", "GET, POST, PUT");
+		headers.add("Access-Control-Allow-Headers", "Content-Type");
+		headers.add("Content-Disposition", "inline; filename=" + filename);
+		headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+		headers.add("Pragma", "no-cache");
+		headers.add("Expires", "0");
+
+		headers.setContentLength(file.contentLength());
+		InputStream inputStream = new FileInputStream(file.getFile());
+		return new ResponseEntity<>(
+				new InputStreamResource(inputStream), headers, HttpStatus.OK);
+
 	}
 
 	/**

@@ -4,6 +4,7 @@ public class File {
 
 	String text;
 	String filename;
+	String url;
 
 		public File() {
 
@@ -27,5 +28,13 @@ public class File {
 
 	public void setText(String text) {
 		this.text = text;
+	}
+
+	public String getUrl() {
+		return url;
+	}
+
+	public void setUrl(String url) {
+		this.url = url;
 	}
 }
