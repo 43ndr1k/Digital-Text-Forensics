@@ -30,6 +30,7 @@ public class FileSystemStorageService implements StorageService {
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileSystemStorageService.class);
 
 	private final Path rootLocation;
+	private final Path xmlLocation;
 
 	@Value("${pdfDocDir}")
 	private String pdfDocs;
@@ -40,6 +41,7 @@ public class FileSystemStorageService implements StorageService {
 	@Autowired
 	public FileSystemStorageService(StorageProperties properties) {
 		this.rootLocation = Paths.get(properties.getLocation());
+		this.xmlLocation = Paths.get(properties.getXmlLocation());
 	}
 
 	@Override
@@ -132,16 +134,16 @@ public class FileSystemStorageService implements StorageService {
 	}
 
 	@Override
-	public boolean moveFile(List<String> files) {
+	public boolean moveFiles(List<String> files) {
 		final boolean[] test = { true };
 		files.forEach(s -> {
 			String t = s.substring(0, s.length()-3);
-			t += "pdf";
-			Path pdfPath = load(t);
-			Path pdfPath1 = FileSystems.getDefault().getPath(pdfDocs + "/" + t);
+			t += "xml";
+			Path pdfPath = load(s);
+			Path pdfPath1 = FileSystems.getDefault().getPath(pdfDocs + "/" + s);
 
-			Path xmlPath = load(s);
-			Path xmlPath1 = FileSystems.getDefault().getPath(xmlFiles + "/" + s);
+			Path xmlPath = FileSystems.getDefault().getPath(xmlLocation + "/" +t);
+			Path xmlPath1 = FileSystems.getDefault().getPath(xmlFiles + "/" + t);
 
 			try {
 
@@ -163,9 +165,37 @@ public class FileSystemStorageService implements StorageService {
 	}
 
 	@Override
+	public boolean moveSelectedFiles(List<String> files) {
+		final boolean[] test = { true };
+		files.forEach(s -> {
+			String t = s.substring(0, s.length()-3);
+			t += "xml";
+
+			Path xmlPath = load(t);
+			Path xmlPath1 = FileSystems.getDefault().getPath(xmlLocation + "/" + t);
+
+			try {
+
+				if (Files.exists(xmlPath)) {
+					Files.move(xmlPath, xmlPath1,
+							StandardCopyOption.REPLACE_EXISTING);
+				} else {
+					LOGGER.error("File {} not exists", xmlPath.getFileName());
+					test[0] = false;
+				}
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+		return test[0];
+	}
+
+	@Override
 	public void init() {
 		try {
 			Files.createDirectories(rootLocation);
+			Files.createDirectories(xmlLocation);
 		}
 		catch (IOException e) {
 			throw new StorageException("Could not initialize storage", e);

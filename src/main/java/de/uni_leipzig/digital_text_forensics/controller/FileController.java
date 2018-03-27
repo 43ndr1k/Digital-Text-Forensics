@@ -1,5 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.controller;
 
+import de.uni_leipzig.digital_text_forensics.lucene.LuceneConstants;
+import de.uni_leipzig.digital_text_forensics.lucene.XMLFileIndexer;
 import de.uni_leipzig.digital_text_forensics.model.File;
 import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.model.MetaData;
@@ -9,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.util.List;
 import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
@@ -55,9 +58,11 @@ public class FileController {
 	@GetMapping("/upload")
 	public String listUploadedFiles(Model model) throws IOException {
 
-		model.addAttribute("files", storageService.loadAll().map(
-				path -> MvcUriComponentsBuilder.fromMethodName(FileController.class,
-						"serveFile", path.getFileName().toString()).build().toString())
+		model.addAttribute("files", storageService.loadAll()
+				.map(
+						path -> MvcUriComponentsBuilder.fromMethodName(FileController.class,
+								"serveFile", path.getFileName().toString()).build().toString())
+				.filter(path -> path.endsWith(".pdf"))
 				.collect(Collectors.toList()));
 		model.addAttribute("metaData", new MetaData());
 		return "uploadForm";
@@ -82,13 +87,21 @@ public class FileController {
 	 */
 	@PostMapping("/upload")
 	public String handleFileUpload(@RequestParam("file") MultipartFile file,
-			RedirectAttributes redirectAttributes, @ModelAttribute MetaData metaData, HttpServletResponse resp, HttpServletRequest request)
+			RedirectAttributes redirectAttributes, @ModelAttribute MetaData metaData, HttpServletRequest request)
 			throws URISyntaxException, IOException, MessagingException {
 
+		String contentType = file.getContentType();
+
+		if (!contentType.equals("application/pdf")) {
+			redirectAttributes.addFlashAttribute("message",
+					"File is not a pdf. " + file.getOriginalFilename() + "!");
+			return "redirect:/upload";
+		}
+
 		if (file.isEmpty()) {
-			resp.sendError(HttpServletResponse.SC_NO_CONTENT,
-					"File not uploaded " ); // explicitely put error message in request
-			return null;  // return null to in
+			redirectAttributes.addFlashAttribute("message",
+					"File is Empty. " + file.getOriginalFilename() + "!");
+			return "redirect:/upload";  // return null to in
 
 		}
 
@@ -96,6 +109,10 @@ public class FileController {
 
 		/* todo:
 		 * save metata. create xml template
+		 */
+
+		/* todo:
+		 * Erstellen der xml files.
 		 */
 
 		redirectAttributes.addFlashAttribute("message",
@@ -112,7 +129,7 @@ public class FileController {
 	public String uploadedFiles(Model model) {
 
 		model.addAttribute("files", storageService.loadAll().map(
-				path -> path.getFileName().toString()).filter(path -> path.endsWith(".xml"))
+				path -> path.getFileName().toString()).filter(path -> path.endsWith(".pdf"))
 				.collect(Collectors.toList()));
 
 		return "uploadedFiles";
@@ -124,7 +141,15 @@ public class FileController {
 	 * @return
 	 */
 	@GetMapping("/show-file/{filename:.+}")
-	public String showFile(@PathVariable String filename, Model model) throws IOException {
+	public String showFile(@PathVariable String filename, Model model, RedirectAttributes redirectAttributes) throws IOException {
+
+		filename = filename.substring(0, filename.length()-3) + "xml";
+
+		if (!Files.exists(storageService.load(filename))) {
+			redirectAttributes.addFlashAttribute("message2",
+					"Metadata file not found");
+			return  "redirect:/uploaded-files";
+		}
 
 		Resource file = storageService.loadAsResource(filename);
 
@@ -169,11 +194,23 @@ public class FileController {
 	public String indexing(Model model, RedirectAttributes redirectAttributes, @RequestParam
 			List<String> files) {
 
-			/*Todo:
-			 * Idexing aufruf
-			 */
+		boolean test = storageService.moveSelectedFiles(files);
+		if (!test) {
+			redirectAttributes.addFlashAttribute("refiles", files);
+			redirectAttributes.addFlashAttribute("message",
+					"Index not updaded");
+			return "redirect:uploaded-files";
+		}
 
-		boolean test = storageService.moveFile(files);
+		XMLFileIndexer xmlFileIndexer = null;
+		try {
+			xmlFileIndexer = new XMLFileIndexer(LuceneConstants.INDEX_PATH, "upload-dir/selectedMetadata");
+			xmlFileIndexer.run();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		test = storageService.moveFiles(files);
 
 		if (test) {
 			redirectAttributes.addFlashAttribute("refiles", files);

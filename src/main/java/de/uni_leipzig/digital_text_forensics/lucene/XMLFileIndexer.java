@@ -19,8 +19,8 @@ import org.springframework.beans.factory.annotation.Value;
 
 public class XMLFileIndexer {
 
-	  public final static String indexLocation = "LuceneIndex";
-	  public final static String filesForLucene = "xmlFiles";
+	  private String indexLocation = "LuceneIndex";
+	  private String filesForLucene = "xmlFiles";
 	  private static StandardAnalyzer analyzer = new StandardAnalyzer();
 
 	  private IndexWriter writer;
@@ -32,7 +32,7 @@ public class XMLFileIndexer {
 	    XMLFileIndexer indexer = null;
 
 	    try {
-	      indexer = new XMLFileIndexer(indexLocation);
+	      indexer = new XMLFileIndexer(indexLocation, filesForLucene);
 	    } catch (Exception ex) {
 	      System.out.println("Cannot create index..." + ex.getMessage());
 	      System.exit(-1);
@@ -76,7 +76,10 @@ public class XMLFileIndexer {
 	   * @param indexDir the name of the folder in which the index should be created
 	   * @throws java.io.IOException when exception creating index.
 	   */
-	  XMLFileIndexer(String indexDir) throws IOException {
+	  public XMLFileIndexer(String indexDir, String filesForLucene) throws IOException {
+
+	  	this.filesForLucene = filesForLucene;
+
 	    // potentially overwriting any existing files there.
 	    FSDirectory dir = FSDirectory.open(Paths.get(indexDir));
 	    IndexWriterConfig config = new IndexWriterConfig(analyzer);

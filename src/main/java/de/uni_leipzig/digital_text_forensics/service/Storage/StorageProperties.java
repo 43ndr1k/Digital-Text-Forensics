@@ -9,6 +9,7 @@ public class StorageProperties {
      * Folder location for storing files
      */
     private String location = "upload-dir";
+    private String xmlLocation = location + "/selectedMetadata";
 
 	public String getLocation() {
         return location;
@@ -18,4 +19,11 @@ public class StorageProperties {
         this.location = location;
     }
 
+    public String getXmlLocation() {
+        return xmlLocation;
+    }
+
+    public void setXmlLocation(String xmlLocation) {
+        this.xmlLocation = xmlLocation;
+    }
 }
