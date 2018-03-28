@@ -5,6 +5,8 @@ import de.uni_leipzig.digital_text_forensics.lucene.XMLFileIndexer;
 import de.uni_leipzig.digital_text_forensics.model.File;
 import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.model.MetaData;
+import de.uni_leipzig.digital_text_forensics.preprocessing.ConvertPdfXML;
+import de.uni_leipzig.digital_text_forensics.preprocessing.HeuristicTitleSearch;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageService;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageFileNotFoundException;
 import java.io.BufferedReader;
@@ -49,6 +51,10 @@ public class FileController {
 
 	private final StorageService storageService;
 	private final MailService mailService;
+	
+	private final ConvertPdfXML converter;
+	private final HeuristicTitleSearch hts;
+	
 
 	@Value("${spring.mail.send.text1}")
 	private String mailUploadText;
@@ -60,6 +66,11 @@ public class FileController {
 	public FileController(StorageService storageService, MailService mailService) {
 		this.storageService = storageService;
 		this.mailService = mailService;
+		this.converter = new ConvertPdfXML();
+		this.hts = new HeuristicTitleSearch();
+		// please change if necessary.
+		this.converter.setOutputPath("upload-dir/selectedMetadata/");
+
 	}
 
 	@GetMapping("/upload")
@@ -113,7 +124,11 @@ public class FileController {
 		}
 
 		storageService.store(file);
+		
+		
 
+
+		
 		/* todo:
 		 * save metata. create xml template
 		 */
@@ -121,7 +136,18 @@ public class FileController {
 		/* todo:
 		 * Erstellen der xml files.
 		 */
-
+		
+		//		String filename = file.getOriginalFilename();
+		//		converter.run_from_controller(filename);
+		//		
+		//		String outputFileName = filename.substring(0, filename.length()-".pdf".length())+".xml";
+		//// please change if necessary.
+		//		String xmlFilename = "upload-dir/selectedMetadata/" + outputFileName;
+		//
+		//		hts.runOnFile(xmlFilename);
+		
+		
+		
 		redirectAttributes.addFlashAttribute("message",
 				"You successfully uploaded " + file.getOriginalFilename() + "!");
 

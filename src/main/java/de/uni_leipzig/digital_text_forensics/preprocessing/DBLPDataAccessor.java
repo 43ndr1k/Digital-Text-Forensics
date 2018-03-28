@@ -103,7 +103,6 @@ public class DBLPDataAccessor {
 			e.printStackTrace();
 		}
 
-		// @todo more than one article! as result -> list
 		JSONArray jsonResponseArray = null;
 		try {
 			//jsonObject = new JSONObject(jsonStrigResponse).getJSONObject("result").getJSONObject("hits").getJSONArray("hit").getJSONObject(0);
@@ -116,7 +115,7 @@ public class DBLPDataAccessor {
 		for (int i=0; i<jsonResponseArray.length(); i++){
 			JSONObject jsonArticle = jsonResponseArray.getJSONObject(i);
 			articleScore = Integer.parseInt((String) jsonArticle.get("@score"));
-			System.out.println(articleScore);
+			//System.out.println(articleScore);
 			if (articleScore > highestScore) {
 				highestScore = articleScore;
 				article.setTitle((String) jsonArticle.getJSONObject("info").get("title"));

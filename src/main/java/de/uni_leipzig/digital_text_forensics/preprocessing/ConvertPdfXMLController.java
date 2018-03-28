@@ -57,8 +57,8 @@ public class ConvertPdfXMLController {
 					    continue;
 					}
 				}
-	        	String data = "\r" + anim.charAt(index % anim.length()) + " " + 100*(float)index/fileNumber;
-			    System.out.println(data);
+	        	//	String data = "\r" + anim.charAt(index % anim.length()) + " " + 100*(float)index/fileNumber;
+			    //System.out.println(data);
 	            try {
 					converter.run(file,index); // conversion step.
 				} catch (IOException e) {
