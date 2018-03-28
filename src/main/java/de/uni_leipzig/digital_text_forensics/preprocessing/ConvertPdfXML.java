@@ -33,6 +33,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -179,25 +181,55 @@ public class ConvertPdfXML {
 		Element fullTextElement = doc.createElement("fullText");
 		fullTextElement.appendChild(doc.createCDATASection(article.getFullText()));
 		textElements.appendChild(fullTextElement);
-		
+
 		try {
 			// write the content into xml file
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
 			Transformer transformer = transformerFactory.newTransformer();
 			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
 			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
 
 			DOMSource source = new DOMSource(doc);
 			StreamResult result = new StreamResult(new File(outputFile));
 			try{
-			transformer.transform(source, result);
+				transformer.transform(source, result);
+				System.out.println("Wrote to "+ outputFile);
 			}	catch (javax.xml.transform.TransformerException npr) {
-				npr.printStackTrace();
-			}
+				
+				/**
+				 * Write empty template.
+				 */
+				System.out.println("Could not read Data correctly. You have to insert it manually.");
+				article = new Article();
+				article.setMyAbstract("\n\nInsert article text in cdata-section:\n\n");
+				article.setTitle("Title of Paper");
+				article.setAuthorsString("First Author Name, Second Author Name");
+				article.setPublicationDate("DD.MM.YYYY");
+				article.setDoi("0");
+				article.setFullText("\n\nInsert article text in cdata-section:\n\n");
+				article.setRefCount("0");
+				article.setJournal("Journal Name");
+				
+				LocalDateTime now = LocalDateTime.now();	
+		        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+		        String parseTime = now.format(formatter);
+		        
+				article.setParseDate(parseTime);
+				
+				String fileName = FilenameUtils.getName(outputFile);
+				article.setFileName(fileName.substring(0, fileName.length()-".xml".length())+".pdf");
+				article.setFilePath(outputFile);
+				
+				this.writeToXML(article, outputFile);
+				
+				//npr.printStackTrace();
+			} 
 		}
 		catch (TransformerException tfe) {
 			tfe.printStackTrace();
 		} catch (java.lang.NullPointerException npr) {
+
 			npr.printStackTrace();
 		}
 	} // end of function
@@ -351,9 +383,12 @@ public class ConvertPdfXML {
 				
 			}
 			if (result != null){
+				
 				article.setMyAbstract(wordOps.getNWords(result,150));
-			} 
-			
+			} else {
+				article.setMyAbstract("");
+			}
+
 			
 			article.setAuthorsString(author);
 			article.setPublicationDate(pubDateString);
@@ -362,7 +397,10 @@ public class ConvertPdfXML {
 			article.setDoi(String.valueOf(id));
 			article.setParseDate(parseTime.replace(" ", "T"));
 			article.setFullText(fullText);
-
+			if (article != null) {
+				// finally write the article to xml.
+				writeToXML(article,outputFilePath);
+			} 
 			
 
 		} catch (DOMException e1) {
@@ -372,12 +410,7 @@ public class ConvertPdfXML {
 			//System.out.println(file.getName());
 		} 
 		
-		if (article != null) {
-			// finally write the article to xml.
-			writeToXML(article,outputFilePath);
-		} else {
-			// throw some exeption!
-		}
+
 
 
 	} // end of function
