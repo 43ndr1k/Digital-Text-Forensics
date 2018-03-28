@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
@@ -41,6 +42,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.servlet.view.RedirectView;
 
 @Controller
 public class FileController {
@@ -177,6 +179,30 @@ public class FileController {
 		model.addAttribute("file", new File(text));
 		model.addAttribute("filename", file.getFilename());
 		return "file";
+	}
+
+	/**
+	 * Delete a File.
+	 * @param filename
+	 * @return
+	 */
+	@GetMapping("/delete-file/{filename:.+}")
+	public Object deleteFile(@PathVariable String filename, RedirectAttributes redirectAttributes) {
+
+		Path file = storageService.load(filename);
+		if (!Files.exists(file)) {
+			redirectAttributes.addFlashAttribute("message2",
+					"File not found");
+			return  "redirect:/uploaded-files";
+		} else {
+
+			storageService.deleteFile(file);
+
+			redirectAttributes.addFlashAttribute("message2",
+					"You delete successfully file " + filename + "!");
+		}
+
+		return new RedirectView("uploaded-files");
 	}
 
 	/**

@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.service.Storage;
 
 import de.uni_leipzig.digital_text_forensics.model.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
@@ -21,6 +22,8 @@ public interface StorageService {
 	Resource loadAsResource(String filename);
 
 	void deleteAll();
+
+	void deleteFile(Path file);
 
 	boolean moveFiles(List<String> files);
 

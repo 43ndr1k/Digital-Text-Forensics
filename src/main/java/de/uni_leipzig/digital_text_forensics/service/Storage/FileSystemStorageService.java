@@ -134,6 +134,22 @@ public class FileSystemStorageService implements StorageService {
 	}
 
 	@Override
+	public void deleteFile(Path file) {
+		String filename = "";
+		try {
+			Files.delete(file);
+			filename = file.getFileName().toString().substring(0, file.getFileName().toString().length()-3) + "xml";
+			if (Files.exists(load(filename))) {
+				Files.delete(load(filename));
+			}
+		}
+		catch (IOException e) {
+			throw new StorageFileNotFoundException("Could not delete file: " + filename, e);
+		}
+
+	}
+
+	@Override
 	public boolean moveFiles(List<String> files) {
 		final boolean[] test = { true };
 		files.forEach(s -> {
