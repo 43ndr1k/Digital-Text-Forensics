@@ -41,7 +41,7 @@ public class HeuristicTitleSearch {
 	public HeuristicTitleSearch() {
 		this.xmlInputPath = "xmlFiles/";
 		this.xmlOutputPath = "xmlFiles/";
-		this.dblpFile = "src/main/resources/relevant_journals.xml";
+		this.dblpFile = "src/main/resources/preprocessing/relevant_journals.xml";
 		/*
 		 * Constants
 		 */
@@ -230,6 +230,46 @@ public class HeuristicTitleSearch {
 			bestMatchCount = count;
 			bestMatchArticle = new Article(article);
 			bestMatchArticle.setAuthorsString(authors);
+		}
+	}
+	
+	/**
+	 * 
+	 * @param file
+	 */
+	public void runOnFile(String my_filename) {
+		File file= new File(my_filename);
+		
+		XMLFileFilter filter = new XMLFileFilter();
+		if (filter.accept(file)) {
+
+			Article article = null;
+			article = converter.getArticleFromXML(file);
+			if (article != null) {
+				System.out.println("hey");
+
+				String filename = article.getFilePath().substring(
+						"xmlFiles/".length(),
+						article.getFilePath().length());
+
+				this.currentRawTokens = wordOps.getNWords(
+						article.getFullText(), rawWordCount, true);
+
+				compareAgainstDBLPFile();
+
+				try {
+					if (bestMatchCount > threshold) {
+						article.setTitle(bestMatchArticle.getTitle());
+						article.setAuthors(bestMatchArticle.getAuthors());
+						article.setPublicationDate(bestMatchArticle
+								.getPublicationDate());
+						converter.writeToXML(article, xmlOutputPath
+								+ filename);
+					}
+				} catch (java.lang.NullPointerException npe) {
+					npe.printStackTrace();
+				}
+			}
 		}
 	}
 			

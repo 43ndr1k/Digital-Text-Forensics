@@ -78,7 +78,7 @@ public class ConvertPdfXML {
 		dblpTitle_i = 0;
 	}
 	
-	private void setOutputPath(String outputPath){
+	public void setOutputPath(String outputPath){
 		this.outputPath = outputPath;
 	}
 	
@@ -203,6 +203,14 @@ public class ConvertPdfXML {
 	} // end of function
 	
 
+	public void run_from_controller(String filename) {
+		try {
+			this.run(new File(filename), 0);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	/** <p>Converts PDF file to XML-data
 	 *  <li> First try to extract meta-data with <b>pdfbox</b>. If this fails use name-entity-recognition
 	 *  and similar methods.
@@ -337,7 +345,7 @@ public class ConvertPdfXML {
 			
 			String result = null;
 			try {
-				result = firstLowerCaseWords.substring(firstLowerCaseWords.indexOf("abstract") + 9,
+				result = firstLowerCaseWords.substring(firstLowerCaseWords.indexOf("abstract") + 8,
 						firstLowerCaseWords.indexOf("introduction"));
 			} catch(java.lang.StringIndexOutOfBoundsException e){
 				
