@@ -235,7 +235,7 @@ public class HeuristicTitleSearch {
 	
 	/**
 	 * 
-	 * @param file
+	 *
 	 */
 	public void runOnFile(String my_filename) {
 		File file= new File(my_filename);
@@ -246,7 +246,6 @@ public class HeuristicTitleSearch {
 			Article article = null;
 			article = converter.getArticleFromXML(file);
 			if (article != null) {
-				System.out.println("hey");
 
 				String filename = article.getFilePath().substring(
 						"xmlFiles/".length(),

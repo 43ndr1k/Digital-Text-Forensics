@@ -51,10 +51,10 @@ public class FileController {
 
 	private final StorageService storageService;
 	private final MailService mailService;
-	
+
 	private final ConvertPdfXML converter;
 	private final HeuristicTitleSearch hts;
-	
+
 
 	@Value("${spring.mail.send.text1}")
 	private String mailUploadText;
@@ -69,7 +69,7 @@ public class FileController {
 		this.converter = new ConvertPdfXML();
 		this.hts = new HeuristicTitleSearch();
 		// please change if necessary.
-		this.converter.setOutputPath("upload-dir/selectedMetadata/");
+		this.converter.setOutputPath("upload-dir/");
 
 	}
 
@@ -137,11 +137,11 @@ public class FileController {
 		 */
 
 
-				converter.run_from_controller(new String("upload-dir/"+file.getOriginalFilename()));
-				
-				String outputFileName = file.getOriginalFilename().substring(0, file.getOriginalFilename().length()-".pdf".length())+".xml";
-				String xmlFilename = "upload-dir/" + outputFileName;
-				hts.runOnFile(xmlFilename);
+		converter.run_from_controller(new String("upload-dir/"+file.getOriginalFilename()));
+
+		String outputFileName = file.getOriginalFilename().substring(0, file.getOriginalFilename().length()-".pdf".length())+".xml";
+		String xmlFilename = "upload-dir/" + outputFileName;
+		hts.runOnFile(xmlFilename);
 
 
 		redirectAttributes.addFlashAttribute("file", file.getOriginalFilename().substring(0, file.getOriginalFilename().length()-3) + "xml");
@@ -157,14 +157,14 @@ public class FileController {
 	}
 
 	@GetMapping("/uploaded-files")
-	public String uploadedFiles(Model model) {
+	public String uploadedFiles(@RequestParam(defaultValue = "uploaded-files") String site, Model model) {
 
 		List<String> list1 = storageService.loadAll().map(
 				path -> path.getFileName().toString()).filter(path -> path.endsWith(".pdf"))
 				.collect(Collectors.toList());
 
 		model.addAttribute("files", list1);
-
+		model.addAttribute("site", site);
 		return "uploadedFiles";
 	}
 
@@ -174,7 +174,7 @@ public class FileController {
 	 * @return
 	 */
 	@GetMapping("/show-file/{filename:.+}")
-	public String showFile(@PathVariable String filename, Model model, RedirectAttributes redirectAttributes) throws IOException {
+	public String showFile(@RequestParam("site") String site, @PathVariable String filename, Model model, RedirectAttributes redirectAttributes) throws IOException {
 
 		filename = filename.substring(0, filename.length()-3) + "xml";
 
@@ -202,6 +202,7 @@ public class FileController {
 
 		model.addAttribute("file", new File(text));
 		model.addAttribute("filename", file.getFilename());
+		model.addAttribute("site", site);
 		return "file";
 	}
 
@@ -214,6 +215,7 @@ public class FileController {
 	public Object deleteFile(@PathVariable String filename, RedirectAttributes redirectAttributes) {
 
 		Path file = storageService.load(filename);
+
 		if (!Files.exists(file)) {
 			redirectAttributes.addFlashAttribute("message2",
 					"File not found");
@@ -267,7 +269,7 @@ public class FileController {
 	 * Post a new file.
 	 */
 	@PostMapping("/update-file/{filename:.+}")
-	public String updateFile(@PathVariable String filename, RedirectAttributes redirectAttributes, @ModelAttribute
+	public String updateFile(@RequestParam("site") String site, @PathVariable String filename, RedirectAttributes redirectAttributes, @ModelAttribute
 			File file)
 			throws URISyntaxException, IOException, MessagingException {
 
@@ -277,8 +279,9 @@ public class FileController {
 		redirectAttributes.addFlashAttribute("message2",
 				"You successfully updated file " + file.getFilename() + "!");
 
+		redirectAttributes.addAttribute("site", site);
 
-		return  "redirect:/uploaded-files";
+		return  "redirect:/" + site;
 	}
 
 	@PostMapping("/indexing")
