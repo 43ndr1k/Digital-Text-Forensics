@@ -374,8 +374,9 @@ public class ConvertPdfXML {
 		
 		if (article != null) {
 			// finally write the article to xml.
-			//System.out.println("not writing");
 			writeToXML(article,outputFilePath);
+		} else {
+			// throw some exeption!
 		}
 
 

@@ -131,18 +131,13 @@ public class FileController {
 		 * save metata. create xml template
 		 */
 
-		/* todo:
-		 * Erstellen der xml files.
-		 */
+
+				converter.run_from_controller(new String("upload-dir/"+file.getOriginalFilename()));
+				
+				String outputFileName = file.getOriginalFilename().substring(0, file.getOriginalFilename().length()-".pdf".length())+".xml";
+				String xmlFilename = "upload-dir/selectedMetadata/" + outputFileName;
 		
-		//		String filename = file.getOriginalFilename();
-		//		converter.run_from_controller(filename);
-		//		
-		//		String outputFileName = filename.substring(0, filename.length()-".pdf".length())+".xml";
-		//// please change if necessary.
-		//		String xmlFilename = "upload-dir/selectedMetadata/" + outputFileName;
-		//
-		//		hts.runOnFile(xmlFilename);
+				hts.runOnFile(xmlFilename);
 		
 		
 		
