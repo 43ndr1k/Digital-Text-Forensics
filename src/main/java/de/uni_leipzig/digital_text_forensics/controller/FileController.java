@@ -73,7 +73,7 @@ public class FileController {
 
 	}
 
-	@GetMapping("/upload")
+/*	@GetMapping("/upload")
 	public String listUploadedFiles(Model model) throws IOException {
 
 		model.addAttribute("files", storageService.loadAll()
@@ -83,6 +83,12 @@ public class FileController {
 				.filter(path -> path.endsWith(".pdf"))
 				.collect(Collectors.toList()));
 		model.addAttribute("metaData", new MetaData());
+		return "uploadForm";
+	}*/
+
+	@GetMapping("/upload")
+	public String listUploadedFiles(Model model) throws IOException {
+
 		return "uploadForm";
 	}
 
@@ -124,9 +130,6 @@ public class FileController {
 		}
 
 		storageService.store(file);
-		
-		
-
 
 		
 		/* todo:
@@ -137,23 +140,23 @@ public class FileController {
 		 * Erstellen der xml files.
 		 */
 		
-		//		String filename = file.getOriginalFilename();
-		//		converter.run_from_controller(filename);
-		//		
-		//		String outputFileName = filename.substring(0, filename.length()-".pdf".length())+".xml";
-		//// please change if necessary.
-		//		String xmlFilename = "upload-dir/selectedMetadata/" + outputFileName;
-		//
-		//		hts.runOnFile(xmlFilename);
+				String filename = file.getOriginalFilename();
+				converter.run_from_controller(filename);
+
+				String outputFileName = filename.substring(0, filename.length()-".pdf".length())+".xml";
+		// please change if necessary.
+				String xmlFilename = "upload-dir/selectedMetadata/" + outputFileName;
+
+				hts.runOnFile(xmlFilename);
 		
-		
-		
+		redirectAttributes.addFlashAttribute("file", file.getOriginalFilename().substring(0, file.getOriginalFilename().length()-3) + "xml");
+		redirectAttributes.addFlashAttribute("filename", file.getOriginalFilename());
 		redirectAttributes.addFlashAttribute("message",
 				"You successfully uploaded " + file.getOriginalFilename() + "!");
 
 		String a = "http://" + request.getLocalAddr() + ":" + request.getLocalPort();
 
-		mailService.send(subject, mailUploadText, file.getOriginalFilename(), a);
+		//mailService.send(subject, mailUploadText, file.getOriginalFilename(), a);
 
 		return  "redirect:/upload";
 	}
