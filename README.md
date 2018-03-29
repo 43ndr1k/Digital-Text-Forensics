@@ -70,6 +70,9 @@ http://localhost:8080/
 ```
 ### Login
 For indexing the uploaded files you must be logged in.
+
+Default user: admin
+Default Password: admin
 ```
 http://localhost:8080/login
 ```
