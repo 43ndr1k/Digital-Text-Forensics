@@ -8,16 +8,16 @@ public class Main {
 
 		ConvertPdfXMLController xmlController = new ConvertPdfXMLController();
 
-		try {
-			xmlController.runPreproccessing(false); // param: skip existing
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+//		try {
+//			xmlController.runPreproccessing(false); // param: skip existing
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
 
-		// xmlController.runRefCountAnalysis();
+		xmlController.runRefCountAnalysis();
 
-		 HeuristicTitleSearch hts = new HeuristicTitleSearch();
-		 hts.run();
+//		 HeuristicTitleSearch hts = new HeuristicTitleSearch();
+//		 hts.run();
 
 		System.out.println("ready");
 

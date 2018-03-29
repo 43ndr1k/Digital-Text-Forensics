@@ -9,7 +9,7 @@ closedir (DIR) or die $!;
 
 open(AUS, ">Skripte/output/Ausgabe.txt") or die $!;                                            #Öffnen Ausgabedatei
 
-# print"<1> Extraktion von Quellen aus den Papers";
+print"<1> Extraktion von Quellen aus den Papers";
 
 foreach (@files) {                                                              #zeilenweise einlesen der Dateien und schreiben in die Ausgabedatei
     if ($_ =~ /xml$/){                                                          #Nur .xml Dokumente werden eingelesen
@@ -49,7 +49,7 @@ close(AUS) or die $!;
 
 #</1>
 #<2> Zeichenkettenersteller
-# print "<2> Zeichenkettenersteller";
+print "<2> Zeichenkettenersteller";
 
 open (DATEI, "Skripte/output/Ausgabe.txt") or die $!;
    my @daten = <DATEI>;
@@ -78,7 +78,7 @@ close(AUS) or die $!;
 #<3> Titelextraktor
 #Extrahieren der Titel und Filenames aus den Dokumenten, um einen Vergleich durchführen zu können
 
-# print "<3> Titelextraktor";
+print "<3> Titelextraktor";
 
 opendir(DIR,'xmlFiles') or die $!;                    #Öffnen Verzeichnis
 my @files = readdir(DIR);                                                       #Files in Array
@@ -122,7 +122,7 @@ close(FIL);
 close(AUS) or die $!;
 #</3>
 #<4> Titelvergleicher
-# print "<4> Titelvergleicher";
+print "<4> Titelvergleicher";
 
 open (QUELLEN,"<", "Skripte/output/Quellen.txt") or die $!;        #die zerhackstückelten Quellen
    my @quellen = <QUELLEN>;
@@ -151,12 +151,12 @@ close(AUS) or die $!;
 #</4>
 
 #<5> Titelcount
-# print "<5> Titelcount";
+print "<5> Titelcount";
 
 #Zählen und Sortieren der Titel
 #Ausgabe in "FinalOutput.txt"
 
-open (Titel, "Skripte/output/Counter.txt") or die $!;
+open (Titel, "Skripte/output/counter.txt") or die $!;
    my @a = <Titel>;
 close (Titel);
 
@@ -182,7 +182,7 @@ close (BER);
 open(AUS, ">Skripte/output/FinalOutput.txt") or die $!;		#"Müll" entfernen
 shift @a;
 shift @a;
-# print @a;
+print @a;
 print AUS @a;
 close(AUS) or die $!;
 
@@ -190,8 +190,8 @@ close(AUS) or die $!;
 
 #<6>
 #finale Überarbeitung um reibungslose Weiterverarbeitung zu gewährleisten 
-# print "<6> Final step.";
-#Ausgabe in "final.xml"
+print "<6> Final step.";
+#Ausgabe in "finall.xml"
 # #entfernt unnötige Leerzeichen 
 sub trim() {
   my $str = $_[0];
@@ -204,7 +204,7 @@ sub trim() {
 open (BER, "Skripte/output/FinalOutput.txt") or die $!;
    my @a = <BER>;
 close (BER);
-open(AUS, ">Skripte/output/final.xml") or die $!;                                            
+open(AUS, ">Skripte/output/finall.xml") or die $!;                                            
 
 
 
@@ -221,7 +221,7 @@ close(AUS) or die $!;
              
 
 
-open (BER, "Skripte/output/final.xml") or die $!;
+open (BER, "Skripte/output/finall.xml") or die $!;
 
  while(<BER>) { 
            $daten = $daten.$_;
@@ -241,21 +241,21 @@ $daten =~ s/<fileName>/<\/entry>\n \n <entry> \n  <fileName>/g;
 $daten =~ s/<counter>/  <counter>/g;
 $daten =~ s/ <entry>/<entry>/g;
 $daten =~ s/<\/entry>/<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<entries>/;	#Header .xml
-open(AUS, ">Skripte/output/final.xml") or die $!;  
+open(AUS, ">Skripte/output/finall.xml") or die $!;  
 print AUS $daten;
 close(AUS) or die $!;
 
-# print $daten;
+print $daten;
 
-open (BER, "Skripte/output/final.xml") or die $!;
+open (BER, "Skripte/output/finall.xml") or die $!;
    my @a = <BER>;
 close (BER);
 
 push (@a,("</entry> \n\n</entries>"));		#Tags schließen
-open(AUS, ">Skripte/output/final.xml") or die $!;  
+open(AUS, ">Skripte/output/finall.xml") or die $!;  
 print AUS @a;
 close(AUS) or die $!;
 
-# print @a;				#Ausgabe des finalen Ergebnisses auf Konsole
+print @a;				#Ausgabe des finalen Ergebnisses auf Konsole
 
 #</6>

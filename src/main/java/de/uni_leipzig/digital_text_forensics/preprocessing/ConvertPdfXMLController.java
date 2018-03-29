@@ -254,7 +254,7 @@ public class ConvertPdfXMLController {
 		try {
 			process = Runtime.getRuntime().exec(new String[] {"perl", System.getProperty("user.dir")+"/Skripte/refCountScript.pl"});
 		    System.out.println("Running perl script for reference count analysis.\nThis will take over 10min.");
-
+		    
 		    process.waitFor();
 		    if(process.exitValue() == 0) {
 		        System.out.println("Command Successful");
@@ -280,13 +280,13 @@ public class ConvertPdfXMLController {
 		System.out.println("ran refcount script. took me: (sec)");
 		System.out.println(estimatedTime/1000);
 		
-		this.mergeRefCountsToXMLFiles(new File("Skripte/output/final.xml"));
+		//System.out.println("Insert reference counts into xml-data.	");
+		//this.mergeRefCountsToXMLFiles(new File("Skripte/output/final.xml"));
 	}
 	
 	
 	public static void main(String argv[]) throws IOException {
 
-		System.out.println(xmlFilePath);
 		
 		
 		//mergeRefCountsToXMLFiles(new File("/home/tobias/Dokumente/Information Retrieval/final.xml"));
