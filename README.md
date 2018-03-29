@@ -68,9 +68,26 @@ The search engine can be accessed under following URL:
 ```
 http://localhost:8080/
 ```
+### Login
+For indexing the uploaded files you must be logged in.
+```
+http://localhost:8080/login
+```
+After login you can go to:
+```
+http://localhost:8080/uploaded-files
+```
+
 ### File Upload paths
 The search engine upload can be accessed under following URL:
 ```
 http://localhost:8080/upload
-http://localhost:8080/uploaded-files
+
 ```
+### Reference count indexing
+For the refference counting is Perl reqired.
+### Perl 5 required
+##### tested with Perl v5.12.3
+- Linux should already have Perl installed. Type "perl -v" to check for Version. If not installed type: "sudo apt-get install perl" (https://wiki.ubuntuusers.de/Perl/)
+- Mac should already have Perl installed. Type "perl -v" to check for Version. If not installed type: 1. "ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null" / 2. "brew install perl" (http://macappstore.org/perl/)
+- Windows does not have Perl preinstalled. Download and install Padre, the Perl IDE/editor (Strawberry Perl version 5.12.3 comes as part of the install). Confirm that the Installation worked by typing "perl -v" into the cmd. (https://learn.perl.org/installing/windows.html)
