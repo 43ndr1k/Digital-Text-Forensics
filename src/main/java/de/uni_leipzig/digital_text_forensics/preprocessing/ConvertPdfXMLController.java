@@ -219,7 +219,7 @@ public class ConvertPdfXMLController {
 	 * 
 	 * @param file
 	 */
-	public void mergeRefCountsToXMLFiles (File file){
+	private void mergeRefCountsToXMLFiles (File file){
 		List<RefCountObj> refCounts = null;
 		SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
 	    try {
@@ -235,17 +235,54 @@ public class ConvertPdfXMLController {
 	    	ioe.printStackTrace();
 	    } 
 	    
-	    ConvertPdfXML myconverter = new ConvertPdfXML();
 	    for (RefCountObj rc: refCounts){
-	    	Article article = myconverter.getArticleFromXML(new File("xmlFiles/"+rc.getFileName()));
+	    	Article article = converter.getArticleFromXML(new File("xmlFiles/"+rc.getFileName()));
 	    	System.out.println(rc.getFileName()+" "+ rc.getCounter());
 	    	if (article != null) {
 	    		article.setRefCount(rc.getCounter());
-				//myconverter.writeToXML(article, "xmlFiles/"+rc.getFileName());
+				converter.writeToXML(article, "xmlFiles/"+rc.getFileName());
 	    	}
 	    }
 		
 	} // end of getRefCounteFromXML
+	
+	/**
+	 * Runs Skript in Perl to determine the amount each paper is cited.
+	 */
+	private void runPerlScript() {
+		Process process;
+		try {
+			process = Runtime.getRuntime().exec(new String[] {"perl", System.getProperty("user.dir")+"/Skripte/refCountScript.pl"});
+		    System.out.println("Running perl script for reference count analysis.\nThis will take over 10min.");
+
+		    process.waitFor();
+		    if(process.exitValue() == 0) {
+		        System.out.println("Command Successful");
+		    } else {
+		        System.out.println("Command Failure");
+		    }
+		} catch(Exception e) {
+		    System.out.println("Exception: "+ e.toString());
+		}
+		
+	}
+	
+	/**
+	 * 
+	 */
+	public void runRefCountAnalysis() {
+		double startTime = 0;
+		double estimatedTime = 0;
+		startTime = System.currentTimeMillis();
+
+		this.runPerlScript();
+		estimatedTime = System.currentTimeMillis() - startTime;
+		System.out.println("ran refcount script. took me: (sec)");
+		System.out.println(estimatedTime/1000);
+		
+		this.mergeRefCountsToXMLFiles(new File("Skripte/output/final.xml"));
+	}
+	
 	
 	public static void main(String argv[]) throws IOException {
 
