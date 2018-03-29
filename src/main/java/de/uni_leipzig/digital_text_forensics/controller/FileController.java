@@ -156,7 +156,7 @@ public class FileController {
 		return  "redirect:/upload";
 	}
 
-	@GetMapping("/uploaded-files")
+	@GetMapping("/admin/uploaded-files")
 	public String uploadedFiles(@RequestParam(defaultValue = "uploaded-files") String site, Model model) {
 
 		List<String> list1 = storageService.loadAll().map(
@@ -211,7 +211,7 @@ public class FileController {
 	 * @param filename
 	 * @return
 	 */
-	@GetMapping("/delete-file/{filename:.+}")
+	@GetMapping("/admin/delete-file/{filename:.+}")
 	public Object deleteFile(@PathVariable String filename, RedirectAttributes redirectAttributes) {
 
 		Path file = storageService.load(filename);
@@ -284,7 +284,7 @@ public class FileController {
 		return  "redirect:/" + site;
 	}
 
-	@PostMapping("/indexing")
+	@PostMapping("/admin/indexing")
 	public String indexing(Model model, RedirectAttributes redirectAttributes, @RequestParam
 			List<String> files) {
 

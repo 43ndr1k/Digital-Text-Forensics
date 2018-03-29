@@ -1,4 +1,4 @@
-package de.uni_leipzig.digital_text_forensics;
+package de.uni_leipzig.digital_text_forensics.config;
 
 import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
