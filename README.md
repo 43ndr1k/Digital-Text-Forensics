@@ -17,7 +17,7 @@
 ### Initial
 Download and unzip the source repository for this guide, or clone it using Git: 
 ```
-git clone https://github.com/43ndr1k/crypto-news-docs.git
+git clone https://github.com/43ndr1k/Digital-Text-Forensics.git
 ```
 
 
