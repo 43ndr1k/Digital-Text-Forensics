@@ -74,10 +74,7 @@ public class ConvertPdfXML {
 		this.snd_formatter = new SimpleDateFormat("E MMM dd HH:mm:ss 'CET' yyyy",Locale.ENGLISH);
 		
 		titleLikeLength = 50;
-		docear_i = 0;
-		pdfbox_i = 0;
-		titleLike_i = 0;
-		dblpTitle_i = 0;
+
 	}
 	
 	public void setOutputPath(String outputPath){
@@ -223,6 +220,7 @@ public class ConvertPdfXML {
 				
 				this.writeToXML(article, outputFile);
 				
+				
 				//npr.printStackTrace();
 			} 
 		}
@@ -331,10 +329,10 @@ public class ConvertPdfXML {
 				try{
 					article = da.getArticleObj(title);
 				} catch(java.net.UnknownHostException uhe){
+					article = null; 
 				}
 			} else {
 				title = wordOps.clean_field(wordOps.getNWords(fullText, titleLikeLength),true);
-				titleLike_i++;
 			}
 			
 			if (article != null) {
@@ -345,7 +343,6 @@ public class ConvertPdfXML {
 				}
 				author = sb.toString();
 				pubDateString = article.getPublicationDate();
-				dblpTitle_i++;
 				
 			} else {
 				article = new Article();
@@ -368,7 +365,6 @@ public class ConvertPdfXML {
 				article.setTitle(title);
 			} else {
 				article.setTitle(wordOps.clean_field(wordOps.getNWords(fullText, titleLikeLength),true));
-				titleLike_i++;
 			}
 
 			

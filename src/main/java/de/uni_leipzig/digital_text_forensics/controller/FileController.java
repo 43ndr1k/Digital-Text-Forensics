@@ -6,6 +6,7 @@ import de.uni_leipzig.digital_text_forensics.model.File;
 import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.model.MetaData;
 import de.uni_leipzig.digital_text_forensics.preprocessing.ConvertPdfXML;
+import de.uni_leipzig.digital_text_forensics.preprocessing.ConvertPdfXMLController;
 import de.uni_leipzig.digital_text_forensics.preprocessing.HeuristicTitleSearch;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageService;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageFileNotFoundException;
@@ -284,6 +285,18 @@ public class FileController {
 		return  "redirect:/" + site;
 	}
 
+	@PostMapping("/referenceanalysis")
+	public String referenceAnalysis(Model model, RedirectAttributes redirectAttributes) {
+		
+		ConvertPdfXMLController xmlController = new ConvertPdfXMLController();
+
+		xmlController.runRefCountAnalysis();
+		redirectAttributes.addFlashAttribute("message",
+				"Ran reference analysis.");
+		
+		return "redirect:/admin/uploaded-files";
+	}
+	
 	@PostMapping("/admin/indexing")
 	public String indexing(Model model, RedirectAttributes redirectAttributes, @RequestParam
 			List<String> files) {
