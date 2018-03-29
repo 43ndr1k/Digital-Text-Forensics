@@ -25,6 +25,7 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.stereotype.Controller;
 import java.io.IOException;
 import java.util.stream.Collectors;
@@ -151,13 +152,16 @@ public class FileController {
 
 		String a = "http://" + request.getLocalAddr() + ":" + request.getLocalPort();
 
-		mailService.send(subject, mailUploadText, file.getOriginalFilename(), a);
+		//mailService.send(subject, mailUploadText, file.getOriginalFilename(), a);
 
 		return  "redirect:/upload";
 	}
 
+	@Secured("ROLE_ADMIN")
 	@GetMapping("/admin/uploaded-files")
 	public String uploadedFiles(@RequestParam(defaultValue = "uploaded-files") String site, Model model) {
+
+
 
 		List<String> list1 = storageService.loadAll().map(
 				path -> path.getFileName().toString()).filter(path -> path.endsWith(".pdf"))

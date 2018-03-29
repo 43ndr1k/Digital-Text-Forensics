@@ -31,6 +31,8 @@ public class FileSystemStorageService implements StorageService {
 
 	private final Path rootLocation;
 	private final Path xmlLocation;
+	private final Path xmlFlies2;
+	private final Path pdfFiles2;
 
 	@Value("${pdfDocDir}")
 	private String pdfDocs;
@@ -42,6 +44,8 @@ public class FileSystemStorageService implements StorageService {
 	public FileSystemStorageService(StorageProperties properties) {
 		this.rootLocation = Paths.get(properties.getLocation());
 		this.xmlLocation = Paths.get(properties.getXmlLocation());
+		this.xmlFlies2 = Paths.get(properties.getXmlFiles());
+		this.pdfFiles2 = Paths.get(properties.getPdfDocs());
 	}
 
 	@Override
@@ -210,8 +214,11 @@ public class FileSystemStorageService implements StorageService {
 	@Override
 	public void init() {
 		try {
+			LOGGER.info("Create init dirs");
 			Files.createDirectories(rootLocation);
 			Files.createDirectories(xmlLocation);
+			Files.createDirectories(pdfFiles2);
+			Files.createDirectories(xmlFlies2);
 		}
 		catch (IOException e) {
 			throw new StorageException("Could not initialize storage", e);
