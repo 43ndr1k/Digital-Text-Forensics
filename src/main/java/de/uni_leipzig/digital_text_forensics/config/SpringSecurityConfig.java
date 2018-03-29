@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +26,11 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @Order(SecurityProperties.ACCESS_OVERRIDE_ORDER)
 public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 
+	@Value("${user}")
+	private String user;
+
+	@Value("${password}")
+	private String password;
 	@Autowired
 	private AccessDeniedHandler accessDeniedHandler;
 
@@ -58,7 +64,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 		auth.inMemoryAuthentication()
 				.withUser("user").password("password").roles("USER")
 				.and()
-				.withUser("admin").password("admin").roles("ADMIN");
+				.withUser(user).password(password).roles("ADMIN");
 	}
 
 	/*// create two users, admin and user
