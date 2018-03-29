@@ -90,7 +90,7 @@ public class DBLPDataAccessor {
 		try {
 			response = con.getInputStream();
 		} catch (IOException e) {
-			System.out.println("weird title. probably different encoding.:\t"+pubQuery);
+			//System.out.println("weird title. probably different encoding.:\t"+pubQuery);
 		} 
 		try {
 			if (con.getResponseCode() == 200 || con.getResponseCode() ==201){

@@ -23,7 +23,9 @@ public class ConvertPdfXMLController {
 	private static ConvertPdfXML converter;
 	
 	
-	
+	public ConvertPdfXMLController() {
+		converter = new ConvertPdfXML();
+	}
 	/**
 	 * <p> Function can be called to walk through a given Directory and convert
 	 * Pdf-Files to XML-Files. If a File is already existing, skip it.
@@ -36,7 +38,7 @@ public class ConvertPdfXMLController {
 		File[] files = new File(dataDirPath).listFiles();
 		PdfFileFilter filter = new PdfFileFilter();
 		
-		converter = new ConvertPdfXML();
+		
 	      int index = 0;
 	      int fileNumber = files.length;
 	      String anim= "|/-\\";
@@ -69,13 +71,7 @@ public class ConvertPdfXMLController {
 	         }
 	      }
 	      
-	      /**
-	       * Print out some stats. Better: Logger.
-	       */
-	      System.out.println("dblp\t"+converter.dblpTitle_i);
-	      System.out.println("titleLike\t"+converter.titleLike_i);
-	      System.out.println("pdfbox\t"+converter.pdfbox_i);
-	      System.out.println("docear\t"+converter.docear_i);
+
 
 	}
 	
@@ -85,7 +81,6 @@ public class ConvertPdfXMLController {
 	public void repairXML() {
 		File[] files = new File(xmlFilePath).listFiles();
 		XMLFileFilter filter = new XMLFileFilter();
-		ConvertPdfXML myconverter = new ConvertPdfXML();
 		WordOperationClass wordOps = new WordOperationClass();
 		String outputFolder = "/home/tobias/Dokumente/Information Retrieval/xmlFiles-Versions/xmlNewTrial/";
 		
@@ -94,7 +89,7 @@ public class ConvertPdfXMLController {
 					&& file.canRead() && filter.accept(file)) {
 				
 				Article article = null;
-				article = myconverter.getArticleFromXML(file);
+				article = converter.getArticleFromXML(file);
 
 				if (article != null) {
 		 			String filename = article.getFilePath().substring("xmlFiles/".length(),
@@ -172,7 +167,7 @@ public class ConvertPdfXMLController {
 						/**
 						 * Write back.
 						 */
-						myconverter.writeToXML(article, outputFile);
+						converter.writeToXML(article, outputFile);
 						System.out.println(article.getPublicationDate());
 					}
 					//		 			String newDate = converter.changeDataFormat(pubDate);
@@ -237,7 +232,7 @@ public class ConvertPdfXMLController {
 	    
 	    for (RefCountObj rc: refCounts){
 	    	Article article = converter.getArticleFromXML(new File("xmlFiles/"+rc.getFileName()));
-	    	System.out.println(rc.getFileName()+" "+ rc.getCounter());
+	    	//System.out.println(rc.getFileName()+" "+ rc.getCounter());
 	    	if (article != null) {
 	    		article.setRefCount(rc.getCounter());
 				converter.writeToXML(article, "xmlFiles/"+rc.getFileName());
@@ -252,9 +247,7 @@ public class ConvertPdfXMLController {
 	private void runPerlScript() {
 		Process process;
 		try {
-			process = Runtime.getRuntime().exec(new String[] {"perl", System.getProperty("user.dir")+"/Skripte/refCountScript.pl"});
-		    System.out.println("Running perl script for reference count analysis.\nThis will take over 10min.");
-		    
+			process = Runtime.getRuntime().exec(new String[] {"perl", System.getProperty("user.dir")+"/Skripte/refCountScript.pl"});		    
 		    process.waitFor();
 		    if(process.exitValue() == 0) {
 		        System.out.println("Command Successful");
@@ -271,29 +264,11 @@ public class ConvertPdfXMLController {
 	 * 
 	 */
 	public void runRefCountAnalysis() {
-		double startTime = 0;
-		double estimatedTime = 0;
-		startTime = System.currentTimeMillis();
 
 		this.runPerlScript();
-		estimatedTime = System.currentTimeMillis() - startTime;
-		System.out.println("ran refcount script. took me: (sec)");
-		System.out.println(estimatedTime/1000);
-		
-		//System.out.println("Insert reference counts into xml-data.	");
-		//this.mergeRefCountsToXMLFiles(new File("Skripte/output/final.xml"));
+		this.mergeRefCountsToXMLFiles(new File("Skripte/output/final.xml"));
 	}
 	
 	
-	public static void main(String argv[]) throws IOException {
 
-		
-		
-		//mergeRefCountsToXMLFiles(new File("/home/tobias/Dokumente/Information Retrieval/final.xml"));
-		//repairXML();
-		//		HeuristicTitleSearch hts = new HeuristicTitleSearch();
-		//		hts.run();
-
-		
-	}
 }
