@@ -289,7 +289,7 @@ public class FileController {
 		return  "redirect:/" + site;
 	}
 
-	@PostMapping("/referenceanalysis")
+	@PostMapping("/admin/referenceanalysis")
 	public String referenceAnalysis(Model model, RedirectAttributes redirectAttributes) {
 		
 		ConvertPdfXMLController xmlController = new ConvertPdfXMLController();
