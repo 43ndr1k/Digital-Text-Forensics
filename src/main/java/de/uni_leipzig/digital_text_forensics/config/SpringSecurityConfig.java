@@ -1,6 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -10,6 +11,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 
+@EnableAutoConfiguration
 @Configuration
 public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 
@@ -24,9 +26,8 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 
 		http.csrf().disable()
 				.authorizeRequests()
-				.antMatchers("/").permitAll()
+				.antMatchers("/**").permitAll()
 				.antMatchers("/admin/**").hasAnyRole("ADMIN")
-				.antMatchers("/user/**").hasAnyRole("USER")
 				.anyRequest().authenticated()
 				.and()
 				.formLogin()

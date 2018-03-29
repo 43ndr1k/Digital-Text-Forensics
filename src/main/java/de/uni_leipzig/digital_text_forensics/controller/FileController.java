@@ -219,7 +219,7 @@ public class FileController {
 		if (!Files.exists(file)) {
 			redirectAttributes.addFlashAttribute("message2",
 					"File not found");
-			return  "redirect:/uploaded-files";
+			return  "redirect:/admin/uploaded-files";
 		} else {
 
 			storageService.deleteFile(file);
@@ -228,7 +228,7 @@ public class FileController {
 					"You delete successfully file " + filename + "!");
 		}
 
-		return new RedirectView("uploaded-files");
+		return new RedirectView("/admin/uploaded-files");
 	}
 
 	/**
@@ -243,7 +243,7 @@ public class FileController {
 		if (!Files.exists(storageService.load(filename))) {
 			redirectAttributes.addFlashAttribute("message2",
 					"Pdf file not found");
-			return  "redirect:/uploaded-files";
+			return  "redirect:/admin/uploaded-files";
 		}
 
 		Resource file = storageService.loadAsResource(filename);
@@ -293,7 +293,7 @@ public class FileController {
 			redirectAttributes.addFlashAttribute("refiles", files);
 			redirectAttributes.addFlashAttribute("message",
 					"Index not updaded");
-			return "redirect:uploaded-files";
+			return "redirect:/admin/uploaded-files";
 		}
 
 		XMLFileIndexer xmlFileIndexer = null;
@@ -315,7 +315,7 @@ public class FileController {
 					"Index not updaded");
 		}
 
-		return "redirect:uploaded-files";
+		return "redirect:/admin/uploaded-files";
 	}
 
 	/**
