@@ -85,8 +85,8 @@ http://localhost:8080/upload
 
 ```
 ### Reference count indexing
-For the refference counting is Perl reqired.
-### Perl 5 required
+For the reference counting is Perl 5 reqired.
+
 ##### tested with Perl v5.12.3
 - Linux should already have Perl installed. Type "perl -v" to check for Version. If not installed type: "sudo apt-get install perl" (https://wiki.ubuntuusers.de/Perl/)
 - Mac should already have Perl installed. Type "perl -v" to check for Version. If not installed type: 1. "ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null" / 2. "brew install perl" (http://macappstore.org/perl/)
