@@ -72,10 +72,7 @@ public class ArticleHandler extends DefaultHandler {
 
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
-//        if (qName.equalsIgnoreCase("article")) {
-//            //add Employee object to list
-//           return;
-//        }
+
     }
 
     @Override

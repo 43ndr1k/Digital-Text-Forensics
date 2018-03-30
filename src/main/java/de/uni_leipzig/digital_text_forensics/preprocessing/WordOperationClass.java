@@ -141,9 +141,7 @@ public class WordOperationClass {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		/**
-		 * einfach die wörter rausschmeissen/nicht aufnehmen!
-		 */
+
 		StringBuilder sb = new StringBuilder();
 		for (String word : fieldStrings) {
 			Boolean block = false;

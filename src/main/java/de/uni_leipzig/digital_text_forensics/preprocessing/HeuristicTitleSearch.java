@@ -47,7 +47,7 @@ public class HeuristicTitleSearch {
 		 */
 		// amount of words extracted from "raw" XML.
 		this.rawWordCount = 100;
-		// boost are multiplied by field-lenght.
+		// boost are multiplied by field-length.
 		this.correctAuthorBoost = 20;
 		this.correctTitleBoost = 50;
 		this.correctYearBoost = 5;

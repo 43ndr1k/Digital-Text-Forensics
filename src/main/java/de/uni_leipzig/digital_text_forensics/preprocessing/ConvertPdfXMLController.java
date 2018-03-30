@@ -82,7 +82,7 @@ public class ConvertPdfXMLController {
 		File[] files = new File(xmlFilePath).listFiles();
 		XMLFileFilter filter = new XMLFileFilter();
 		WordOperationClass wordOps = new WordOperationClass();
-		String outputFolder = "/home/tobias/Dokumente/Information Retrieval/xmlFiles-Versions/xmlNewTrial/";
+		String outputFolder = "~/Dokumente/Information Retrieval/xmlFiles-Versions/xmlNewTrial/";
 		
 		for (File file : files) {
 			if (!file.isDirectory() && !file.isHidden() && file.exists()
@@ -242,7 +242,7 @@ public class ConvertPdfXMLController {
 	} // end of getRefCounteFromXML
 	
 	/**
-	 * Runs Skript in Perl to determine the amount each paper is cited.
+	 * Runs script in perl to determine the amount each paper is cited.
 	 */
 	private void runPerlScript() {
 		Process process;
@@ -261,10 +261,9 @@ public class ConvertPdfXMLController {
 	}
 	
 	/**
-	 * 
+	 * Calls perl script and merges the output with the existing XML-files.
 	 */
 	public void runRefCountAnalysis() {
-
 		this.runPerlScript();
 		this.mergeRefCountsToXMLFiles(new File("Skripte/output/final.xml"));
 	}

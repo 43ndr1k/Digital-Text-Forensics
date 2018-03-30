@@ -509,11 +509,14 @@ public class ConvertPdfXML {
 	} // end of getArticleFromXML
 	
 	
-//	/**
-//	 * 
-//	 * @param file
-//	 * @return
-//	 */
+	/**
+	 * Comment: Could be called by "run"-method (see commented code). Because of the use of the 
+     * 'heuristic title search' we left this out since it's essentially trying to do the same without 
+     * a guarantee to receive a valid title.
+     * 
+	 * @param file
+	 * @return
+	 */
 //	private String getFieldDocearStyle(File file)  {
 //		boolean empty = true;
 //		StringBuilder sb = new StringBuilder();

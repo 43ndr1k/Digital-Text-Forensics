@@ -34,18 +34,20 @@ The database is created on the first start and is stored in the user's home dire
 **Mind:** The PDF-files are not included.
 
 
-Run the **ConvertPdfXMLController** class in  package de.uni_leipzig.digital_text_forensics.preprocessing to extract the PDF content and create corresponding XML-files.  To count how many times articles are quoted, run
-the _6UnitedComparer.pl_ script and merge the results using the _mergeRefCountsToXMLFiles_ method. Finally run **HeuristicTitleSearch** to correct meta-data whilst comparing the fullText-Element against a precompiled dataset. 
-For more information on this read the [documentation](./Dokumentation/arbeit.pdf). 
+Run the **Main** class in  package de.uni_leipzig.digital_text_forensics.preprocessing. This will 
+- extract the PDF content and create corresponding XML-files and
+ - count how many times each article is quoted with a perl-script (_refCountScript.pl_) which started from within java.
+The results are merged into the existing XML-files using the _mergeRefCountsToXMLFiles_ method. 
+- Finally **HeuristicTitleSearch** is run to correct meta-data whilst comparing the fullText-Element against a precompiled dataset. 
 
-This can be easily achieved running the **Main** class.
+For more detailled information on this read the [documentation](./Dokumentation/arbeit.pdf). 
+
 
 #### Indexing 
 Run the **XMLFileIndexer** class in the package de.uni_leipzig.digital_text_forensics.lucene.  
 
 **Precondition:** Both the XML-files (&rightarrow; **xmlFiles**) and the original PDFs (&rightarrow; **pdfDocs**)  have to be present in the corresponding folders.
 
-_Proposal_  just move everything concerning preprocessing into one main-method.
 
 
 ### Email configuration
@@ -88,9 +90,17 @@ http://localhost:8080/upload
 
 ```
 ### Reference count indexing
-For the reference counting is Perl 5 reqired.
+For the reference counting is Perl 5 reqired. The script was tested with Perl v5.12.3.
 
-##### tested with Perl v5.12.3
-- Linux should already have Perl installed. Type "perl -v" to check for Version. If not installed type: "sudo apt-get install perl" (https://wiki.ubuntuusers.de/Perl/)
-- Mac should already have Perl installed. Type "perl -v" to check for Version. If not installed type: 1. "ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null" / 2. "brew install perl" (http://macappstore.org/perl/)
+- Linux should already have Perl installed. Check if the correct version is installed, if not install perl manually: (https://wiki.ubuntuusers.de/Perl/)
+```
+perl -v
+sudo apt-get install perl
+```
+- Mac should already have Perl installed.  Check if the correct version is installed, if not not install perl manually: (http://macappstore.org/perl/)
+```
+perl -v
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+brew install perl
+```
 - Windows does not have Perl preinstalled. Download and install Padre, the Perl IDE/editor (Strawberry Perl version 5.12.3 comes as part of the install). Confirm that the Installation worked by typing "perl -v" into the cmd. (https://learn.perl.org/installing/windows.html)
