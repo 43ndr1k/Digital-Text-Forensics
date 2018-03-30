@@ -153,7 +153,7 @@ public class FileController {
 
 		String a = "http://" + request.getLocalAddr() + ":" + request.getLocalPort();
 
-		//mailService.send(subject, mailUploadText, file.getOriginalFilename(), a);
+		mailService.send(subject, mailUploadText, file.getOriginalFilename(), a);
 
 		return  "redirect:/upload";
 	}

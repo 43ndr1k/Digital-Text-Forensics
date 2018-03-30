@@ -26,10 +26,13 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @Order(SecurityProperties.ACCESS_OVERRIDE_ORDER)
 public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 
-	@Value("${user}")
+	@Order(Ordered.HIGHEST_PRECEDENCE)
+	@Value("${security.user.name}")
 	private String user;
 
-	@Value("${password}")
+	@Order(Ordered.HIGHEST_PRECEDENCE)
+	@Value("${security.user.password}")
+
 	private String password;
 	@Autowired
 	private AccessDeniedHandler accessDeniedHandler;
@@ -58,12 +61,12 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 				.exceptionHandling().accessDeniedHandler(accessDeniedHandler);
 	}
 
-	@Order(Ordered.HIGHEST_PRECEDENCE)
+	//@Order(Ordered.HIGHEST_PRECEDENCE)
 	@Override
 	public void configure(AuthenticationManagerBuilder auth) throws Exception {
 		auth.inMemoryAuthentication()
-				.withUser("user").password("password").roles("USER")
-				.and()
+				//.withUser("admin").password("admin").roles("ADMIN")
+				//.and()
 				.withUser(user).password(password).roles("ADMIN");
 	}
 
