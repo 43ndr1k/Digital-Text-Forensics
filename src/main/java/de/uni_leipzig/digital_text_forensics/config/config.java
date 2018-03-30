@@ -1,5 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.config;
 
+import de.uni_leipzig.digital_text_forensics.preprocessing.ConvertPdfXML;
+import de.uni_leipzig.digital_text_forensics.preprocessing.HeuristicTitleSearch;
 import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.lucene.LuceneConstants;
@@ -91,7 +93,15 @@ public class config {
 		return new MailService();
 	}
 
+	@Bean
+	public ConvertPdfXML convertPdfXML () {
+		return new ConvertPdfXML();
+	}
 
+	@Bean
+	public HeuristicTitleSearch heuristicTitleSearch () {
+		return new HeuristicTitleSearch();
+	}
 
 	@Bean
 	CommandLineRunner init(StorageService storageService) {

@@ -1,5 +1,7 @@
 package de.uni_leipzig.digital_text_forensics.preprocessing;
 
+import org.springframework.stereotype.Component;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -14,6 +16,7 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.XMLEvent;
 
+@Component
 public class HeuristicTitleSearch {
 	private int correctTitleBoost;
 	private int correctAuthorBoost;

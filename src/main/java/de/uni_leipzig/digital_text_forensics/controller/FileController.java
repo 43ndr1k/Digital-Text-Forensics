@@ -65,11 +65,12 @@ public class FileController {
 	private String subject;
 
 	@Autowired
-	public FileController(StorageService storageService, MailService mailService) {
+	public FileController(StorageService storageService, MailService mailService,
+						  ConvertPdfXML convertPdfXML, HeuristicTitleSearch heuristicTitleSearch) {
 		this.storageService = storageService;
 		this.mailService = mailService;
-		this.converter = new ConvertPdfXML();
-		this.hts = new HeuristicTitleSearch();
+		this.converter = convertPdfXML;
+		this.hts = heuristicTitleSearch;
 		// please change if necessary.
 		this.converter.setOutputPath("upload-dir/");
 

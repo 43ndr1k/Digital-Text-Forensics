@@ -22,6 +22,7 @@ import javax.xml.transform.stream.StreamResult;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
+import org.springframework.stereotype.Component;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -45,6 +46,7 @@ import org.apache.commons.lang3.StringUtils;
 * @author Tobias Wenzel
 * 
 */
+@Component
 public class ConvertPdfXML {
 	
 	private DocumentBuilderFactory docFactory;
