@@ -11,7 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 /**
 * MyNameGetter
 * <p> Uses NE-Recognition to extract Authors.
@@ -20,6 +21,12 @@ import java.util.List;
 * 
 */
 public class MyNameGetter {
+    @Value("classpath:preprocessing/en-token.bin")
+    private Resource en_token_res;
+    
+    @Value("classpath:preprocessing/en-ner-person.bin")
+    private Resource en_ner_person_res;
+	
 	String ner_file = "src/main/resources/preprocessing/en-ner-person.bin";
 	String token_file = "src/main/resources/preprocessing/en-token.bin";
 
@@ -29,8 +36,10 @@ public class MyNameGetter {
 	 * @throw	s IOException
 	 */
 	public List<String> findName(String paragraph) throws IOException {
-		InputStream inputStream = new FileInputStream(ner_file);
 		
+		//TokenNameFinderModel model = new TokenNameFinderModel(en_ner_person_res.getInputStream());
+		
+		InputStream inputStream = new FileInputStream(ner_file);
 		TokenNameFinderModel model = new TokenNameFinderModel(inputStream);
 		NameFinderME nameFinder = new NameFinderME(model);
 		String[] tokens = tokenize(paragraph);
@@ -56,6 +65,8 @@ public class MyNameGetter {
 	 public String[] tokenize(String sentence) throws IOException{
 		 InputStream inputStreamTokenizer = new FileInputStream(token_file);
 		 TokenizerModel tokenModel = new TokenizerModel(inputStreamTokenizer);
+
+		 //TokenizerModel tokenModel = new TokenizerModel(en_token_res.getInputStream());
 		 TokenizerME tokenizer = new TokenizerME(tokenModel);
 		 return tokenizer.tokenize(sentence);
 		 

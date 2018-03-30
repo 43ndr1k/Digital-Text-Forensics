@@ -19,8 +19,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.WordUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 
 public class WordOperationClass {
+    @Value("classpath:preprocessing/en-token.bin")
+    private Resource en_token_res;
+    
+    @Value("classpath:preprocessing/en-ner-person.bin")
+    private Resource en_ner_person_res;
+    
+    @Value("classpath:preprocessing/stopwords.txt")
+    private Resource stopwords_res;
+	
 	String ner_file = "src/main/resources/preprocessing/en-ner-person.bin";
 	String token_file = "src/main/resources/preprocessing/en-token.bin";
 
@@ -42,6 +53,7 @@ public class WordOperationClass {
 		try {
 			inputStreamTokenizer = new FileInputStream(token_file);
 			tokenModel = new TokenizerModel(inputStreamTokenizer);
+			//tokenModel = new TokenizerModel(en_token_res.getInputStream());
 			pt = new PorterStemmer();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -51,7 +63,12 @@ public class WordOperationClass {
 			e.printStackTrace();
 		}
 		tokenizer = new TokenizerME(tokenModel);
-
+//		try {
+//			readStopWords(stopwords_res.getFile());
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+		
 		readStopWords(new File(
 				"src/main/resources/preprocessing/stopwords.txt"));
 	}
@@ -85,8 +102,10 @@ public class WordOperationClass {
 	 */
 	public List<String> findName(String paragraph) throws IOException {
 		InputStream inputStream = new FileInputStream(ner_file);
-
 		TokenNameFinderModel model = new TokenNameFinderModel(inputStream);
+
+		//TokenNameFinderModel model = new TokenNameFinderModel(en_ner_person_res.getInputStream());
+		
 		NameFinderME nameFinder = new NameFinderME(model);
 		String[] tokens = tokenizer.tokenize(paragraph);
 

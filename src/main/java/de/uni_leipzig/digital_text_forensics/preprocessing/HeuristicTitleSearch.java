@@ -16,8 +16,14 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.XMLEvent;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+
 @Component
 public class HeuristicTitleSearch {
+    @Value("classpath:preprocessing/relevant_journals.xml")
+    private Resource relenvant_journals_res;
+	
 	private int correctTitleBoost;
 	private int correctAuthorBoost;
 	private int correctYearBoost;
@@ -41,10 +47,14 @@ public class HeuristicTitleSearch {
 	private XMLInputFactory inputFactory;
 	private XMLEventReader eventReader;
 
+	
 	public HeuristicTitleSearch() {
 		this.xmlInputPath = "xmlFiles/";
 		this.xmlOutputPath = "xmlFiles/";
-		this.dblpFile = "src/main/resources/preprocessing/relevant_journals.xml";
+		
+
+		
+		//this.dblpFile = "src/main/resources/preprocessing/relevant_journals.xml";
 		/*
 		 * Constants
 		 */
@@ -78,13 +88,17 @@ public class HeuristicTitleSearch {
 	 */
 	private void compareAgainstDBLPFile() {
 
+		
 		try {
 			eventReader = inputFactory
+					//.createXMLEventReader(relenvant_journals_res.getInputStream());
 					.createXMLEventReader(new FileInputStream(dblpFile));
 		} catch (XMLStreamException e1) {
 			e1.printStackTrace();
 		} catch (FileNotFoundException e2) {
 			e2.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		Article article = new Article();
 
