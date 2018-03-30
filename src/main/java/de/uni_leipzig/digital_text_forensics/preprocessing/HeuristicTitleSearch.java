@@ -54,7 +54,7 @@ public class HeuristicTitleSearch {
 		
 
 		
-		//this.dblpFile = "src/main/resources/preprocessing/relevant_journals.xml";
+		this.dblpFile = "src/main/resources/preprocessing/relevant_journals.xml";
 		/*
 		 * Constants
 		 */
