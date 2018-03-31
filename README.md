@@ -31,22 +31,25 @@ The database is created on the first start and is stored in the user's home dire
 ### Create a new Lucene index
 #### Preprocessing
 
-**Mind:** The PDF-files are not included.
+**Mind:** The PDF-files are not included. Please add them into &rightarrow; [pdfDocs](./pdfDocs).
 
 
 Run the **Main** class in  package de.uni_leipzig.digital_text_forensics.preprocessing. This will 
 - extract the PDF content and create corresponding XML-files and
  - count how many times each article is quoted with a perl-script (_refCountScript.pl_) which started from within java.
 The results are merged into the existing XML-files using the _mergeRefCountsToXMLFiles_ method. 
-- Finally **HeuristicTitleSearch** is run to correct meta-data whilst comparing the fullText-Element against a precompiled dataset. 
+- Finally HeuristicTitleSearch is run to correct meta-data whilst comparing the fullText-Element against a precompiled dataset. 
 
-For more detailled information on this read the [documentation](./Dokumentation/arbeit.pdf). 
+For more detailed information on this read the [documentation](./Dokumentation/arbeit.pdf). 
 
 
 #### Indexing 
-Run the **XMLFileIndexer** class in the package de.uni_leipzig.digital_text_forensics.lucene.  
+**Precondition:** Both the XML-files (&rightarrow; [xmlFiles](./xmlFiles)) and the original PDFs (&rightarrow; [pdfDocs](./pdfDocs))  have to be present in the corresponding folders.
 
-**Precondition:** Both the XML-files (&rightarrow; **xmlFiles**) and the original PDFs (&rightarrow; **pdfDocs**)  have to be present in the corresponding folders.
+
+Run the **Main** class in the package de.uni_leipzig.digital_text_forensics.lucene. This will start the  XMLFileIndexer
+  class and with it the indexing.
+  
 
 
 

@@ -194,34 +194,36 @@ public class ConvertPdfXML {
 			try{
 				transformer.transform(source, result);
 				System.out.println("Wrote to "+ outputFile);
-			}	catch (javax.xml.transform.TransformerException npr) {
+			} catch (javax.xml.transform.TransformerException npr) {
 				
 				/**
 				 * Write empty template.
 				 */
-				System.out.println("Could not read Data correctly. You have to insert it manually.");
-				article = new Article();
-				article.setMyAbstract("\n\nInsert article text in cdata-section:\n\n");
-				article.setTitle("Title of Paper");
-				article.setAuthorsString("First Author Name, Second Author Name");
-				article.setPublicationDate("DD.MM.YYYY");
-				article.setDoi("0");
-				article.setFullText("\n\nInsert article text in cdata-section:\n\n");
-				article.setRefCount("0");
-				article.setJournal("Journal Name");
+				//System.out.println("Could not read Data correctly. You have to insert it manually.");
+                /*
+                Article dummyArticle;				
+                dummyArticle = new Article();
+				dummyArticle.setMyAbstract("\n\nInsert article text in cdata-section:\n\n");
+				dummyArticle.setTitle("Title of Paper");
+				dummyArticle.setAuthorsString("First Author Name, Second Author Name");
+				dummyArticle.setPublicationDate("DD.MM.YYYY");
+				dummyArticle.setDoi("0");
+				dummyArticle.setFullText("\n\nInsert article text in cdata-section:\n\n");
+				dummyArticle.setRefCount("0");
+				dummyArticle.setJournal("Journal Name");
 				
 				LocalDateTime now = LocalDateTime.now();	
 		        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 		        String parseTime = now.format(formatter);
 		        
-				article.setParseDate(parseTime);
+				dummyArticle.setParseDate(parseTime);
 				
 				String fileName = FilenameUtils.getName(outputFile);
-				article.setFileName(fileName.substring(0, fileName.length()-".xml".length())+".pdf");
-				article.setFilePath(outputFile);
+				dummyArticle.setFileName(fileName.substring(0, fileName.length()-".xml".length())+".pdf");
+				dummyArticle.setFilePath(outputFile);
 				
-				this.writeToXML(article, outputFile);
-				
+				this.writeToXML(dummyArticle, outputFile);
+				*/
 				
 				//npr.printStackTrace();
 			} 
