@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.lucene.search.ScoreDoc;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.LinkBuilder;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
@@ -15,21 +16,32 @@ public class Pager {
 
 	public static final int RESULTS_PER_PAGE = 10;
 
-	public List<SearchResult> split(List<SearchResult> searchDocList, int currentPage) {
+	/**
+	 * Split the ResultList to pages
+	 * @param searchDocList List<ScoreDoc>
+	 * @param currentPage int
+	 * @return List<ScoreDoc>
+	 */
+	public List<ScoreDoc> split(List<ScoreDoc> searchDocList, int currentPage) {
 		if (searchDocList == null || searchDocList.size() == 0) {
 			return new ArrayList<>();
 		}
 
 		int from = (currentPage * RESULTS_PER_PAGE) - RESULTS_PER_PAGE;
-		if (from == 0) {
+/*		if (from == 0) {
 			from = 1;
-		}
+		}*/
+
 		int to = currentPage * RESULTS_PER_PAGE;
 
 		if (searchDocList.size() < 10) {
 			to = searchDocList.size();
 		}
-		List<SearchResult> ret = searchDocList.subList(from, to);
+
+		if ((searchDocList.size() - from) < 10) {
+			to = searchDocList.size();
+		}
+		List<ScoreDoc> ret = searchDocList.subList(from, to);
 
 		return ret;
 	}
@@ -40,6 +52,7 @@ public class Pager {
 	}
 
 	/**
+	 * Create PaginationLinks
 	 * @Autor Maik Fröbe
 	 */
 	public static void injectPaginationLinks(SearchResultPage searchResultPage) {
@@ -75,6 +88,13 @@ public class Pager {
 		}
 	}
 
+	/**
+	 * Creatig Links for namedPaginationLinks
+	 * @param startInclusive int
+	 * @param endExclusive int
+	 * @param searchResultPage SearchResultPage
+	 * @return List<Link>
+	 */
 	private static List<Link> namedPaginationLinksInRange(int startInclusive, int endExclusive,
 			SearchResultPage searchResultPage) {
 		return IntStream.range(startInclusive, endExclusive)

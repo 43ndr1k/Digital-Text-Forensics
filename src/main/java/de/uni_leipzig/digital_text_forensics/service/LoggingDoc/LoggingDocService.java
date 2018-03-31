@@ -14,4 +14,9 @@ public interface LoggingDocService {
 
 	LoggingDocument updateDocCount(LoggingDocument loggingDocument);
 
+	Long getClickCountAndFindByDocId(Long id);
+
+	Double getClickTimeByDocId(Long id);
+
+
 }

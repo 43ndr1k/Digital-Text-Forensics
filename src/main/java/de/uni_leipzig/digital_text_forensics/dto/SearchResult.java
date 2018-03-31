@@ -1,16 +1,17 @@
 package de.uni_leipzig.digital_text_forensics.dto;
 
-import java.io.File;
-import java.nio.file.Paths;
 import de.uni_leipzig.digital_text_forensics.controller.RedirectController;
+import java.io.IOException;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 
 public class SearchResult {
 
 	private Long docId;
-
 	private String title;
+	private String author;
+	private String date;
+	private String fileName;
 
 	private String snippet;
 
@@ -19,20 +20,53 @@ public class SearchResult {
 	private Link docUrl;
 
 	private String query;
-	
 
-  public SearchResult(String query, Long docId, String title, String snippet, Link docUrl) {
+	public SearchResult(String query, Long docId, String title, String snippet, Link docUrl) {
 		this.query = query;
 		this.docId = docId;
 		this.title = title;
 		this.snippet = snippet;
-		this.webUrl = createLink(docId, query, title);
 		this.docUrl = docUrl;
-
 	}
-  
+
+	public SearchResult(String query, Long docId, String title, String author, String fileName, String date,
+			String snippet, Link docUrl, Link webUrl) {
+		this.query = query;
+		this.docId = docId;
+		this.title = title;
+		this.snippet = snippet;
+		this.webUrl = webUrl;
+		this.docUrl = docUrl;
+		this.author = author;
+		this.date = date;
+		this.fileName = fileName;
+	}
 
 	public SearchResult() {
+	}
+
+	public String getAuthor() {
+		return author;
+	}
+
+	public void setAuthor(String author) {
+		this.author = author;
+	}
+
+	public String getDate() {
+		return date;
+	}
+
+	public void setDate(String date) {
+		this.date = date;
+	}
+
+	public String getFileName() {
+		return fileName;
+	}
+
+	public void setFileName(String fileName) {
+		this.fileName = fileName;
 	}
 
 	public Long getDocId() {
@@ -83,10 +117,4 @@ public class SearchResult {
 		this.query = query;
 	}
 
-	private static Link createLink(Long docID, String query, String title) {
-		return
-				ControllerLinkBuilder.linkTo(
-						ControllerLinkBuilder.methodOn(RedirectController.class).redirect(docID, query, title))
-						.withRel("targetUrl");
-	}
 }

@@ -27,18 +27,23 @@ public class AutoCompleteController {
 
 	private final FuzzySuggester fuzzySuggester = new FuzzySuggester(new RAMDirectory(), "sadsa", new SimpleAnalyzer());
 
+	/**
+	 * Suggest searching words get method.
+	 * @param query
+	 * @return ResponseEntity
+	 * @throws IOException
+	 */
 	@RequestMapping(method = RequestMethod.GET, path = "/auto-complete", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<List<String>> autoComplete(
 			@RequestParam(defaultValue = "")
 					String query) throws IOException {
 
-		List<Query> list1 = docQueryService.findByQueryStartingWith(query);
+		List<String> list = docQueryService.findByQueryStartingWith(query);
 
-		List<String> list = list1.stream().map(query1 -> {
+/*		List<String> list = list1.stream().map(query1 -> {
 			return query1.getQuery().trim();
-		}).collect(Collectors.toList());
-
-		List<LookupResult> ret = fuzzySuggester.lookup(query, Boolean.FALSE, 10);
+		}).collect(Collectors.toList());*/
+		List<LookupResult> ret = fuzzySuggester.lookup(query.toLowerCase(), Boolean.FALSE, 5);
 
 		list.addAll(ret.stream()
 				.map(i -> String.valueOf(i.key))
