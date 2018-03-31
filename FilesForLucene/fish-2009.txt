@@ -1,1752 +1,0 @@
-Bayesian Markovian Spam Filtering
-James Fish
-1st May 2009
-Abstract
-The most common method to handle spam is to use spam lters, which are
-typically based on statistical methods. We will investigate lters that use Baye-
-sian classiers and Markovian chains. Also we will show how to handle new
-tokens using prior probabilities and attempt to reduce training for Markovian
-lters. Throughout, statistical errors encountered in articles and books will be
-corrected to argue for mathematically more accurate spam lters.
-This piece of work is a result of my own work except where it forms an
-assessment based on group project work. In the case of a group project, the work
-has been prepared in collaboration with other members of the group. Material
-from the work of others not involved in the project has been acknowledged and
-quotations and paraphrases suitably indicated.
-Contents
-1 Introduction 3
-1.1 What is Spam? . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
-1.2 Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
-2 Non-Statistical Methods For Spam Filtering 5
-2.1 Blacklists . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
-2.2 Throttling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
-2.3 Whitelists . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
-2.4 Challenge-Response . . . . . . . . . . . . . . . . . . . . . . . . . 6
-2.5 Collaborative Filtering . . . . . . . . . . . . . . . . . . . . . . . . 6
-2.6 Heuristic . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
-3 Naïve Bayesian Filters 8
-3.1 Statistical Classication . . . . . . . . . . . . . . . . . . . . . . . 8
-3.2 Bayesian Classier . . . . . . . . . . . . . . . . . . . . . . . . . . 9
-3.3 Naïve Bayesian Classier . . . . . . . . . . . . . . . . . . . . . . 10
-3.4 Training . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
-3.5 Classication . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
-3.6 Paul Graham's Filter . . . . . . . . . . . . . . . . . . . . . . . . . 13
-4 Handling New Tokens 16
-4.1 What Is The Problem? . . . . . . . . . . . . . . . . . . . . . . . . 16
-4.2 What Is A Solution? . . . . . . . . . . . . . . . . . . . . . . . . . 17
-4.3 How Is The Solution Implemented? . . . . . . . . . . . . . . . . . 20
-4.4 Parameters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
-4.5 Gary Robinson's Word Probability . . . . . . . . . . . . . . . . . 23
-5 Higher-Order Markovian Chain Filters 24
-5.1 Markov Chains . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
-5.2 First-Order Markovian Filter . . . . . . . . . . . . . . . . . . . . 25
-5.3 First-Order Training . . . . . . . . . . . . . . . . . . . . . . . . . 26
-5.4 First-Order Classication . . . . . . . . . . . . . . . . . . . . . . 28
-5.5 kth-Order Markov Chains . . . . . . . . . . . . . . . . . . . . . . 28
-5.6 kth-Order Training . . . . . . . . . . . . . . . . . . . . . . . . . . 30
-1
-5.7 kth-order Classication . . . . . . . . . . . . . . . . . . . . . . . 31
-6 Discussion 33
-6.1 Comparison Between Naïve Bayesian And Markovian Filters . . 33
-6.2 Increasing Training Speed . . . . . . . . . . . . . . . . . . . . . . 33
-6.3 Token Choice . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
-6.4 Implications Of Dierent Languages . . . . . . . . . . . . . . . . 37
-6.5 Character Obfuscation . . . . . . . . . . . . . . . . . . . . . . . . 38
-6.6 Email Headers . . . . . . . . . . . . . . . . . . . . . . . . . . . . 38
-7 Conclusion 40
-Acknowledgement 41
-Bibliography 42
-2
-Chapter 1
-Introduction
-1.1 What is Spam?
-Spam is unsolicited email. These emails are irrelevant and a nuisance to the
-receiver. The rst spam email was sent in 1978, to 320 members of the Arpanet
-network, to advertise Digital Equipment Corporation [1]. Spam is a problem;
-over 110 billion spam emails were sent everyday in June 2008 and 95.6% of
-emails sent to businesses are spam [2, 3]. Businesses lose employee work hours
-reading spam and have to invest in IT infrastructure to receive (and lter) the
-large proportion of spam. This costs companies $100 billion worldwide in 2007
-[4].
-The sender, or spammer, on the other hand can send millions of emails for
-free by hijacking other people's computers, albeit illegally. A recent study in
-which 350 million spam emails were sent over a month, from over 75 thousand
-hijacked computers, resulted in 28 sales at no monetary cost [5].
-1.2 Overview
-Originally spam lters did not use statistics but relied on programmed rules and
-other techniques that could only be updated by the maintainer of the software.
-This meant that spam could be written knowing the criteria required to lter
-them out. Therefore lters could become redundant by incorrectly classifying
-new spams unless the software was updated.
-However in 2002 Graham suggested using Bayes' theorem to derive a for-
-mula to classify emails based on the probability of words being present in an
-email. Even though naïve Bayesian classiers make large assumptions they
-can still be very accurate; Pantel and Lin[6] correctly identied 92% of spam.
-However Bayesian lters classify emails based on training emails with known
-classication, which means that an unrepresentative training sample can reduce
-the accuracy of a lter. Also there could be no information for infrequently
-appearing words. Therefore I will assign all words a prior probability before
-3
-training to reduce noise whilst still allowing reasonable time to convergence to
-the actual probabilities for each word.
-Furthermore a Bayesian classier should be more accurate if its assumptions
-are relaxed. Therefore I will reduce the assumption that words are conditionally
-independent of each other by considering the context a word appears in. To do
-this I will use Markov chains to estimate the probability that one word or token
-follows another word or phrase.
-However by taking into account context more training will be required to
-classify documents. Therefore I will use similar phrases as well as exactly mat-
-ching phrases to estimate the probability that a token follows the previous
-tokens. Also one could decrease the token length, which would decrease the
-number of possible tokens and thus should increase the learning speed of the
-lter.
-In chapter 2 I will look at non-statistical methods to lter spam. In chapter
-3 I will look at naïve Bayesian lters. In chapter 4 I will look at how to handle
-new tokens. In chapter 5 I will look at Markovian classiers. In chapter 6 I will
-discuss further topics related to Markovian lters. In chapter 7 I will conclude
-the project.
-4
-Chapter 2
-Non-Statistical Methods For
-Spam Filtering
-2.1 Blacklists
-Networks known to be used by spammers or with security loopholes, which could
-be used to send spam, can be kept on blacklists. Internet service providers block
-incoming and outgoing emails to the networks on a list. However legitimate
-email, known as ham, from these networks will be blocked, which results in
-100% false positives (hams marked as spam) from the listed networks because
-the content of the emails is not checked. In fact the emails are never received
-by the internet server provider; saving a signicant amount of bandwidth and
-computer resources.
-Often users subscribe to a list and receive automatic updates from a main-
-tainer, who decides which networks are to be blocked based on feedback from
-subscribers and other sources. But a maintainer is unable to predict networks
-that will send spam in the future and so can only make addition to the list after
-a network has been reported for sending spam. Therefore by just using a bla-
-cklist spam from new or dierent networks cannot be blocked. Thus spammers
-move from network to network, as they are blacklisted, to avoid being blocked.
-Also networks can be incorrectly or unfairly added to a blacklist depending
-on the maintainer of the list. The owner of the blocked network may then unable
-to contact the owner of the list because their emails will be blocked. In 2003
-the maintainer of the Osirusoft blacklist blocked every network in the world,
-which caused some spam lters, such as SpamAssassin, to block all emails[7].
-This meant many business had the problem of being unable to receive emails
-for several days.
-5
-2.2 Throttling
-Instead of blacklisting spammers, an internet server provider can limit the fre-
-quency of emails being sent to or from a network or host. This decreases the
-rate at which spam can be sent and therefore received. However it does not
-stop spam but encourages a spammer to send spam to a dierent server. Also
-throttling still allows ham to be sent because no emails are actually blocked but
-some may take longer to receive.
-2.3 Whitelists
-An alternative to limiting or blocking networks known to send spam, is to block
-every network except a list of networks or email addresses that only send ham.
-This should mean a user only receives ham but is unable to receive legitimate
-emails from people not on the list.
-Unlike the blacklist each user would have to maintain their own list because
-a spammer could put themselves on a global whitelist and spam everyone who
-uses it. Also a spammer can forge an email's headers so it appears that an
-email came from a dierent address, such as an address on the whitelist and
-thus avoiding the lter.
-2.4 Challenge-Response
-Instead of the receiver of an email using a list of who to block or not, a user can
-use software that sends an automated email straight back asking for conrmation
-that the sender is a person. This can be done by asking them to visit a web page.
-Once the page has been visited the user would receive the original email and any
-future emails from the same address. A computer program sending spam emails
-is unlikely to respond, which would stop spam. However a valid user may not
-realise they have to respond or may choose to ignore the returned email, as it is
-an annoyance. Also the response may not occur straight away, causing a delay
-in getting an email, which would otherwise be almost instantaneous. Therefore
-challenge-response lters slow down email transactions and require unreliable
-user feedback.
-By sending an email straight back there is a greater workload on servers
-because up to double the number of emails are sent. It is in essence requiring
-the sender to signify whether he sent spam or not. If challenge-response was
-used widely, then spammers could adapt and tell people that they had sent them
-ham and thus defeat the lter.
-2.5 Collaborative Filtering
-Instead of asking the sender to notify a user that an email is ham, a group or
-network can work together to lter spam. If a person marks an email as spam
-6
-then that email will get ltered out from everyone else's mailbox and could train
-a lter. At a basic level this means that if ten email addresses work together
-people are 90% less likely to get a new form of spam because there is a 90%
-chance that someone else will get the email rst and mark it as spam. However
-all users could receive the same spam before any user has time to mark it as
-spam. Therefore all users still receive the spam.
-If a ltering system only misses 1 in 100 spam emails, then with a group of
-ten people the error rate could be down to 1 in 1000. However if people disagree
-on what is spam then the false positive rate would increase because the rst
-person could mark an email as spam causing the second person to miss an email
-they considered ham.
-2.6 Heuristic
-Rather than ltering emails based on the sender, it is possible to lter on content.
-For example the presence of specic words and phrases, wrong headers or dates
-and a large number of exclamation marks in a message can be strong indicators
-of spam. Therefore a heuristic lter looks for patterns in an email that suggest
-it is spam, based on pre-set rules. At its most trivial it will mark emails as
-spam if they contain enough key words, such as `Viagra', which are known to
-frequently occur in spam.
-Other heuristic lters may have hundreds of rules and for each rule that is
-broken, a corresponding weight (relative to how strong an indicator of spam the
-word is thought to be) is added to the email's score. If the email gets a score
-above a certain limit, it is marked as spam. Mathematically, there is a binary
-vector ~R such that if rule j is broken then rj = 1 else rj = 0 and a vector ~P
-where pj is the weight for breaking rule j. The inner product ~R. ~P is the email's
-score.
-In this way a heuristic lter allows ham to be sent from unknown addresses
-because all networks can email the user. However the rules are static so a
-spammer can adapt his emails to get past the lter. There are websites to test
-spam, to see if it passes common lters and changes can be made via trial an
-error to nd out the rules. This means that software engineers have to regularly
-update their software with new rules to keep ahead of spammers and detect new
-spam.
-7
-Chapter 3
-Naïve Bayesian Filters
-3.1 Statistical Classication
-As an alternative to humans deciphering rules to decide whether an email D is
-spam or ham, a classier can be trained to recognise features, which it chooses,
-to determine the category of future emails. A classier is trained on a corpus
-of spam S and another of ham H, from which it learns the features of each.
-There could be more categories than spam S and ham H, such as personal and
-business.
-After the initial training, a classier adapts its rules due to features in new
-emails it classies. Unlike heuristic lters, which use a static set of rules, the
-rules will change as new forms of spam appear because when a user re-categorises
-a wrongly classied email the rules change accordingly. Therefore the accuracy
-of classication for future emails should increase because it evolves as spam and
-ham change.
-Each user will have dierent rules because they will receive dierent emails,
-which also means that the rules will adapt to a user's email habits.Therefore if a
-user disagrees with the lter, the rules are changed to t that user's preferences
-instead of the generic users preferences. In contrast heuristic lters use the same
-rules for every user, which means ham for a particular user that often breaks
-some of the rules will always be marked as.
-A classier can assume that a document is generated by a probability dis-
-tribution, specic to its category, with unknown parameter θ.
-However this assumption can be considered incorrect because dierent au-
-thors would write dierent emails when trying to give the same information.
-This occurs because of their varying linguistic ability and vocabulary, which
-means an email is conditional on the author as well as its category.
-The probability of an email given it is spam can be calculated:
-Pr(D|S; θ) (3.1)
-8
-and the probability of an email given it is ham:
-Pr(D|H; θ) (3.2)
-Leading to the likelihood:
-Pr(D|θ) = Pr(S|θ)Pr(D|S; θ) + Pr(H|θ)Pr(D|H; θ) (3.3)
-3.2 Bayesian Classier
-A Bayesian classier uses estimated probabilities and Bayes' theorem[8] to cal-
-culated the probability of spam given an email based on the assumption that
-emails are generated by a probability distribution with unknown parameter θ
-given a category. An email is an ordered list of words where Wi is the word in
-place i of an email.
-D = (W1,W2, . . .) (3.4)
-Also the length of the email is a random variable M and there is a set of known
-words W from which wt = Wi:
-W = {w1, w2, . . .} (3.5)
-The probability of a particular spam occurring can be calculated (S can be
-replaced by H when nding the probability of a certain ham):
-Pr(D|S; θ) = Pr(W1,W2, . . . ,WM ,M |S; θ) (3.6)
-= Pr(M |θ)
-M∏
-i=1
-Pr(Wi|S; θ;Wi−1, . . . ,W1) (3.7)
-Equation (3.7) states that words are used depending on the category of the
-email, in this case spam, and the preceding words. Therefore calculating the
-probability of the email given it is spam.
-However authors of emails may have dierent linguistic skills and vocabulary
-and so think dierently when writing an email. They may also consider dierent
-information to be of varying importance. Thus in reality authors of spam do not
-write in the same way as each other. Furthermore this is also true for authors
-of ham. Therefore the assumption that the words in an email are dependent on
-whether it is spam or ham but independent of the author may be incorrect.
-However the vocabulary and grammar of the author do not set the length
-of an email, which supports the equation (3.7), which states words are chosen
-independently of the documents length. Also the number of words is assumed
-to be independent of the email being spam or ham. Yet the average size of
-spam decreased between march 2007 and march 2008 from just under 8kb to
-around 3kb[9] and averaged 4.2kb in April 2009[10]. The reduction may have
-occurred in order to beat spam lters, suggesting that ham and spam emails are
-now, on average, a similar size, which suggests the assumption is now correct.
-9
-Alternatively the reduction in the size spam is due to the increasing aectiveness
-of spam lters causing spammers to maximize the number of spams sent.
-The probability of an email being spam is required to classify it. To nd
-Pr(S|D; θ) Bayes' theorem[8] is used:
-Pr(A|B;C) = Pr(A|C)Pr(B|A;C)
-Pr(B;C)
-(3.8)
-Replacing A with S, B with D and C with θ:
-Pr(S|D; θ) = Pr(S|θ)Pr(D|S; θ)
-Pr(D|θ)
-(3.9)
-Using the likelihood from Equation (3.3) implies:
-Pr(S|D; θ) = Pr(S|θ)Pr(D|S; θ)
-Pr(S|θ)Pr(D|S; θ) + Pr(H|θ)Pr(D|H; θ)
-(3.10)
-The probability of an email being ham can be calculated in the same way but
-obviously:
-Pr(H|D; θ) = 1− Pr(S|D; θ) (3.11)
-3.3 Naïve Bayesian Classier
-To simplify equation (3.7), the assumption that words in a spam are used inde-
-pendently of position and context (other words) is made:
-Pr(Wi|S; θ;Wi−1,Wi−2 . . .W1) = Pr(Wi|S; θ) (3.12)
-Yet by assuming words in spam are used independently of position means
-that grammar is ignored, which removes the meaning of an email. Therefore
-two sentences could contain very similar words but have dierent meanings; one
-being much more likely given the email is a spam, the other more likely given
-it is ham, but now the classier is unable to determine the dierence.
-Also the assumption that words, given the email is from a category, are
-independent of context is incorrect because when discussing a topic words from
-a relevant lexical set (subset of W) are more likely to be used. For example, a
-spam about mortgages is more likely to include the words interest rate than
-a spam about viagra.
-The assumptions in equation (3.12) make the Bayesian classier naïve and
-imply:
-Pr(D|S; θ) = Pr(M |θ)
-∏
-WD
-Pr(W |S; θ) (3.13)
-Pr(D|H; θ) is calculated in the same way, using the same assumptions. Then
-using Equation (3.10) with equation (3.13) the probability of an email being
-10
-spam is found:
-Pr(S|D; θ) =
-Pr(S|θ)Pr(M |θ)
-∏
-WD
-Pr(W |S;θ)
-Pr(S|θ)Pr(M |θ)
-∏
-WD
-Pr(W |S;θ)+Pr(H|θ)Pr(M |θ)
-∏
-WD
-Pr(W |H;θ)
-(3.14)
-Logically Pr(M |θ) is be cancelled out. This is unsurprising because it has been
-assumed that the length of an email is independent of the email being spam or
-ham:
-Pr(S|D; θ) =
-Pr(S|θ)
-∏
-WD
-Pr(W |S; θ)
-Pr(S|θ)
-∏
-WD
-Pr(W |S; θ) + Pr(H|θ)
-∏
-WD
-Pr(W |H; θ)
-(3.15)
-3.4 Training
-To calculate equation (3.15) the knowledge parameter θ requires the proba-
-bility of each word in vocabulary W given spam Pr(W |S; θ) and given ham
-Pr(W |H; θ) and the probability that an email is spam Pr(S|θ) or ham Pr(H|θ):
-Pr(W = w|S; θ) = θw|S
-Pr(W = w|H; θ) = θw|H
-Pr(S|θ) = θS
-Pr(H|θ) = θH (3.16)
-The estimate of parameter θ is θ̂, which the classier calculates with training
-spam corpus S and ham corpus H. The number of occurrences of each word are
-counted separately for all the training spam and ham. When a word is found
-that has not previously occurred it is added to the vocabulary W. Then the
-probability of any word in the vocabulary appearing in spam can be estimated by
-dividing the number of its occurrence in spam by the total number of occurrences
-of all words in spam:
-θ̂w|S =
-number of w in spam from S
-number of all words in spam from S
-(3.17)
-However if a word has never occurred in spam before the probability of it
-occurring would be zero. This would cause the probability of the email, given it
-is spam, occurring to be zero, regardless of the rest of the email. Therefore using
-equation (3.15) the email would be clasied as ham. Furthermore if the word
-had never occurred in ham before either, the calculation would involve dividing
-by zero which is impossible. This problem is xed in chapter 4. If NS(w) is the
-number of times a word appears in spam (H would replace S for ham):
-11
-θ̂w|S =
-NS(w)∑
-vW
-NS(v)
-(3.18)
-The probability of an email being spam is the number of spam divided by the
-total number of emails in the training data:
-θ̂S =
-|S|
-|S|+ |H|
-(3.19)
-Equation (3.19) can be used to calculate the probability of ham θ̂H by replacing
-S by H, which completes the required prior knowledge to calculate equation
-(3.15) (θ̂ estimates θ) to classify new emails with unknown category.
-3.5 Classication
-Emails are classied by nding the probabilities of Pr(S|D; θ̂) and Pr(H|D; θ̂),
-with the larger being the suggested category. As an email is either spam or
-ham:
-Pr(H|D; θ̂) = 1− Pr(S|D; θ̂) (3.20)
-Therefore if Pr(S|D; θ̂) > 0.5 then Pr(H|D; θ̂) < 0.5 and so the email is
-more likely to be spam than ham and thus marked as spam by the classier.
-However a user may nd it better to increase the required probability of spam
-because they would prefer to receive more spam (false negatives) than miss more
-ham (false positives). This could be value set by a user.
-Alternatively a Bayesian factor test could be used:
-Pr(D|S; θ̂)
-Pr(D|H; θ̂)
-= K (3.21)
-K is the likelihood ratio that an email was generated with the spam model or
-ham model. A value of K greater than 1 suggests an email is spam, whereas a
-value less than 1 suggests an email is ham. Jereys[11] claims that with a value
-of K greater than ten there is strong evidence that the observation is from the
-model in the numerator (spam):
-K <
-Pr(D|S; θ̂)
-Pr(D|H; θ̂)
-(3.22)
-using Bayes' theorem:
-12
-K <
-Pr(H|θ̂)Pr(S|D; θ̂)
-Pr(S|θ̂)Pr(H|D; θ̂)
-(3.23)
-K <
-(
-1− Pr(S|θ̂)
-)
-Pr(S|D; θ̂)
-Pr(S|θ̂)
-(
-1− Pr(S|D; θ̂)
-) (3.24)
-leading to:
-Pr(S|D; θ̂)
-1− Pr(S|D; θ̂)
-> K
-Pr(S|θ̂)
-1− Pr(S|θ̂)
-(3.25)
-Therefore requiring a likelihood ratio greater than K is equivalent to classifying
-an email as spam when:
-Pr(S|D; θ̂) > 1− Pr(S|θ̂)
-1− K−1K Pr(S|θ̂)
-(3.26)
-Every time the lter analyses a new email it also trains the corpus. Therefore
-the size of vocabularyW will grow rapidly, especially at the beginning, as words
-unknown to the classier are found. Therefore it is logical to save the counts of
-words in each category to save the computational time of classication. However
-words with low counts can be automatically removed, if not encountered after
-a certain period of time, to save disk space and execution time.
-If the lter classies emails incorrectly the user can mark the email as spam
-or ham and the lter will undo what it learnt for that email and relearn the
-correct information. For example if an email was wrongly marked as spam, all
-words in the email would have their count reduced in the list of words in spam,
-and then increased by the same amount in the ham list.
-3.6 Paul Graham's Filter
-Graham[12] uses a dierent formula for a naïve Bayesian classier, which goes
-further than equation (3.15). He uses Bayes' theorem (equation (3.8)) so that:
-Pr(W |S; θ̂) = Pr(S|W ; θ̂)Pr(W ; θ̂)
-Pr(S; θ̂)
-(3.27)
-Which can be substituted into equation (3.15)
-Pr(S|D; θ̂) =
-Pr(S|θ̂)
-∏
-WD
-Pr(S|W ;θ̂)Pr(W ;θ̂)
-Pr(S;θ̂)
-Pr(S|θ̂)
-∏
-WD
-Pr(S|W ;θ̂)Pr(W ;θ̂)
-Pr(S;θ̂)
-+ Pr(H|θ̂)
-∏
-WD
-Pr(H|W ;θ̂)Pr(W ;θ̂)
-Pr(H;θ̂)
-(3.28)
-13
-simplies to:
-Pr(S|D; θ̂) =
-Pr(S|θ̂)
-∏
-WD
-Pr(S|W ;θ̂)
-Pr(S;θ̂)
-Pr(S|θ̂)
-∏
-WD
-Pr(S|W ;θ̂)
-Pr(S;θ̂)
-+ Pr(H|θ̂)
-∏
-WD
-Pr(H|W ;θ̂)
-Pr(H;θ̂)
-(3.29)
-Yet Graham reaches: ∏
-WD
-Pr(S|W ; θ̂)∏
-WD
-Pr(S|W ; θ̂) +
-∏
-WD
-Pr(H|W ; θ̂)
-(3.30)
-This simplication is not correct unless Pr(S|θ̂) = Pr(H|θ̂), in which case the
-numerator and denominator have been multiplied by Pr(S|θ̂)M−1. However:
-Pr(H|θ̂) = 1− Pr(S|θ̂) (3.31)
-hence:
-Pr(S|θ̂) = 1− Pr(S|θ̂) (3.32)
-= 0.5 (3.33)
-So the simplication is true if Pr(S|θ̂) = Pr(H|θ̂) = 0.5 and thus the formula
-(equation (3.29)) can only be used reliably when Pr(S|θ̂) ≈ Pr(H|θ̂). Graham
-states he trained on one corpus of spam and one corpus of ham, where each one
-has about 4000 messages in it. Therefore it is possible that this is supposed to
-be a requirement. However Cisco[13] reports that approximately 85% of emails
-were spam in 2008, which disproves the assumption that spam and ham occur
-roughly as often as each other.
-Graham classies an email by choosing the largest probability of Pr(S|D; θ̂)
-or Pr(H|D; θ̂), which is equivalent to marking an email as spam if Pr(S|W ; θ̂) >
-0.5. However to reduce the amount of ham marked as spam a correction factor
-is added to equation (3.34): ∏
-WD
-Pr(S|W ; θ̂)∏
-WD
-Pr(S|W ; θ̂) + 2
-∏
-WD
-Pr(H|W ; θ̂)
-(3.34)
-This will also result in an increase in spam incorrectly marked as ham but this
-is considered a preferable trade o to miss as little ham as possible.
-Graham also places the limits:
-0.01 ≤ Pr(S|W ; θ̂) ≤ 0.99 (3.35)
-14
-So that any probability of spam given a word below the limit is set equal to 0.01
-and above 0.99, which means that even if Pr(S|θ̂) ≈ Pr(H|θ̂) then Pr(S|D; θ̂),
-from equation (3.34), is only an approximate. He does this because if for a word
-Pr(S|W ; θ̂) = 0 then equation (3.34) would equal zero regardless of other words
-in the email, which could lead to misclassication.
-Furthermore if a word has not appeared before Graham sets Pr(S|W ; θ̂) =
-0.4 because of his prior belief that new words are more likely to be in ham.
-However after training a word once, extreme probabilities (0.01 and 0.99) are
-used for Pr(S|W ; θ̂), which could be a very inaccurate estimation.
-Also Graham is very likely to use the probability of word that has been trai-
-ned once because he uses the fteen words with strongest indication of category,
-which means that words with Pr(·|W ; θ̂) = 0.99 would be used rst. Therefore
-a word trained once would be used, apart from when there were sixteen or more
-words, only to appear in one category. Thus an email could be classied as spam
-because it contains words that occur very infrequently and have only been ob-
-served in spam. These words may be strong indicators of spam but there is
-little evidence.
-Graham uses words with Pr(W |S; θ̂) nearest 0.01 or 0.99, or the highest
-values of |Pr(W |S; θ̂)− 0.5|. However this prevents the lter from being misled
-by noise from words that occur regularly in spam and ham when an email would
-values close to 0.5 for equation (3.34).
-However this decreases the accuracy of Pr(S|D; θ̂) further as less information
-is taken into account. Furthermore a spammer could include fteen words in
-a spam where Pr(W |S; θ̂) = 0.01 or as close as possible, which would result
-in a very low value for Pr(S|D; θ̂) as the wrong information was taken into
-account. Thus suggesting the email is ham and causing the lter to misclassify
-the email. This is known as a salad dictionary attack.
-15
-Chapter 4
-Handling New Tokens
-4.1 What Is The Problem?
-If no spams are classied or trained then Pr(S|θ̂) = 0 and so, using equation
-(3.15):
-Pr(S|D; θ̂) =
-0×
-∏
-WD
-Pr(W |S; θ̂)
-0×
-∏
-WD
-Pr(W |S; θ) + 1×
-∏
-WD
-Pr(W |H; θ̂)
-(4.1)
-= 0 (4.2)
-Equation (3.26) fails more dramatically as the inequality will never occur:
-Pr(S|D; θ̂) > 1− 0
-1− K−1K × 0
-(4.3)
-> 1 (4.4)
-As it requires a probability greater than one, which is impossible, for an email
-to be classied as spam. Also Pr(S|D; θ̂) only needs to be greater than 0 if
-Pr(S|θ̂) = 1, thereby respecting the prior. However this prior does not make
-sense because if a user expects all emails to be spam or all to be ham they do
-not require a lter.
-Furthermore it would be quite possible for a word to appear that had never
-been seen before and as such, using equation (3.18):
-Pr(W |S; θ) = 0, P r(W |H; θ) = 0 (4.5)
-Which leads to an interesting problem when using equation (3.13) to nd the
-probability of the email:
-Pr(D|S; θ̂) = 0 = Pr(D|H; θ̂) (4.6)
-16
-Then neither the probability of spam given the email, equation (3.15), nor a
-likelihood ratio, equation (3.21), can be calculated because both would involve
-dividing by zero.
-4.2 What Is A Solution?
-The problem of new tokens having zero probability can be solved by every word
-having a prior probability greater than zero. By using a prior, the accuracy of
-the formed posterior distribution is increased when there are few or no observa-
-tions because more information is taken into account. Also anomalous results
-will have less eect on the outcome because the prior will prevent some noise.
-The classication of an email is either spam or ham so the probability of
-an email being spam may be characterised by a Bernoulli distribution with
-probability p = Pr(S|θ̂), where spam is considered a success and ham a failure.
-Pr(outcome) =
-{
-p outcome = success
-1− p outcome = failure
-(4.7)
-Equivalent to the simplication of the Bernoulli distribution where x = 1 for a
-success and x = 0 for a failure:
-Pr(X = x) = px(1− p)1−x (4.8)
-In our case p = θ̂S , spam is a success and ham is a failure (or no successes).
-Thus x can be considered the number of successes; though the maximum is one
-for a single Bernoulli trial.
-The number of successes (x) in n independent and identically distributed
-Bernoulli trials can be modelled by the binomial distribution. If there are n
-Bernoulli trials with x successes then n− x failures:
-Pr(x successes, n− x failures) = Pr(X = 1)x × Pr(X = 0)n−x (4.9)
-=
-(
-p1(1− p)1−1
-)x (
-p0(1− p)1−0
-)n−x
-(4.10)
-= px (1− p)n−x (4.11)
-However the successes and failures could occur in any order so there are n places
-for x success, or n choose x combinations, which implies:
-Pr(X = x|n; p) =
-(
-n
-x
-)
-px (1− p)n−x (4.12)
-which is the binomial distribution.
-Therefore as each email is classied independently of each other using the
-same distribution (assuming Pr(S|θ̂) is constant) a binomial model can be used
-to calculate the probability of x spams out of n emails. The binomial distribution
-is equation (4.12).
-17
-If α−1 successes and β−1 failures have previously been observed, the prior
-can be characterised by the beta distribution:
-Pr(P = p|α;β) = Γ(α+ β)
-Γ(α)Γ(β)
-pα−1(1− p)β−1 (4.13)
-Therefore the posterior distribution can be calculated using Bayes' theorem[8]:
-Pr(P = p|X = x) = Pr(X = x|P = p)Pr(P = p)
-Pr(X = x)
-(4.14)
-Putting in the Pr(X = x|P = p) from the binomial distribution (equation
-(4.12)) and Pr(P = p) from equation the beta distribution (equation (4.13)):
-Pr(P = p|X = x) =
-(
-n
-x
-)
-px (1− p)n−x Γ(α+β)Γ(α)Γ(β)p
-α(1− p)β−1
-Pr(X = x)
-(4.15)
-=
-(
-n
-x
-)
-Γ(α+ β)pα+x−1(1− p)β+n−x−1
-Γ(α)Γ(β)Pr(X = x)
-(4.16)
-=
-n!Γ(α+ β)pα+x−1(1− p)β+n−x−1
-x! (n− x)!Γ(α)Γ(β)Pr(X = x)
-(4.17)
-However in order to nd Pr(P = p|X = x), Pr(X = x) is required:
-Pr(X = x) =
-ˆ 1
-0
-Pr(X = x|P = p)Pr(P = p)dp (4.18)
-Therefore using the same Pr(X = x|P = p) and Pr(P = p) from equation
-(4.15) gives:
-Pr(X = x) =
-ˆ 1
-0
-(
-n
-x
-)
-px (1− p)n−x Γ(α+ β)
-Γ(α)Γ(β)
-pα(1− p)β−1dp (4.19)
-=
-n!Γ(α+ β)
-x!(n− x)!Γ(α)Γ(β)
-ˆ 1
-0
-pα+x−1 (1− p)β+n−x−1 dp (4.20)
-However because the beta distribution (equation (4.13)) is a probability density
-function on the interval [0, 1]:
-ˆ 1
-0
-Γ(α+ β + n)
-Γ(α+ x)Γ(β + n− x)
-pα+x−1 (1− p)β+n−x−1 dp = 1 (4.21)
-implying:
-ˆ 1
-0
-pα+x−1 (1− p)β+n−x−1 dp = Γ(α+ x)Γ(β + n− x)
-Γ(α+ β + n)
-(4.22)
-So equation (4.20) can be simplied to:
-Pr(X = x) =
-n!Γ(α+ β)
-x!(n− x)!Γ(α)Γ(β)
-Γ(α+ x)Γ(β + n− x)
-Γ(α+ β + n)
-(4.23)
-18
-Put into equation (4.17):
-Pr(P = p|X = x) = n!Γ(α+ β)p
-α+x−1(1− p)β+n−x−1
-x! (n− x)!Γ(α)Γ(β)Pr(X = x)
-(4.24)
-=
-Pr(X = x)Γ(α+ β + n)pα+x−1(1− p)β+n−x−1
-Γ(α+ x)Γ(β + n− x)Pr(X = x)
-(4.25)
-=
-Γ(α+ β + n)
-Γ(α+ x)Γ(β + n− x)
-pα+x−1(1− p)β+n−x−1 (4.26)
-This is equivalent to a Beta distribution (equation (4.13)) with α+x−1 successes
-and β + n − x − 1 failures. Therefore the expected value of P given X can be
-calculated:
-E[P |X = x] =
-ˆ 1
-0
-p
-Γ(α+ β + n)
-Γ(α+ x)Γ(β + n− x)
-pα+x−1(1− p)β+n−x−1dp (4.27)
-=
-Γ(α+ β + n)
-Γ(α+ x)Γ(β + n− x)
-ˆ 1
-0
-pα+x(1− p)β+n−x−1dp (4.28)
-Using equation (4.22):
-E[P |X = x] = Γ(α+ β + n)
-Γ(α+ x)Γ(β + n− x)
-Γ(α+ x+ 1)Γ(β + n− x)
-Γ(α+ β + n+ 1)
-(4.29)
-=
-Γ(α+ β + n)
-Γ(α+ x)
-Γ(α+ x+ 1)
-Γ(α+ β + n+ 1)
-(4.30)
-Given:
-Γ(z) =
-ˆ ∞
-0
-tz−1e−tdt (4.31)
-and so:
-Γ(z + 1) =
-ˆ ∞
-0
-tz+1−1e−tdt (4.32)
-=
-ˆ ∞
-0
-tze−tdt (4.33)
-=
-[
-(tz)
-(
-−e−t
-)]t=∞
-t=0
-−
-ˆ ∞
-0
-(
-ztz−1
-) (
-−e−t
-)
-dt (4.34)
-= −
-[
-tze−t
-]t=∞
-t=0
-+ z
-ˆ ∞
-0
-tz−1e−tdt (4.35)
-= −( lim
-t→∞
-tze−t − 0) + zΓ(z) (4.36)
-= −(0− 0) + zΓ(z) (4.37)
-= zΓ(z) (4.38)
-19
-Therefore equation (4.30) can be simplied using using equation (4.38):
-E[P |X = x] = Γ(α+ β + n)
-Γ(α+ x)
-Γ(α+ x+ 1)
-Γ(α+ β + n+ 1)
-(4.39)
-=
-Γ(α+ β + n)
-Γ(α+ x)
-(α+ x)Γ(α+ x)
-(α+ β + n)Γ(α+ β + n)
-(4.40)
-=
-α+ x
-α+ β + n
-(4.41)
-It should be noted that α and β are from the prior and x and n are from
-observations and represent the likelihood.
-4.3 How Is The Solution Implemented?
-The number of spams x out of n emails can be modelled by a binomial distri-
-bution, and it is assumed that α spam and β ham have previously occurred.
-Thus a posterior distribution, equation (4.26), can be used to model the pro-
-bability of spam. Therefore the expected proportion of emails that are spam
-can be founded using equation (4.41) given |S| spam have been observed out of
-|S|+ |H| emails.
-θ̂S = E[P |X = |S|] (4.42)
-=
-α+ |S|
-α+ β + |S|+ |H|
-(4.43)
-However the prior can be manipulated more easily if a probability of success
-is known. The prior probability of success is equivalent to:
-tS =
-α
-α+ β
-(4.44)
-and the prior sample size:
-s = α+ β (4.45)
-Then equation (4.43) can rewritten as:
-θ̂S =
-stS + |S|
-s+ |S|+ |H|
-(4.46)
-Since Pr(S|θ̂) = θ̂S , the probability of spam can be calculated using the expec-
-ted value of θ̂S and then:
-Pr(H|θ̂) = 1− θ̂S (4.47)
-20
-A similar approach to equation (4.46) can be used to calculate the probability
-of a word given spam:
-Pr(W |S; θ̂) = θ̂w|S (4.48)
-=
-stw|S +NS(w)
-s+
-∑
-vW
-NS(v)
-(4.49)
-A similar equation can be used to estimate the probability of a word given ham:
-Pr(W |H; θ̂) = θ̂w|H (4.50)
-=
-htw|S +NH(w)
-h+
-∑
-vW
-NH(v)
-(4.51)
-4.4 Parameters
-The choice of values of the parameters for the prior can greatly change the
-aectiveness of the posterior probability. For example if s and tS do not equal
-zero and tS does not equal one:
-1 >
-stS + |S|
-s+ |S|+ |H|
-> 0 (4.52)
-which implies, regardless of the values of |S| and |H|:
-1 > Pr(S|θ̂) > 0 (4.53)
-So any outcome that has a prior probability in the interval (0, 1) will have a
-posterior probability in the interval (0, 1) regardless of its observed likelihood.
-This is known as Cromwell's Law[14], which states that prior probabilities should
-not be assigned a value of zero or one unless the statement is logically true or
-false. Therefore if a prior probability equals 0, irrespective of evidence to the
-contrary, it could never be true by Bayes' theorem[8]. Similarly for a prior
-probability of one, the posterior probability would always equal one.
-Hence equation (3.19) would no longer involve a division by zero if no training
-has occurred andPr(S|D; θ̂) would no longer equal exactly zero or one if only
-emails from one category had been trained.
-Furthermore if for all words w such that tw|S(0, 1) then even words that
-have not occurred before will have a probability greater than one:
-Pr(w|S; θ̂) =
-stw|S +NS(w)
-s+
-∑
-vW
-NS(v)
-(4.54)
-=
-stw|S + 0
-s+
-∑
-vW
-NS(v)
-(4.55)
-> 0 (4.56)
-21
-Therefore the probability of a document given spam, using equation (3.13), must
-be greater than zero. The same is true when calculating the probability of a
-document given ham if tw|H(0, 1) and thus using equation (3.15):
-1 > Pr(S|D; θ̂) > 0 (4.57)
-And the ratio test from equation (3.21) never involves dividing by zero.
-However dierent prior parameters can be more aective in dierent situa-
-tions. Therefore the parameters maybe dierent for the probability of a word
-given spam than for ham. So a dierent weight h has been used.
-A possible prior known as the rule of succession, suggested by Laplace[15],
-is to assume that when there is no information about which of any number of
-possible outcomes of an event will occur that they are all equally likely to. The
-philosophy behind this prior is to assume that before an event occurs that each
-outcome has occurred once. This agrees with Cromwell's rule as all outcomes
-are considered possible in the prior. Thus the parameters when calculating the
-probability of any word w given spam could be:
-tw|S =
-1
-|W|
-(4.58)
-s = |W| (4.59)
-substituting into equation (4.49):
-Pr(w|S; θ̂) =
-|W| × 1|W| +NS(w)
-|W|+
-∑
-vW
-NS(v)
-(4.60)
-=
-1 +NS(w)
-|W|+
-∑
-vW
-NS(v)
-(4.61)
-It should be noted that this prior assumes all words in the email are in
-the vocabulary, |W|. Otherwise the sum of probabilities for all known words
-would be greater than one. Therefore all words in an unclassied email that
-have not occurred in previous emails must be added to the vocabulary before
-classication. Thus all probabilities can be written as a strictly positive nite
-rational fraction.
-However depending on how quickly probabilities converge s could be changed
-but still be proportional to |W| in order to increase or decrease the eect of the
-prior. If s is decreased then the eect of prior on the posterior is reduced, which
-causes the posterior probability to converge to the true probability faster. Of
-course if s = 0 and t = 0, known as Haldane's prior[16], then the posterior
-probability converges as fast as possible. However this is not ideal because of
-the problems already discussed in this chapter.
-Alternatively Jereys[17] prior could be used. He suggests using a prior
-such that every outcome is assumed to have occurred half a time before, which
-22
-implies:
-tw|S =
-1
-|W|
-(4.62)
-s =
-|W|
-2
-(4.63)
-However Tuyl[18] found when using the Jereys prior for the binomial distribu-
-tion that the posterior probability for rare events was too large compared with
-the observed likelihood.
-Also a uniformly distributed prior is not suitable for the probability of an
-email's category because it is known that the majority of emails are spam.
-Cisco[13] reports that 90% of emails are spam and thus a suitable value of tS
-could be 0.9. Therefore equation (4.46) becomes:
-Pr(S|θ̂) = 0.9s+ |S|
-s+ |S|+ |H|
-(4.64)
-Furthermore an ideal value of s would require testing. However a lower value
-could be used because a new user may have a new address and therefore initially
-be less likely to receive spam as his address would be less likely to be known by
-spammers.
-4.5 Gary Robinson's Word Probability
-Robinson[19] calculates the probability of a word given spam in a dierent way.
-He assumes that there is prior knowledge of a word before it has occurred in an
-email. He nds the probability of a word given spam with weight c and prior
-belief that words appear with probability tw|S , which is the same for all words
-not in the vocabulary W:
-c× tw|S +NS(w)× Pr(w|S; θ̂R)
-c+NS(w)
-(4.65)
-However this is not equivalent to equation (4.49). Robinson confused the
-number of appearances of the word w in spam, with the total number of occur-
-rences of all words in spam and thus his equation should have been:
-c× tw|S +
-∑
-vW
-NS(v)× Pr(w|S; θ̂)
-c+
-∑
-vW
-NS(v)
-(4.66)
-which simplies to equation (4.49) (where c = s):
-c× tw|S +NS(w)
-c+
-∑
-vW
-NS(v)
-(4.67)
-23
-Chapter 5
-Higher-Order Markovian
-Chain Filters
-5.1 Markov Chains
-Markov chains are nite stochastic processes and were rst introduced by An-
-drey Markov[20]. In a Markov chain the next state is only dependent on the
-current state and independent of previous states. Therefore for every step,
-called a transition, in a chain the next state is chosen based on a probability
-distribution for the current state. However the chain may remain in the same
-state after a transition.
-Denition. A Markov chain is a sequence of random variables W1,W2,... such
-that the Markov property is satised:
-Pr(Wi+1 = v|Wi = w, . . . ,W1 = u) = Pr(Wi+1 = v|Wi = w) (5.1)
-The transition to state v from w occurs according to transition probability
-pwv:
-pwv = Pr(Wi+1 = v|Wi = w) (5.2)
-All possible states that a Markov chain could contain are part of a set of size n
-called the state space:
-W = {w1, w2, . . .} (5.3)
-Below is a basic example of a Markov chain, where the state w1 always go to
-w2 then w3then w4 but then the sequence may remain at w4 or go to w3:
-24
-If the state space is nite then the transition probabilities can form a n× n
-matrix P , where w is the rst word in W and u is the nth or last: pww · · · pwu... . . . ...
-puw · · · puu
- (5.4)
-As the next state must always be a member of the state space, the sum
-of probabilities in each row is one, which means that each row represents a
-probability distribution where:
-n∑
-v=1
-pwv = 1 (5.5)
-The rst state W1 is determined by a probability distribution λ, known as
-an initial distribution, such that:
-λw = Pr(W1 = w) (5.6)
-5.2 First-Order Markovian Filter
-Similarly to a Bayesian classier, a Markovian classier assumes that a docu-
-ment is generated by a probability distribution given the email belongs to a
-category, spam or ham, with parameter θ. However instead of just using words
-as tokens, characters can also be tokens in this chapter. An email (with M
-tokens) can be represented as a Markov chain, where each token is a state and
-Wi is the token in place i.
-D = W1,W2, . . . (5.7)
-The state space is the set of all tokens, vocabulary, W of size n:
-W = {w1, w2, . . .} (5.8)
-Every token in an email is assumed to be in the vocabulary W, which is also
-assumed to be nite because a lter will only be trained on and classify a nite
-number of emails with a nite number tokens. In this way tokens that do
-exist but are never met by the lter are assumed to not exist. This is a fair
-assumption to make because probabilities for unknown tokens are not known
-and not required to classify emails.
-Therefore a transition matrix P can be made with transition probabilities
-such that:
-pwv = Pr(v follows w in D|S; θ) = Pr(Wi = v|S; θ;Wi−1 = w) (5.9)
-This assumes that all spam is generated from the same distribution, which is not
-true because dierent authors write emails with varying grammar and language
-25
-and thus think dierently when writing an email. Like the Bayesian classier,
-the assumption is made to simplify equations and because a lter would have
-little or no knowledge of an author.
-The probability of a spam can be found with equation (3.7) and then ap-
-plying the Markov property (equation (5.29)):
-Pr(D|S; θ) = Pr(M |θ)
-M∏
-i=1
-Pr(Wi|S; θ;W1,W2, . . . ,Wi−1) (5.10)
-= Pr(M |θ)Pr(W1|S; θ)
-M∏
-i=2
-Pr(Wi|S; θ;Wi−1) (5.11)
-This assumes, as does equation (3.7), that the length of an email is inde-
-pendent of its classication, which is explained in Section 3.4. It is also assu-
-med that a token is dependent on the previous token (Markov property), which
-means if the tokens are words then words are not conditionally independent of
-each other. Therefore grammar is not ignored because word order is taken into
-account so a limited meaning can be taken from each pair of words in an email.
-Using equation (5.11) with initial distribution λ:
-Pr(D|S; θ) = Pr(M |θ)Pr(W1|S; θ)
-M∏
-i=2
-Pr(Wi|S; θ;Wi−1) (5.12)
-= Pr(M |θ)λW1|S
-M∏
-i=2
-pWiWi−1 (5.13)
-Similarly a transition matrix Q, with transition probabilities qab, represents
-the probability distribution for ham emails, which implies:
-Pr(D|H; θ) = Pr(M |θ)λW1|H
-M∏
-i=2
-qWiWi−1 (5.14)
-Therefore equation (3.10) can be used to calculate Pr(S|D; θ) if Pr(S|θ) =
-θS and Pr(H|θ) = θH are known.
-5.3 First-Order Training
-A Markovian lter requires training, similarly to other classiers; the knowledge
-parameter θ must be estimated: θ̂. Training data such as a spam corpus S and
-a ham corpus H.
-The same formula for Pr(S|θ̂) and Pr(H|θ̂) can be used from equation (4.46)
-and (4.47). However to calculate transition probability pwv|S a new formula is
-required. If MS(w, v) is the number of times token v follows token w in a spam,
-it replaces NS(w) in equation (4.49):
-26
-pwv|S =
-s× twv|S +MS(w, v)
-s+
-∑
-uW
-MS(w, u)
-(5.15)
-Similarly for transition probability pwv|H , where MH is equivalent to MS for
-ham :
-pwv|H =
-h× twv|H +MH(w, v)
-h+
-∑
-uW
-MH(w, u)
-(5.16)
-If σD is a n× n matrix representing an email D classied as spam:
-σwv|D = MS(w, v) (5.17)
-This means that the counts of each transitions for a category can be calcu-
-lated by summing all email matrices in that category. If σ is the (n×n) matrix
-for the total of transitions for every word to each other in every spam email:
-σ =
-∑
-DS
-σD (5.18)
-Therefore each transition probability pwv|S can be calculated by:
-pwv =
-s× twv|S + σwv
-s+
-∑
-uW
-σwu
-(5.19)
-A similar matrix η can be create for ham and thus each transition probability
-pwv|H of PH can be calculated in the same way as pwv|S for PS .
-Therefore the parametrisation of θ̂ is complete:
-pwv|S = θ̂wv|S , pwv|H = θ̂wv|H , P r(S|θ̂) = θ̂S , P r(H|θ̂) = θ̂H (5.20)
-The initial distribution λ is calculated by nding the number of times each
-token starts an email and dividing by the size of the spam corpus S, where
-FS(w) is the number of times token w is the rst word in a spam email.
-λw|S =
-s× tw|S + FS(w)
-s+ |S|
-(5.21)
-similarly for ham:
-λw|H =
-h× tw|H + FH(w)
-h+ |H|
-(5.22)
-27
-5.4 First-Order Classication
-A Markov lter uses the same techniques as a Bayesian lter to classify emails.
-Equation (3.10) or equation (3.21) with a suitable value of K are used.
-If an email has been classied as spam (σD) then transition matrix PS needs
-to be updated. First σ is updated:
-σ = σold + σD (5.23)
-Then each transition probability of PS is updated:
-pwv|S =
-s× twv|S + σwv
-s+
-∑
-uW
-σwu
-(5.24)
-If the user disagrees with the lter and considers an email is ham, the lter has
-to be untrained for that email:
-σ = σold − σD (5.25)
-Then retrain the email as ham:
-η = ηold + σD (5.26)
-Finally the transition probabilities for PS and PH have to be recalculated as
-equation (5.24). Then same formula as the Bayesian classier is used:
-Pr(S|D; θ̂) = Pr(S|θ̂)Pr(D|S; θ̂)
-Pr(S|θ̂)Pr(D|S; θ̂) + Pr(H|θ̂)Pr(D|H; θ̂)
-(5.27)
-Therefore an email can be classied using equation (5.13), equation (5.14) and
-cancelling Pr(M |θ̂):
-Pr(S|D; θ̂) =
-Pr(S|θ̂)λW1|S
-M∏
-i=2
-pWiWi−1
-Pr(S|θ̂)λW1|S
-M∏
-i=2
-pWiWi−1 + Pr(H|θ̂)λW1|H
-M∏
-i=2
-qWiWi−1
-(5.28)
-5.5 kth-Order Markov Chains
-The dependence of transitions in a Markov chain could be increased so that the
-next state is dependent on the previous k states, instead of just the previous
-state:
-Pr(Wi = wi|Wi−1 = wi−1, . . . ,W = w1)
-= Pr(Wi = wi|Wi−1 = wi−1, . . .Wi−k = wi−k) (5.29)
-28
-These are known as kth-order Markov chains and so Markov chains with tran-
-sition probabilities that depend on the previous state, Equation (5.1), are 1st-
-order. However if each state, in a kth-order Markov chain, is k ordered states
-from a 1st-order Markov chain:
-yi−1 = (wi−k, . . . , wi−1) (5.30)
-and
-yi = (wi−k+1, . . . , wi) (5.31)
-so has state spaceY of size nk:
-Y = {y1, y2, . . .} (5.32)
-Again the size of the state space is assumed to be nite because a lter will only
-be used be on a nite number of emails with a nite number of phrases.
-Then the extended Markov property can be simplied to appear like a rst-
-order Markov chain:
-Pr(Wi = wi|wi−1, . . . , wi−k) = Pr(Yi = yi|yi−1) (5.33)
-Therefore a kth-order Markov chain has the Markov property, Equation (5.1),
-and thus is a valid Markov chain.
-For example for the fth-order Markov chain Yi represents a phrase of 5
-tokens (tokens may be repeated inside a phrase) from W where permutations
-are unique:
-Yi−1 = (wa, wb, wc, wd, we) (5.34)
-And Yi must has the last four tokens of Yi−1 as its rst four tokens, with order
-remaining:
-Yi = (wb, wc, wd, we, v) (5.35)
-Transition probabilities appear the same as for rst-order:
-pyz|S = Pr(z follows y in D|S; θ) = Pr(Yi = z|S; θ;Yi−1 = y) (5.36)
-And they are equivalent to the equation (5.29):
-Pr(token v follows phrase y in D|S; θ)
-= Pr(W = v|S; θ;Yi−1 = y) (5.37)
-Which is equivalent to the markov property, equation (5.29):
-Pr(W = v|S; θ;Yi−1 = y)
-= Pr(W = v|S; θ;Wi−k = wi−k, . . . ,Wi−1 = wi−1) (5.38)
-29
-If the tokens are word, instead of just taking the previous word into account,
-the probability of a word is dependent on the previous k words or context. This
-further relaxes the assumption of words being conditionally independent from
-each other compared to rst-order as more information is taken into account.
-This means that some meaning is taken into account and so sentences will be
-recognised by probability instead of individual words.
-Equation (5.13) can be used to nd the probability of an email given it is
-spam:
-Pr(D|S; θ) = Pr(M |θ)λY1|S
-M−k+1∏
-i=2
-pYiYi−1 (5.39)
-hence for the fth-markov chain:
-Pr(D|S; θ) = Pr(M |θ)λY1|S
-M−4∏
-i=2
-pYiYi−1 (5.40)
-5.6 kth-Order Training
-The k-order lter Markov lter is trained in a similar way to the rst-order.
-However the transition probability must be calculated dierently; Ms(y, v) is
-the number of times in spam that the token v follows the phrase y:
-pyz|S =
-
-s×tyz|S+MS(y,v)
-s+
-∑
-uW
-MS(y,u)
-y = (w1, w2, . . . , wk), z = (w2, . . . , wk, v)
-0 otherwise
-(5.41)
-In reality pyz|S would never equal zero because the next phrase will always
-contain the previous k − 1 tokens. If a transition matrix was used it would be
-impractical because it would contain nk × (nk − n) zeroes. Therefore a matrix
-of the counts of a word following a phrase can be calculated:
-σyv|D = MS(y, v) (5.42)
-σ =
-∑
-DS
-σD (5.43)
-implying, when y = (w1, w2, . . . , wk), z = (w2, . . . , wk−1, v):
-pyz|S =
-s× tyz|S + σyv
-s+
-∑
-uW
-σyu
-(5.44)
-Also the initial distribution is calculated where Fs(y) is now the number of times
-phrase y (k tokens) is the start of the email but the equation is the same for all
-orders:
-30
-λy|S =
-s× ty|S + FS(y)
-s+ |S|
-(5.45)
-allowing θ to be estimated θ̂:
-pyz|S = θ̂yz|S , pyz|H = θ̂yz|H , P r(S|θ̂) = θ̂S , P r(H|θ̂) = θ̂H (5.46)
-However more training is required than for a naïve Bayesian classier, which
-contains 2|W| = 2n probabilities with n for each category. Whereas the fth-
-order Markovian classier requires possible number of phrases times possible
-values of tokens:
-2
-(
-nk × n
-)
-= 2nk+1 (5.47)
-So for fth order:
-2n6 (5.48)
-Clearly to train the classier until all of the possible phrases have occurred
-would take a long time but the prior probability will create a small posterior
-probability for infrequent phrases.
-5.7 kth-order Classication
-The kth-order Markov lter classies emails in the same way as a rst-order
-Markov lter as using:
-Pr(D|S; θ̂) = Pr(M |θ̂)λY1|S
-M−k+1∏
-i=2
-pYiYi−1 (5.49)
-Pr(D|H; θ̂) = Pr(M |θ̂)λY1|H
-M−k+1∏
-i=2
-qYiYi−1 (5.50)
-Which are then put into equation (3.10) with the common term, Pr(M |θ̂),
-cancelling out:
-Pr(S|D; θ̂) =
-Pr(S|θ̂)λY1|S
-M−k+1∏
-i=2
-pYkYk−1
-Pr(S|θ̂)λY1|S
-M−k+1∏
-i=2
-pYiYi−1 + Pr(H|θ̂)λY1|H
-M−k+1∏
-i=2
-qYiYi−1
-(5.51)
-31
-hence for the fth-order Markov lter:
-Pr(S|D; θ̂) =
-Pr(S|θ̂)λY1|S
-M−4∏
-i=2
-pYkYk−1
-Pr(S|θ̂)λY1|S
-M−4∏
-i=2
-pYiYi−1 + Pr(H|θ̂)λY1|H
-M−4∏
-i=2
-qYiYi−1
-(5.52)
-32
-Chapter 6
-Discussion
-6.1 Comparison Between Naïve Bayesian AndMar-
-kovian Filters
-The naïve Bayesian lter is actually related to kth-order Markov chain lter
-because it can be considered a zero-order Markov chain (using equation (5.29)):
-Pr(Wi = wi|Wi−1 = wi−1, . . . ,W1 = w1) = Pr(Wi = wi|Wi−1 = wi−1, . . . ,Wi−k = wi−k)
-(6.1)
-Setting k = 0 implies:
-Pr(Wi = wi|Wi−1 = wi−1, . . . ,W1 = w1) = Pr(Wi = wi) (6.2)
-This could also be considered the stationary distribution of a Markov chain
-because Pr(Wi = wi) is the probability that a word occurs at any time during an
-email. Obviously the naïve Bayesian lter assumes that words are conditionally
-independent and with increasing orders this assumption is relaxed. By assuming
-complete conditional independence of words a naïve Bayesian lter works by
-nding the presence of words like a heuristic lter but with a statistical weight
-for every word.
-6.2 Increasing Training Speed
-The Markovian lter requires more training data to classify new emails than a
-naïve Bayesian lter due to context being taken into account when estimating
-the probability of a word given a category. Previously in the project a prior
-probability has been used to estimate the probability of a rare word occurring.
-Güngör and Çltk[21], suggest a method for reducing the required training,
-which involves using Markov chains of dierent orders trained on the same data.
-In this way even if a phrase of length k has not occurred, a phrase of length k−1
-33
-may have occurred that includes all but the rst token of the k length phrase.
-The lter can then take this into account when estimating a probability. Their
-formula is:
-Pr(S|D) =
-(
-n∏
-i=1
-[c0Pr(wi|S) + c1Pr(wi|wi−1;S) + c2Pr(wi|wi−1, wi−2;S)]
-) 1
-n
-(6.3)
-For speed eciency, rather than mathematical correctness, the probability of the
-document given ham is not considered and either category is considered equally
-likely. In essence they use Pr(S|D) = Pr(D|S). By applying the geometric
-mean to the product of probabilities the probability of an email given it is
-spam is independent of its length, which allows for comparison between emails.
-However it is the comparison with the probability of the email given it is ham
-that is important in classication.
-Furthermore they suggest c0 = c1 = c2 = 1 instead of obeying:
-2∑
-j=0
-cj = 1 (6.4)
-Which means Gungor and Ciltik could create a probability of spam greater than
-one. This could happen because Pr(wi|wi−1;S) and Pr(wi|wi−1, wi−2;S) can
-both be close to one with the possibility of the nth root being taken for a number
-greater than one, resulting in a probability greater than one. It is unlikely to
-occur in practise because other words would have small probabilities and reduce
-the value below one. No mention is made of it occurring by Gungor and Ciltik.
-However using the standard weights, obeying equation (6.4), would always
-produce a valid probability. Then weights are a prior probability for each order
-of Markov chain. The technique of using multiple orders could be applied to
-equation (5.49), with maximum order k:
-Pr(D|S; θ̂) = Pr(M |θ̂)λY1|S
-M−k+1∏
-i=2
- k∑
-j=0
-cjpYiYi−1|j
- (6.5)
-where cj is the weight when using a jth order Markov chain, and pyz|j is the
-probability of going from phrase y to phrase z given a phrase length of j tokens.
-The considered context when nding the probability of a word given a ca-
-tegory could be relaxed further. Instead of using varying context lengths, all
-similar contexts could be considered. Therefore any number of the previous k
-tokens, for kth-order, are considered to be any word in all possible combina-
-tions while maintaining the same order of tokens. Thus for a word wi using a
-2nd-order Markov lter, where ∗ represents any word:
-c2Pr(wi|wi−1, wi−2;S) + c1Pr(wi|wi−1;S) + c1Pr(wi|∗, wi−2;S) + c0Pr(wi|S)
-(6.6)
-34
-Note that all probabilities without ∗'s are probabilities for reduced order Markov
-chains, such as equation (6.3). Instead of assigning a weight according to the
-order of the chain, the weight is assigned by the number of ignored words.
-To calculate the probability for a token given a context containg ∗a rst-order
-Markov chain is used.
-A transition matrix can be multiplied by itself to form a new transition
-matrix, which gives the probability of state moving to another state in two
-steps, rather than one[22]. If p
-(2)
-wv is the transition probability in the new matrix
-for going from state w to state v in two steps:
-p(2)wv =
-∑
-uW
-pwupuv (6.7)
-This is the dot product of a row and a column of the original matrix. Therefore
-it is the sum of the probabilities of going from state w to any state, and then
-from that state to state v. Hence:
-Pr(w|∗, v;S) = p(2)wv|1 (6.8)
-Yerazunis[23] suggests using all possible combinations of a phrase but just
-calculates the probability based on occurrence and not context, like a naïve
-Bayesian lter. His weight is:
-cj = 22(j−k) (6.9)
-Where k is the maximum order used but ck = 1 and 1 ≥ cj > 0 and thus does
-not obey equation (6.4) so produces an invalid probability. However Yerazunis
-multiplies, instead of adds, the probability of all possible phrases (up to k tokens
-long) so has valid probabilities. Therefore equation (6.9) could be normalised.
-The sum of weights is:
-k∑
-j=0
-22(j−k)
-(
-k
-j
-)
-= 2−2k
-k∑
-j=0
-(
-22
-)j (k
-j
-)
-(6.10)
-= 2−2k(1 + 22)k (6.11)
-= 5k2−2k (6.12)
-which normalises cj to:
-cj =
-22(j−k)
-5k2−2k
-(6.13)
-= 5−k22j (6.14)
-This produces the following weights for a 2nd-order lter:
-c0 =
-1
-25
-c1 =
-4
-25
-c2 =
-16
-25
-(6.15)
-35
-These weights are untested with this projects method but Yerazunis' lter is
-more accurate than a human[24] so could be successful. Therefore testing is
-required for using equation (6.6) with equation (6.9).
-Instead of nding weights based on trial and error, statistics could be used,
-such as a prior probability based on success of classication on the probability
-of the token given its context in the past. The proportion of times the token
-and its context was involved in a correct classication in spam, or recall rate,
-could be used. Let RS(z) be the number of times phrase z is in spam that was
-classied as ham. Note phrase z is the token and its context so its lengths is
-the order of the lter plus one. The probability of correct classication given
-the phrase and that the email is spam:
-Pr(C|z;S) = NS(z)
-RS(z) +NS(z)
-(6.16)
-Where C is correct classication. The probability would then be divided by the
-sum of all Pr(C|z;S) for the token and its contexts, then used as the weight.
-Hence the probabilities used are based on the success of each order and indi-
-vidual phrases. Also tokens and phrases that are very strong indicators of a
-category will aect the outcome more.
-Kanaris et al[25] observered that dierent orders of Markov chain could favor
-dierent types of mailbox. They found that a 3rd-order character lter was
-more precise ltering a collection of emails where ham could be very dierent.
-Whereas a 4th-order character lter was more precise when used on a corpus
-where the hams were more similar to each other. Therefore using a lter of
-varying orders, which is weighted on precision would be benecial as orders
-that are more precise for the user's mailbox would have a larger weight.
-The reason for the dierence in precision between the orders is likely to
-be due to the sparse data problem. If emails vary signicantly there will be
-fewer phrases that have occured before and thus less data available at higher
-orders. However if emails are similar the higher order will have enough data to
-recognise larger contexts in an email and should therefore classify emails more
-accurately. Hence by using precision weights and varying orders the spam lter
-should evolve for a user as data increases.
-6.3 Token Choice
-The kth-order Markovian ltering method allows either words or characters to
-be used as tokens. Though it would be possible to use zero-order or a naïve
-Bayesian method at character level it may not be very useful because classi-
-cation would be based on very little information and it is debatable whether a
-character on its own can signify spam. However an exclamation mark and some
-other punctuation is a potential character that could suggest spam[26].
-Obviously the higher the order the more words or characters are dependent
-on each other, which means that the assumption of words being conditionally
-36
-independent of each other is relaxed with each order. Therefore an increased
-level of context and meaning is taken into account in higher orders for words.
-When classifying at character level, the ltering is no longer dependent on
-words and therefore no assumption is made between dierent words in an email.
-However words spelt dierently, such as spelling errors and Americanisms (for
-example no u in behaviour), may still have valid assigned probabilities. For
-example before the missing u in behaviour the rest of the 5 letter states would
-have occurred before. Whether the change of spelling indicated spam or ham
-would depend on previous emails. Therefore if a word appears that has not
-been seen before because it is spelt incorrectly, there could still be probabilities
-at character level to suggest it is ham or spam. Whereas the probability for
-words as tokens may only be greater then zero because of the prior probability.
-So far words and characters have been discussed as the only tokens. Using
-words as tokens could be taken a step further, with some form of meaning being
-taken from the words. By comparing the contexts of two dierent words it could
-be possible that most of their probabilities are very similar. For example tele-
-phone and phone have the same meaning. Therefore they may also appear in
-signicantly similar contexts. Thus these words could be considered equivalent
-and their number of appearances shared to form new probabilities. However
-some words may appear in the same contexts but have dierent meanings, such
-as the names of sports, which can be interchangeable in a sentence. Thus a
-highly signicant test of comparison maybe required. Testing is required to see
-if the lter could be manipulated in this way.
-6.4 Implications Of Dierent Languages
-Words from dierent languages with the same meaning could not be compa-
-red for their meaning because the context would appear dierent to the lter
-because it is not a translator. However due to using the Markov property, equa-
-tion (5.29), the probability of a word is based on the context, so the lter will
-still work. In fact with the exception of using zero-order Markov chains the
-probabilities for one language maybe independent of another language, at least
-at word level.
-Certain languages, such as Chinese, do not have spaces to separate words
-and so only a character level lter can be used. Therefore if a lter is used on
-multiple languages it should use both word and character levels or just character
-level. To use both lters a similar method to using recall rates, section 6.2, could
-be used to combine them. In this way other tokenisation methods could also be
-used and combined. Of course this increases computation time signicantly.
-In some languages, such as Turkish, words can be re-ordered in a sentence
-while the meaning does not change. A study[27] showed that the order of
-spoken phrases only maintained subject object verb order 48% of the time in
-Turkish. Therefore it maybe appropriate when ltering in some languages to
-nd the probability when the context is re-ordered. Güngör and Çltk[21] used
-all combinations of re-ordered and reduce contexts on Turkish emails and found
-37
-it was 1% less precise than only reducing the order for ltering English emails.
-6.5 Character Obfuscation
-Spammers may try to trick spam lters into not recognising a word by adding
-and changing characters to a word but still allowing the reader to easily decipher
-the word. Hidden Markov models[28, 29] could be used at a character level to
-predict the most likely states (spelling) when a word is not recognised using
-the Viterbi algorithm[30]. Therefore preventing the spammer from hiding the
-meaning of his email from a lter.
-However the fact that the word may contain unusual symbols and irregu-
-lar spacing and spelling is a larger sign of spam than the corrected text. At
-character level, using the methods described in section 6.2, unusually symbols
-would have a probability of being spam at a zero-order level and perhaps at
-higher levels depending on the training. Even at word level obfuscation in spam
-will be noticed because non-alphabetic characters can be counted as words and
-thus at least noticed again when using zero-order. On the other hand Lee and
-Ng[28] found that using a hidden Markov model at character level to predict
-the outcome of obfuscated text to be on average 95% accurate in its corrections.
-It should be noted they also attempted to lter emails just based on the level
-of obfuscation. This alone was a good indicator of spam as one of their lters
-produced 84% accuracy. Unfortunately too many false positives occurred due to
-new words and non-standard text such as email addresses and URLs appearing
-in ham.
-Furthermore classifying at word level requires a lot more training than at
-character level. In the English language there are thousands of words but there
-are 100 characters used in a standard ASCII encoded[31] english email. Thus
-there are many more possible combinations of words than characters. An En-
-glish email could be simplied to the 26 letters of the alphabet but this may
-not be benecial as case insentive character ltering has shown to be is less
-accurate[25]. The possible number of probabilities given there are n known
-tokens and a kth-order Markov chain is 2nk+1. Therefore the number of proba-
-bilities to train would be signicantly more for words.
-6.6 Email Headers
-An example where character level may excel over classication using words is for
-the header of an email. The header contains information such as a user's email
-address, the date, IP addresses. Some of the meaning behind this information
-is not contained in actual words but a sequence of characters, where a few
-characters are changed does not signicantly alter the meaning. Therefore it
-would be logical to use a character lter on the header of an email.
-The header of an email contains the senders email address, which means that
-a statistical blacklist is automatically created for email addresses and servers.
-38
-For example if a user frequently receives ham from a friend, the friend's email
-address would become a strong indicator of ham and decrease the probability
-that an email is spam. In a similar way the address or domain of a spammer
-would be recognised as a strong indicator of spam and increase the probability
-of an email being spam if present. However unlike a user maintained blacklist in
-section (2.1) the emails are not blocked so still require bandwidth to download.
-On the other hand a network will not be permanently blocked. Therefore if ham
-is sent from a network that had sent spam in the past it may be marked as ham
-depending on the content of the rest of email.
-The message (or body) of an email is usually very dierent to the hea-
-der, which suggests that a separate Markov chain should be created for each.
-However then the probability that an email is spam given its header and the
-probability that an email is spam given its body have to be weighted.
-Therefore the lter could use two dierent distributions for spam, one for
-the header and one for the body, which means the assumption that words are
-independent of position is relaxed. Then two separate probabilities would be
-produced, which could be weighted inversely proportional to their recall rates
-(see section 6.2).
-39
-Chapter 7
-Conclusion
-We reviewed the dierent types of non-statistical spam lters and some of their
-shortcomings before investigating how naïve Bayesian lters classify spam. They
-make some strong and incorrect assumptions. The most notable is the assump-
-tion that words are conditionally independent. In order to relax this assumption
-we assumed that words are dependent on the words immediately before. We
-therefore found the probability of a word given the previous k words, and used
-Markovian chains to nd the probability of an email occurring given it is spam,
-and the probability of an email occurring given it is ham. We used this to work
-out the probability of it being spam. However the Markovian classier requires
-more training to accurately identify spam; the required training increases with
-the order.
-In addition we investigated the problem of nding probabilities for new to-
-kens. A solution using prior probabilities for naïve Bayesian lters was shown.
-This was also applied to the Markovian classier, which we think has not been
-written up before in the literature on spam ltering. This is a step towards
-solving the sparse data problem for a Markovian classier. Further we discuss
-using the available data to predict probabilities for rare phrases by taking into
-account the probabilities of similar phrases.
-Thus in this project we have shown how to increase the statistical precision
-of a Bayesian lter by reducing an assumption and then attempted to reduce
-the increase in training required. However it may require a change in laws and
-an increase in punishments for spammers to make spamming uneconomical and
-undesirable.
-To further increase the accuracy of Bayesian spam lters, assumption that
-were not considered in this project could be investigated. For example we as-
-sume that the classications of emails is independent of their length. Therefore
-an investigation of emails, using a corpus of spam and a corpus of ham, could be
-used to test the validity of this claim and if necessary correct this assumption.
-Furthermore the proposed classier may need to be adapted for use in the real
-world. Thus its eciency and the ideal choice for the parameters of its prior
-probabilities could be investigated.
-40
-Acknowledgement
-I would like to thank Doctor Matthias Troaes for all his advice and support
-throughout the year.
-41
-Bibliography
-[1] Zdziarski. Ending Spam. No Starch Press, London, 2005.
-[2] Secure Computing. Secure computing internet threats report, July 2008.
-http://www.securecomputing.com/pdf/SCC-InternetThrtRprt-
-July08.pdf.
-[3] Sophos. Sophos report reveals rising tide of spam in april, July 2008.
-http://sophos.com/pressoce/news/articles/2008/07/dirtydozjul08.html.
-[4] Ferris Research. Industry statistics, 2007.
-http://www.ferris.com/research-library/industry-statistics/.
-[5] C. Kanic, C. Kreibich, K. Levchenk, B. Enright, G. Voelker, V. Paxson,
-and S. Savage. Spamalytics: An empirical analysis of spam marketing
-conversion, 2008.
-Table 3
-http://www.icsi.berkeley.edu/pubs/networking/2008-ccs-spamalytics.pdf.
-[6] P. Pantel and D. Lin. Spamcop a spam classication & organization pro-
-gram. 1998.
-[7] H. Bray. Saboteurs hit spam's blockers. The Boston Globe, August 8, 2003.
-[8] T. Bayes. An essay towards solving a problem in the doctrine of chances.
-The Philosophical Transactions, 53:370418, 1763. Reproduced in Biome-
-trika, Vol. 45, No. 3/4 (Dec., 1958), pp. 293315.
-[9] Marshal. Spam message size lowest on record, 2008.
-http://www.marshal.com/trace/traceitem.asp?article=624.
-[10] Marshal. Spam statistics, April 2009.
-http://www.marshal8e6.com/TRACE/spam_statistics.asp.
-[11] H. Jereys. The theory of probability. 1948.
-[12] P. Graham. A plan for spam, 2002.
-http://www.paulgraham.com/spam.html.
-42
-[13] Cisco Systems. Cisco 2008 annual security report, 2008.
-http://cisco.com/en/US/prod/vpndevc/annual_security_report.html.
-[14] D. Lindley. Understanding uncertainty. pages 9092, 2006.
-[15] P. Laplace and A. Dale. Philosophical essay on probabilities. Springer, 5th
-edition, 1995.
-[16] J. Haldane. On a method of estimating frequencies. Biometrika, 33:222
-225, 1945.
-[17] H. Jereys. Theory of probability. 1948.
-[18] F. Tuyl, R. Gerlach, and K. Mengersen. Posterior predictive arguments
-in favor of the bayes-laplace prior as the consensus prior for binomial and
-multinomial parameters. Bayesian Analysis, 4, 2009.
-[19] G. Robinson. A statistical approach to the spam problem, March 2003.
-http://www.linuxjournal.com/article/6467.
-[20] A. Markov. Extension of the limit theorems of probability theory to a sum
-of variables connected in a chain. Dynamic Probabilistic Systems, Volume
-1: Markov Chains:reprinted in Appendix B of R, 1971.
-[21] Gungor and Ciltik. Time-ecient spam e-mail ltering using n-gram mo-
-dels. Pattern Recognition Letters, 29:1933, 2008.
-[22] Grinstead and Snell. Introduction to Probability. American Mathematical
-Society, 1997.
-[23] Yerazunis. The spam-ltering accuracy plateau at 99.9 percent accuracy
-and how to get past it. MIT Spam Conference, December 2004.
-[24] Yerazunis. Sparse binary polynomial hashing and the crm114 discriminator.
-MIT Spam Conference, 2003.
-[25] I. Kanaris, K. Kanaris, I. Houvardas, and E. Stamatatos. Words versus cha-
-racter n-grams for anti-spam ltering. International Jounral for Articial
-Intelligence Tools, 16, 2007.
-[26] G. Sakkis, I. Androutsopoulos, G. Paliouras, V. Karkaletsis, C. Spyropou-
-los, and P. Stamatopoulous.
-[27] Bever and Slobin. Children use canonical sentence schemas: A cross lin-
-guistic study of word order and inections. Cognition, 12:229265, 1982.
-[28] Lee and Ng. Spam deobfuscation using a hidden markov model, 2005.
-[29] S. Lee, I. Jeong, and S. Choi. Dynamically weighted hidden markov model
-for spam deobfuscation, 2007.
-43
-[30] J. Viterbi. Error bounds for convolutional codes and an asymptotically
-optimum decoding algorithm.
-[31] Ascii Set. Ascii character set, 2009.
-http://asciiset.com/.
-[32] Verisign. Spotlight on spam. Internet Security Intelligence Brieng, 2:58,
-November 2004.
-44
