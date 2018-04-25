@@ -234,13 +234,15 @@ public class ConvertPdfXMLController {
 	    	ioe.printStackTrace();
 	    } 
 	    
-	    for (RefCountObj rc: refCounts){
-	    	Article article = converter.getArticleFromXML(new File("xmlFiles/"+rc.getFileName()));
-	    	//System.out.println(rc.getFileName()+" "+ rc.getCounter());
-	    	if (article != null) {
-	    		article.setRefCount(rc.getCounter());
-				converter.writeToXML(article, "xmlFiles/"+rc.getFileName());
-	    	}
+	    if (refCounts != null) {
+		    for (RefCountObj rc: refCounts){
+		    	Article article = converter.getArticleFromXML(new File("xmlFiles/"+rc.getFileName()));
+		    	//System.out.println(rc.getFileName()+" "+ rc.getCounter());
+		    	if (article != null) {
+		    		article.setRefCount(rc.getCounter());
+					converter.writeToXML(article, "xmlFiles/"+rc.getFileName());
+		    	}
+		    }
 	    }
 		
 	} // end of getRefCounteFromXML
@@ -269,7 +271,7 @@ public class ConvertPdfXMLController {
 	 */
 	public void runRefCountAnalysis() {
 		this.runPerlScript();
-		this.mergeRefCountsToXMLFiles(new File("Skripte/output/final.xml"));
+		this.mergeRefCountsToXMLFiles(new File(System.getProperty("user.dir")+"/Skripte/output/final.xml"));
 	}
 	
 	
