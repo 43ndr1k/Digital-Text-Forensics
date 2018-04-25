@@ -152,7 +152,7 @@ public class FileController {
 		redirectAttributes.addFlashAttribute("message",
 				"You successfully uploaded " + file.getOriginalFilename() + "!");
 
-		String a = "http://" + request.getLocalAddr() + ":" + request.getLocalPort();
+		String a = "http://localhost" + ":" + request.getLocalPort()+ "/admin";
 
 		mailService.send(subject, mailUploadText, file.getOriginalFilename(), a);
 
