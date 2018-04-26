@@ -6,13 +6,14 @@
 - Edward Kupfer
 - created 03.2018
 
-## Components
+## Components / Requerments
 - Java 1.8.0_161
 - Maven  3.3.9
 - Database: H2
 - Spring-Boot 1.5.8.RELEASE
 - Apache Lucene 7.1.0
 - Apache Pdfbox 2.0.7
+- Perl v5.12.3
 
 ### Initial
 Download and unzip the source repository for this guide, or clone it using Git: 
