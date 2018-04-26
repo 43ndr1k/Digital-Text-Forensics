@@ -6,7 +6,7 @@
 - Edward Kupfer
 - created 03.2018
 
-## Components / Requerments
+## Components / Requirements
 - Java 1.8.0_161
 - Maven  3.3.9
 - Database: H2
