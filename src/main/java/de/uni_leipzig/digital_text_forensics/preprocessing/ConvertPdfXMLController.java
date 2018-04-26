@@ -29,6 +29,20 @@ public class ConvertPdfXMLController {
 	
 	public ConvertPdfXMLController() {
 		converter = new ConvertPdfXML();
+		
+		File dataDir = new File(dataDirPath);
+		File xmlFiles = new File(xmlFilePath);
+		if (!dataDir.exists()) {
+			dataDir.mkdir();
+			System.out.println("Create Folder: "+ dataDirPath);
+		}
+		
+		if (!xmlFiles.exists()) {
+			xmlFiles.mkdir();
+			System.out.println("Create Folder:"+ xmlFilePath);
+		} 
+		
+		
 	}
 	/**
 	 * <p> Function can be called to walk through a given Directory and convert
