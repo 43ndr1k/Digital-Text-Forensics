@@ -81,6 +81,12 @@ public class config {
 
 	@Bean
 	public static IndexReader indexReader(@Value("LuceneIndex") String indexDirectory) throws IOException {
+        if (Files.isDirectory(Paths.get("LuceneIndex"))) {
+            if (Files.list(Paths.get("LuceneIndex")).count() == 0) {
+                LOGGER.error("The LuceneIndex not found in the directory LuceneIndex");
+                System.exit(-1);
+            }
+        }
 		return DirectoryReader.open(FSDirectory.open(Paths.get(indexDirectory)));
 	}
 
