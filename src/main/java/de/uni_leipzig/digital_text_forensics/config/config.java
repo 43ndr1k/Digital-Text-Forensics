@@ -6,9 +6,11 @@ import de.uni_leipzig.digital_text_forensics.service.Mail.MailService;
 import de.uni_leipzig.digital_text_forensics.domain.Pager;
 import de.uni_leipzig.digital_text_forensics.lucene.LuceneConstants;
 import de.uni_leipzig.digital_text_forensics.lucene.Searcher;
+import de.uni_leipzig.digital_text_forensics.service.Storage.FileSystemStorageService;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageService;
 import de.uni_leipzig.digital_text_forensics.service.Storage.StorageProperties;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
@@ -18,6 +20,8 @@ import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.spell.Dictionary;
 import org.apache.lucene.search.suggest.DocumentDictionary;
 import org.apache.lucene.store.FSDirectory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -33,6 +37,8 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 @EnableAutoConfiguration
 @EnableConfigurationProperties(StorageProperties.class)
 public class config {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(config.class);
 
 	@Bean
 	public Searcher querySearcher() throws IOException {
@@ -62,6 +68,12 @@ public class config {
 
 	@Bean
 	public static Dictionary dictionary() throws IOException {
+		if (Files.isDirectory(Paths.get("LuceneIndex"))) {
+			if(Files.list(Paths.get("LuceneIndex")).count() == 0) {
+				LOGGER.error("The LuceneIndex not found in the directory LuceneIndex");
+				System.exit(-1);
+			}
+		}
 		return new DocumentDictionary(DirectoryReader.open(FSDirectory.open(Paths.get("LuceneIndex"))),
 				LuceneConstants.TITLE,
 				LuceneConstants.TITLE);

@@ -18,9 +18,18 @@ public class StorageProperties {
     @Value("${upload-dir}")
     private String location = "upload-dir";
     private String xmlLocation = location + "/selectedMetadata";
-;
+    private String luceneIndex = "LuceneIndex";
 
-	public String getLocation() {
+
+    public String getLuceneIndex() {
+        return luceneIndex;
+    }
+
+    public void setLuceneIndex(String luceneIndex) {
+        this.luceneIndex = luceneIndex;
+    }
+
+    public String getLocation() {
         return location;
     }
 
