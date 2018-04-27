@@ -366,8 +366,15 @@ public class ConvertPdfXML {
 			}
 			
 			if (!(title.length()==0)) {
-				article.setTitle(title);
+				if (title.length() > 1000) {
+					article.setTitle(title.substring(0,1000));
+				} else {
+					article.setTitle(title);
+				}
+				
 			} else {
+				
+
 				article.setTitle(wordOps.clean_field(wordOps.getNWords(fullText, titleLikeLength),true));
 			}
 
@@ -399,6 +406,7 @@ public class ConvertPdfXML {
 			article.setFullText(fullText);
 			if (article != null) {
 				// finally write the article to xml.
+
 				writeToXML(article,outputFilePath);
 			} 
 			
