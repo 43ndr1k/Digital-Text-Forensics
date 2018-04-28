@@ -75,7 +75,7 @@ public class ConvertPdfXML {
 		this.formatter = new SimpleDateFormat("E MMM dd HH:mm:ss 'CEST' yyyy",Locale.ENGLISH);
 		this.snd_formatter = new SimpleDateFormat("E MMM dd HH:mm:ss 'CET' yyyy",Locale.ENGLISH);
 		
-		titleLikeLength = 50;
+		titleLikeLength = 10;
 
 	}
 	
@@ -366,16 +366,33 @@ public class ConvertPdfXML {
 			}
 			
 			if (!(title.length()==0)) {
-				if (title.length() > 1000) {
-					article.setTitle(title.substring(0,1000));
+				
+				if (title.length() > 999) {
+					// Only consider if title-length is unusual
+
+					String shorterTitle = wordOps.getNWords(title,100);
+					if (shorterTitle.length() > 1000) {
+						// If title is still longer (~ 1 Word) cut after character.   
+						article.setTitle(title.substring(0,999));
+					}
 				} else {
 					article.setTitle(title);
 				}
 				
 			} else {
-				
+				// take the first n words as title
+				String titleLike = wordOps.clean_field(wordOps.getNWords(fullText, titleLikeLength),true);
+				if (titleLike.length() > 999) {
+					// Only consider if title-length is unusual
 
-				article.setTitle(wordOps.clean_field(wordOps.getNWords(fullText, titleLikeLength),true));
+					String shorterTitle = wordOps.getNWords(title,100);
+					if (shorterTitle.length() > 1000) {
+						// If title is still longer (~ 1 Word) cut after character.   
+						article.setTitle(titleLike.substring(0,999));
+					}
+				} else {
+					article.setTitle(title);
+				}
 			}
 
 			
