@@ -200,17 +200,17 @@ public class ConvertPdfXML {
 				 * Write empty template.
 				 */
 				//System.out.println("Could not read Data correctly. You have to insert it manually.");
-                /*
+                
                 Article dummyArticle;				
                 dummyArticle = new Article();
-				dummyArticle.setMyAbstract("\n\nInsert article text in cdata-section:\n\n");
-				dummyArticle.setTitle("Title of Paper");
-				dummyArticle.setAuthorsString("First Author Name, Second Author Name");
+				dummyArticle.setMyAbstract("\n\n\n\n");
+				dummyArticle.setTitle(" ");
+				dummyArticle.setAuthorsString(" ");
 				dummyArticle.setPublicationDate("DD.MM.YYYY");
 				dummyArticle.setDoi("0");
-				dummyArticle.setFullText("\n\nInsert article text in cdata-section:\n\n");
+				dummyArticle.setFullText(" ");
 				dummyArticle.setRefCount("0");
-				dummyArticle.setJournal("Journal Name");
+				dummyArticle.setJournal(" ");
 				
 				LocalDateTime now = LocalDateTime.now();	
 		        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -223,7 +223,7 @@ public class ConvertPdfXML {
 				dummyArticle.setFilePath(outputFile);
 				
 				this.writeToXML(dummyArticle, outputFile);
-				*/
+				
 				
 				//npr.printStackTrace();
 			} 
