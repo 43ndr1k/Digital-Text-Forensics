@@ -7,6 +7,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.FSDirectory;
 
 import de.uni_leipzig.digital_text_forensics.preprocessing.Article;
@@ -83,8 +84,11 @@ public class XMLFileIndexer {
 	    // potentially overwriting any existing files there.
 	    FSDirectory dir = FSDirectory.open(Paths.get(indexDir));
 	    IndexWriterConfig config = new IndexWriterConfig(analyzer);
+	    config.setOpenMode(OpenMode.CREATE);
 	    converter = new ConvertPdfXML(); // outputPath not needed here.
 	    writer = new IndexWriter(dir, config);
+	    writer.deleteAll();
+	    writer.commit();
 	  }
 
 	  /**
