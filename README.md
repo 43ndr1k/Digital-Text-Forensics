@@ -1,10 +1,9 @@
 # Digital-Text-Forensics
-## Author
-- Hendrik Sawade
-- Tobis Wenzel
-- David Drost
-- Edward Kupfer
-- created 03.2018
+
+##About
+The Digital-Text-Forensics Search is a high-quality search engine built on top of Apache Lucene.
+Using a huge corpus of PDF documents of the topic text forensics.
+The engine searches PDF documents by preprocessing the PDF documents and saving them as plain text. These are then included in the lucene index and are then available for the search.
 
 ## Components / Requirements
 - Java 1.8.0_161
@@ -22,7 +21,7 @@ git clone https://github.com/43ndr1k/Digital-Text-Forensics.git
 ```
 
 
-### Import the Project
+### Import the Project | install
 - Create a Project from existing sources:
   - As Maven Project from the **Digital-Text-Forensics** directory.
   
