@@ -1,6 +1,7 @@
 # Digital-Text-Forensics
 
-##About
+## About
+
 The Digital-Text-Forensics Search is a high-quality search engine built on top of Apache Lucene.
 Using a huge corpus of PDF documents of the topic text forensics.
 The engine searches PDF documents by preprocessing the PDF documents and saving them as plain text. These are then included in the lucene index and are then available for the search.
