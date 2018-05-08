@@ -16,7 +16,7 @@ The engine searches PDF documents by preprocessing the PDF documents and saving 
 - Perl v5.12.3
 
 ### Initial
-Download and unzip the source repository for this guide, or clone it using Git: 
+Download and unzip the source repository for this guide, or clone it using Git:
 ```
 git clone https://github.com/43ndr1k/Digital-Text-Forensics.git
 ```
@@ -24,8 +24,8 @@ git clone https://github.com/43ndr1k/Digital-Text-Forensics.git
 
 ### Import the Project | install
 - Create a Project from existing sources:
-  - As Maven Project from the **Digital-Text-Forensics** directory.
-  
+  - As Maven Project from the `Digital-Text-Forensics` directory.
+
 ### Database
 The database is created on the first start and is stored in the user's home directory under directory **H2**.
 
@@ -35,39 +35,39 @@ The database is created on the first start and is stored in the user's home dire
 **Mind:** The PDF-files are not included. Please add them into &rightarrow; [pdfDocs](./pdfDocs).
 
 
-Run the **Main** class in  package de.uni_leipzig.digital_text_forensics.preprocessing. This will 
+Run the **Main** class in  package `de.uni_leipzig.digital_text_forensics.preprocessing`. This will
 - extract the PDF content and create corresponding XML-files and
  - count how many times each article is quoted with a perl-script (_refCountScript.pl_) which started from within java.
-The results are merged into the existing XML-files using the _mergeRefCountsToXMLFiles_ method. 
-- Finally HeuristicTitleSearch is run to correct meta-data whilst comparing the fullText-Element against a precompiled dataset. 
+The results are merged into the existing XML-files using the _mergeRefCountsToXMLFiles_ method.
+- Finally HeuristicTitleSearch is run to correct meta-data whilst comparing the fullText-Element against a precompiled dataset.
 
-For more detailed information on this read the [documentation](./Dokumentation/arbeit.pdf). 
+For more detailed information on this read the [documentation](./Dokumentation/arbeit.pdf).
 
 
-#### Indexing 
+#### Indexing
 **Precondition:** Both the XML-files (&rightarrow; [xmlFiles](./xmlFiles)) and the original PDFs (&rightarrow; [pdfDocs](./pdfDocs))  have to be present in the corresponding folders.
 
 
-Run the **Main** class in the package de.uni_leipzig.digital_text_forensics.lucene. This will start the  XMLFileIndexer
+Run the **Main** class in the package `de.uni_leipzig.digital_text_forensics.lucene`. This will start the  XMLFileIndexer
   class and with it the indexing.
-  
+
 
 
 
 ### Email configuration
 Setup the email configuration in the **resources/application.properties** file.
-Set the 
-* Host, 
-* Port, 
-* Username, 
-* Passwort, 
-* email from 
-* email to 
+Set the
+* Host,
+* Port,
+* Username,
+* Passwort,
+* email from,
+* email to
 
 from a Email Provider.
 
 ### Start the Application
-Run the **Apllication** class in the package de.uni_leipzig.digital_text_forensics
+Run the **Apllication** class in the package `de.uni_leipzig.digital_text_forensics`
 
 ### Open the search engine
 The search engine can be accessed under following URL:
@@ -77,8 +77,8 @@ http://localhost:8080/
 ### Login
 For indexing the uploaded files you must be logged in.
 
-Default user: admin
-Default Password: admin
+Default user: **admin**  
+Default Password: **admin**  
 ```
 http://localhost:8080/login
 ```
